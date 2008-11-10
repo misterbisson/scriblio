@@ -1,0 +1,245 @@
+.scrib_test{
+	border: 2px solid red;
+}
+
+#scrib_meditor_div div.inside {
+	padding-bottom: 25px;
+}
+
+ul#scrib_meditor {
+	padding: 0;
+	margin: 0;
+}
+
+#scrib_meditor li.fieldset_title {
+	list-style: none;
+	width:692px;
+	padding: 0;
+	margin: 0;
+	clear:left;
+}
+
+#scrib_meditor h2 {
+/*	border: 2px solid red; */
+	padding: 20px 0 0 0;
+	margin: 0 0 0 0;
+}
+
+#scrib_meditor ul.fieldset_title {
+/*border: 10px solid #999;*/
+	width:692px;
+	padding: 0;
+	margin: 0;
+}
+
+#scrib_meditor li.fieldset {
+	list-style: none;
+	width:692px;
+	height: 50px;
+	padding: 0;
+	margin: 0;
+	clear:left;
+}
+
+/* repeatable buttons */
+#scrib_meditor div.repeatable-buttons {
+	width: 65px;
+	display: inline;
+	float: right;
+}
+#scrib_meditor div.repeatable button:hover, #scrib_meditor div.repeatable button:focus {
+	cursor: pointer;
+	-webkit-transform: scale(1.3,2) translate(0px, 2px);
+}
+
+/* sortable handles */
+#scrib_meditor div.sortable-handle {
+	width: 35px;
+	display: inline;
+	cursor: pointer;
+	float: left;
+}
+
+#scrib_meditor ul.fieldset {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: inline;
+}
+
+#scrib_meditor li.field {
+	list-style: none;
+	float: left;
+}
+
+#scrib_meditor label {
+	color: #888;
+	display: block;
+}
+
+
+
+/* styles for arc form */
+#scrib_meditor-arc-title .a input{
+	width: 565px;
+}
+
+#scrib_meditor-arc-creator .name input{
+	width: 300px;
+}
+
+#scrib_meditor-arc-creator .role input{
+	width: 125px;
+}
+
+#scrib_meditor-arc-creator .contributor{
+	text-align: right;
+}
+
+#scrib_meditor-arc-subject li.field{
+	float: left;
+}
+#scrib_meditor-arc-subject input{
+	width: 40px;
+}
+#scrib_meditor-arc-subject input:hover, #scrib_meditor-arc-subject input:focus {
+	width: 115px;
+}
+
+#scrib_meditor-arc-geog li.field{
+	float: left;
+}
+#scrib_meditor-arc-geog input{
+	width: 40px;
+}
+#scrib_meditor-arc-geog input:hover, #scrib_meditor-arc-geog input:focus {
+	width: 115px;
+}
+
+
+#scrib_meditor-arc-date_coverage input{
+	width: 75px;
+}
+
+#scrib_meditor-arc-description .a textarea{
+	width: 675px;
+	height: 100px;
+}
+
+
+#scrib_meditor-arc-description .cy{
+	clear: left;
+}
+
+#scrib_meditor-arc-description input{
+	width: 75px;
+}
+
+#scrib_meditor-arc-description .lang {
+	margin-left: 115px;
+}
+
+#scrib_meditor-arc-description .lang input{
+	width: 100px;
+}
+
+
+#scrib_meditor-arc-description .copyright{
+	clear: left;
+}
+#scrib_meditor-arc-description .copyright_note input{
+	width: 450px;
+}
+
+
+#scrib_meditor-arc-dimensions input{
+	width: 75px;
+}
+#scrib_meditor-arc-dimensions .wv {
+	margin-left: 20px;
+}
+
+
+#scrib_meditor-arc-format li.field{
+	float: left;
+}
+#scrib_meditor-arc-format input{
+	width: 40px;
+}
+#scrib_meditor-arc-format input:hover, #scrib_meditor-arc-format input:focus {
+	width: 115px;
+}
+
+
+#scrib_meditor-arc-transcript .a textarea{
+	width: 675px;
+	height: 100px;
+}
+
+#scrib_meditor-arc-translation .a textarea{
+	width: 565px;
+	height: 100px;
+}
+#scrib_meditor-arc-translation .lang {
+	clear: left;
+	margin-left: 35px ;
+}
+#scrib_meditor-arc-translation .lang input{
+	width: 100px;
+}
+#scrib_meditor-arc-translation .notes input{
+	width: 425px;
+}
+
+#scrib_meditor-arc-source input {
+	width: 100px;
+}
+#scrib_meditor-arc-source .file input {
+	width: 380px;
+}
+#scrib_meditor-arc-source .dy {
+	margin-left: 25px;
+}
+#scrib_meditor-arc-source .dy input, #scrib_meditor-arc-source .dm input, #scrib_meditor-arc-source .dd input {
+	width: 75px;
+}
+#scrib_meditor-arc-source .box {
+	clear: left;
+}
+#scrib_meditor-arc-source .collection input {
+	width: 330px;
+}
+#scrib_meditor-arc-source .publisher {
+	clear: left;
+}
+#scrib_meditor-arc-source .publisher input {
+	width: 665px;
+}
+
+#scrib_meditor-arc-exhibit .a input {
+	width: 300px;
+}
+
+#scrib_meditor-arc-rel_next .a , #scrib_meditor-arc-rel_previous .a , #scrib_meditor-arc-rel_reverse .a {
+	margin-left: 35px ;
+}
+
+#scrib_meditor-arc-rel_parent input , #scrib_meditor-arc-rel_child input , #scrib_meditor-arc-rel_next input , #scrib_meditor-arc-rel_previous input , #scrib_meditor-arc-rel_reverse input {
+	width: 300px ;
+}
+
+#scrib_meditor_addrelated_needsid , #scrib_meditor_addrelated{
+	margin-left: 35px ;
+}
+
+
+/*
+
+#postdivrich div.inside{
+	margin: 0;
+}
+
+#postdivrich.closed #editor-toolbar{
+	margin-top:-30px;
+}
+*/

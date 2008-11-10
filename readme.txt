@@ -5,7 +5,7 @@ Requires at least: 2.6.3
 Tested up to: 2.7
 Stable tag: trunk
 
-Scriblio (formerly WPopac) enables faceted searching and browsing features and metadata tools that turn WordPress into a library catalog, digital archive, and bibliographic discovery tool.
+Scriblio enables faceted searching/browsing features and metadata tools that turn WordPress into a library catalog or digital archive.
 
 == Description ==
 
@@ -22,4 +22,4 @@ Please consult the Scriblio website for <a href="http://about.scriblio.net/downl
 
 == Screenshots ==
 
-1. An example search/browsing display showing facet clouds, search autocompletion, editable search breadcrumbs, and mocroformatted record display.
+1. An example search/browse display showing facet clouds, search autocompletion, editable search breadcrumbs, and mocroformatted record display.

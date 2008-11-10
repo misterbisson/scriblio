@@ -1,4 +1,4 @@
-=== bSuite ===
+=== Scriblio ===
 Contributors: misterbisson
 Tags: scriblio, library, libraries, catalog, facets, faceting, search, browsing, metadata
 Requires at least: 2.6.3

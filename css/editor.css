@@ -1,3 +1,7 @@
+#post-body-content {
+	width: 710px;
+}
+
 .scrib_test{
 	border: 2px solid red;
 }
@@ -76,6 +80,211 @@ ul#scrib_meditor {
 	color: #888;
 	display: block;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* styles for marcish form */
+#scrib_meditor-marcish-attribution .a input{
+	margin-left: 35px;
+	width: 565px;
+}
+
+#scrib_meditor-marcish-title .a input{
+	width: 465px;
+}
+#scrib_meditor-marcish-title .src input{
+	width: 98px;
+}
+
+#scrib_meditor-marcish-creator .name input{
+	width: 338px;
+}
+
+#scrib_meditor-marcish-creator .role input{
+	width: 125px;
+}
+#scrib_meditor-marcish-creator .src input{
+	width: 98px;
+}
+
+#scrib_meditor-marcish-subject li.fieldset{
+	overflow: hidden;
+}
+#scrib_meditor-marcish-subject select{
+	width: 15px;
+}
+#scrib_meditor-marcish-subject select:hover, #scrib_meditor-marcish-subject select:focus{
+	width: 75px;
+}
+#scrib_meditor-marcish-subject input{
+	width: 40px;
+}
+#scrib_meditor-marcish-subject input:hover, #scrib_meditor-marcish-subject input:focus {
+	width: 115px;
+}
+#scrib_meditor-marcish-subject .dictionary {
+	margin-left: 5px ;
+}
+
+#scrib_meditor-marcish-subject_date input{
+	width: 75px;
+}
+#scrib_meditor-marcish-subject_date .src{
+	margin-left: 15px ;
+}
+
+#scrib_meditor-marcish-subject_geo input{
+	width: 115px;
+}
+#scrib_meditor-marcish-subject_geo .src{
+	margin-left: 15px ;
+}
+#scrib_meditor-marcish-subject_geo .src input{
+	width: 75px;
+}
+
+#scrib_meditor-marcish-callnumbers .src{
+	margin-left: 15px ;
+}
+#scrib_meditor-marcish-callnumbers .src input{
+	width: 75px;
+}
+
+#scrib_meditor-marcish-text .content{
+	clear: left;
+	margin-left: 35px ;
+}
+
+#scrib_meditor-marcish-text .lang {
+	margin-left: 15px ;
+}
+#scrib_meditor-marcish-text .lang input {
+	width: 100px;
+}
+#scrib_meditor-marcish-text .src {
+	margin-left: 15px ;
+}
+#scrib_meditor-marcish-text .src input {
+	width: 100px;
+}
+#scrib_meditor-marcish-text .content textarea{
+	width: 575px;
+	height: 100px;
+}
+#scrib_meditor-marcish-text .notes {
+	clear: left;
+	margin-left: 35px;
+}
+#scrib_meditor-marcish-text .notes input{
+	width: 575px;
+}
+
+#scrib_meditor-marcish-published input{
+	width: 65px;
+}
+#scrib_meditor-marcish-published .edition, #scrib_meditor-marcish-published .lang , #scrib_meditor-marcish-published .publisher, #scrib_meditor-marcish-published .src {
+	margin-left: 15px;
+}
+#scrib_meditor-marcish-published .copyright{
+	clear: left;
+	margin-left: 35px;
+}
+#scrib_meditor-marcish-published .copyright_note input{
+	width: 340px;
+}
+
+
+#scrib_meditor-marcish-description_physical input{
+	width: 65px;
+}
+#scrib_meditor-marcish-description_physical .wv {
+	clear: left;
+	margin-left: 35px;
+}
+#scrib_meditor-marcish-description_physical .duration {
+	clear: left;
+	margin-left: 35px;
+}
+#scrib_meditor-marcish-description_physical .cv {
+	clear: left;
+	margin-left: 35px;
+}
+#scrib_meditor-marcish-description_physical .src {
+	margin-left: 85px;
+}
+
+
+#scrib_meditor-marcish-format input{
+	width: 40px;
+}
+#scrib_meditor-marcish-format input:hover, #scrib_meditor-marcish-format input:focus {
+	width: 115px;
+}
+
+#scrib_meditor-marcish-idnumbers .src{
+	margin-left: 15px ;
+}
+#scrib_meditor-marcish-idnumbers .src input{
+	width: 75px;
+}
+
+
+#scrib_meditor-marcish-source input {
+	width: 100px;
+}
+#scrib_meditor-marcish-source .file input {
+	width: 380px;
+}
+#scrib_meditor-marcish-source .dy {
+	margin-left: 25px;
+}
+#scrib_meditor-marcish-source .dy input, #scrib_meditor-marcish-source .dm input, #scrib_meditor-marcish-source .dd input {
+	width: 75px;
+}
+#scrib_meditor-marcish-source .box {
+	clear: left;
+}
+#scrib_meditor-marcish-source .collection input {
+	width: 330px;
+}
+#scrib_meditor-marcish-source .publisher {
+	clear: left;
+}
+#scrib_meditor-marcish-source .publisher input {
+	width: 665px;
+}
+
+#scrib_meditor-marcish-rel_next .a , #scrib_meditor-marcish-rel_previous .a , #scrib_meditor-marcish-rel_reverse .a {
+	margin-left: 35px ;
+}
+
+#scrib_meditor-marcish-rel_parent input , #scrib_meditor-marcish-rel_child input , #scrib_meditor-marcish-rel_next input , #scrib_meditor-marcish-rel_previous input , #scrib_meditor-marcish-rel_reverse input {
+	width: 300px ;
+}
+
+
+
+
+
+
+
+
+
+
 
 
 

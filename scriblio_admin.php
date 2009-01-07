@@ -11,9 +11,11 @@
 
 global $wpdb, $wp_rewrite;
 
+$this->activate();
+
 $options = $newoptions = get_option('scrib');
 
-if(empty($options['browse_id']) || $wpdb->get_var("SELECT ID FROM $wpdb->posts WHERE ID = ". intval($options['browse_id']) .' AND post_status = "publish" AND post_type = "page" ') == FALSE){		
+if(empty($options['browse_id']) || $wpdb->get_var("SELECT ID FROM $wpdb->posts WHERE ID = ". intval( $options['browse_id'] ) .' AND post_status = "publish" AND post_type = "page" ') == FALSE){		
 	// create the default browse page
 	$postdata['post_title'] = 'Browse';
 	$postdata['post_name'] = 'browse';
@@ -43,6 +45,9 @@ if( empty( $options['catalog_category_id'] ) || !get_category( $options['catalog
 
 if ($_REQUEST['command'] == __('Rebuild Search Suggest Table', 'Scriblio')){
 	$this->suggest_init_table();
+}
+if ($_REQUEST['command'] == __('Publish Harvested Records', 'Scriblio')){
+	$this->import_harvest_publish();
 }
 
 
@@ -115,7 +120,7 @@ foreach($this->taxonomies_getall() as $taxonomy){
 	</form>
 	<h3>Commands:</h3>
 	<form method="post" name="scrib_commands" name="scrib_commands">
-		<div class="submit"><input type="submit" name="command" value="<?php _e('Rebuild Search Suggest Table', 'Scriblio'); ?>" /></div>
+		<div class="submit"><input type="submit" name="command" value="<?php _e('Rebuild Search Suggest Table', 'Scriblio'); ?>" /><input type="submit" name="command" value="<?php _e('Publish Harvested Records', 'Scriblio'); ?>" /> (<?php echo $this->import_harvest_tobepublished_count() ?> records remain to be published)</div>
 	</form>
 
 </div></div>

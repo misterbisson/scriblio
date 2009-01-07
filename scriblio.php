@@ -8,7 +8,7 @@ Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
 
-/*  Copyright 2006-7  Casey Bisson & Plymouth State University
+/*  Copyright 2005-8  Casey Bisson & Plymouth State University
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,6 +92,7 @@ class Scrib {
 		global $wpdb, $wp_rewrite;
 
 		$this->suggest_table = $wpdb->prefix . 'scrib_suggest';
+		$this->harvest_table = $wpdb->prefix . 'scrib_harvest';
 
 		$slash = $wp_rewrite->use_trailing_slashes ? '' : '/';
 
@@ -114,8 +115,6 @@ class Scrib {
 		$this->taxonomies_for_related = $this->options['taxonomies_for_related'];
 		$this->taxonomies_for_suggest = $this->options['taxonomies_for_suggest'];
 
-		$this->harvest_table = $wpdb->prefix . 'scrib_harvest';
-
 		$this->kses_allowedposttags(); // allow more tags
 
 	}
@@ -127,9 +126,40 @@ class Scrib {
 		if(!get_option('scrib'))
 			update_option('scrib', array(
 				'taxonomies' => array(
-					's' => 'Keyword', 'auth' => 'Author', 'format' => 'Format', 'isbn' => 'ISBN', 'sourceid' => 'Source ID', 'subj' => 'Subject', 'title' => 'Title'),
-				'taxonomies_for_related' => array('auth', 'subj'),
-				'taxonomies_for_suggest' => array('auth', 'subj', 'title')
+					's' => 'Keyword',
+					'category' => 'Category',
+
+					'creator' => 'Author',
+					'creatorkey' => 'Author Keyword',
+					'lang' => 'Language',
+					'cy' => 'Year Published',
+					'cm' => 'Month Published',
+					'format' => 'Format',
+					'subject' => 'Subject',
+					'subjkey' => 'Subject Keyword',
+					'genre' => 'Genre',
+					'person' => 'Person',
+					'place' => 'Place',
+					'time' => 'Time Period',
+					'time' => 'Exhibit',
+					'sy' => 'Subject Year',
+					'sm' => 'Subject Month',
+					'sd' => 'Subject Day',
+					'collection' => 'Collection',
+					'sourceid' => 'Source ID',
+					'isbn' => 'ISBN',
+					'issn' => 'ISSN',
+					'lccn' => 'LCCN',
+					'asin' => 'ASIN',
+					'ean' => 'ean',
+					'oclc' => 'oclc',
+					'olid' => 'olid',
+
+					'olid' => 'olid',
+					'title' => 'Title',
+					),
+				'taxonomies_for_related' => array( 'creator', 'subject', 'genre', 'person', 'place', 'time', 'exhibit' ),
+				'taxonomies_for_suggest' => array( 'creator', 'creatorkey', 'subject', 'subjkey', 'genre', 'person', 'place', 'time', 'exhibit', 'title' )
 				));
 
 		$options = get_option('scrib');
@@ -156,10 +186,10 @@ class Scrib {
 		// setup the catalog author, if it doesn't exist
 		if(empty($options['catalog_author_id']) || get_userdata($options['catalog_author_id']) == FALSE){		
 			// create the default author
-			$random_password = substr(md5(uniqid(microtime())), 0, 6);
-			$user_id = wp_create_user('cataloger', $random_password);
-			$user = new WP_User($user_id);
-			$user->set_role('contributor');
+			$random_password = substr( md5( uniqid( microtime() )), 0, 6 );
+			$user_id = wp_create_user( 'cataloger', $random_password );
+			$user = new WP_User( $user_id );
+			$user->set_role( 'contributor' );
 
 			// set the options	
 			$options['catalog_author_id'] = (int) $user_id;	
@@ -210,6 +240,29 @@ class Scrib {
 					'show_browse' => 'on',
 					'format' => 'list')
 				));
+
+	
+		// create tables
+		$charset_collate = '';
+		if ( version_compare( mysql_get_server_info(), '4.1.0', '>=' )) {
+			if ( ! empty( $wpdb->charset ))
+				$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
+			if ( ! empty( $wpdb->collate ))
+				$charset_collate .= " COLLATE $wpdb->collate";
+		}
+	
+		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		dbDelta("
+			CREATE TABLE $this->harvest_table (
+			source_id varchar(85) NOT NULL,
+			harvest_date date NOT NULL,
+			imported tinyint(1) default '0',
+			content longtext NOT NULL,
+			enriched tinyint(1) default '0',
+			PRIMARY KEY  (source_id),
+			KEY imported (imported),
+			KEY enriched (enriched)
+			) $charset_collate");
 	}
 
 	public function kses_allowedposttags() {
@@ -746,7 +799,7 @@ class Scrib {
 		echo '<ul id="scrib_meditor">';
 		foreach( $prototype['_elements'] as $key => $val ){
 			$val = is_array( $data[ $key ] ) ? $data[ $key ] : array( array() );
-			echo '<li id="scrib_meditor-'. $handle .'-'. $key .'" class="fieldset_title">'.  ( $prototype['_elements'][ $key ]['_title'] ? '<h2>'. $prototype['_elements'][ $key ]['_title'] .'</h2>' : '' ) .'<ul  class="fieldset_title'. ( $prototype['_elements'][ $key ]['_repeatable'] ? ' sortable">' : '">' );
+			echo '<li id="scrib_meditor-'. $handle .'-'. $key .'" class="fieldset_title">'.  ( $prototype['_elements'][ $key ]['_title'] ? '<h2>'. $prototype['_elements'][ $key ]['_title'] .'</h2>' : '' ) . ( $prototype['_elements'][ $key ]['_description'] ? '<div class="description">'. $prototype['_elements'][ $key ]['_description'] .'</div>' : '' ) .'<ul  class="fieldset_title'. ( $prototype['_elements'][ $key ]['_repeatable'] ? ' sortable">' : '">' );
 			foreach( $val as $ordinal => $row )
 				$this->meditor_form_sub( $handle, $prototype['_elements'][ $key ], $row, $key, $ordinal );
 			echo '</ul></li>';
@@ -764,7 +817,7 @@ class Scrib {
 			$id =  "scrib_meditor-$handle-$fieldset-$ordinal-$key"; 
 			$name =  "scrib_meditor[$handle][$fieldset][$ordinal][$key]"; 
 
-			$val = $data[ $key ] ? $data[ $key ] : $prototype['_elements'][ $key ]['_input']['_default'];
+			$val = $data[ $key ] ? stripslashes( $data[ $key ] ) : $prototype['_elements'][ $key ]['_input']['_default'];
 
 			echo '<li class="field '. $handle .' '. $fieldset .' '. $key .'">'. ( $prototype['_elements'][ $key ]['_title'] ? '<label for="'. $id .'">'. $prototype['_elements'][ $key ]['_title'] .'</label>' : '<br />');
 
@@ -962,13 +1015,13 @@ class Scrib {
 							if( is_callable( $this->meditor_forms[ $this->meditor_input->form_key ]['_elements'][ $this->meditor_input->group_key ]['_elements'][ $this->meditor_input->key ]['_sanitize'] )){
 								$filtered = FALSE;
 
-								$filtered = call_user_func( $this->meditor_forms[ $this->meditor_input->form_key ]['_elements'][ $this->meditor_input->group_key ]['_elements'][ $this->meditor_input->key ]['_sanitize'] , $this->meditor_input->val );
+								$filtered = call_user_func( $this->meditor_forms[ $this->meditor_input->form_key ]['_elements'][ $this->meditor_input->group_key ]['_elements'][ $this->meditor_input->key ]['_sanitize'] , stripslashes( $this->meditor_input->val ));
 
 								if( !empty( $filtered ))
-									$record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] = $filtered;
+									$record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] = stripslashes( $filtered );
 							}else{
 								if( !empty( $record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] ))
-									$record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] = $this->meditor_input->val;
+									$record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] = stripslashes( $this->meditor_input->val );
 							}
 						}
 			}
@@ -1007,17 +1060,29 @@ class Scrib {
 	function meditor_sanitize_punctuation( $str ) {
 		// props to K. T. Lam of HKUST
 
+		$str = html_entity_decode( $str );
+
+/*
 		//strip html entities, i.e. &#59;
 		$htmlentity = '\&\#\d\d\;';
 		$lead_htmlentity_pattern = '/^'.$htmlentity.'/';
 		$trail_htmlentity_pattern = '/'.$htmlentity.'$/';
 		$str = preg_replace($lead_htmlentity_pattern, '', preg_replace($trail_htmlentity_pattern, '', $str)); 
+*/
 
 		//strip ASCII punctuations
 		$puncts = '\s\~\!\@\#\$\%\^\&\*\_\+\`\-\=\{\}\|\[\]\\\:\"\;\'\<\>\?\,\.\/';
 		$lead_puncts_pattern = '/^['.$puncts.']+/';
 		$trail_puncts_pattern = '/['.$puncts.']+$/';
 		$str = preg_replace($trail_puncts_pattern, '', preg_replace($lead_puncts_pattern, '', $str));
+
+		//strip repeated white space
+		$puncts_pattern = '/[\s]+/';
+		$str = preg_replace( $puncts_pattern, ' ', $str );
+
+		//strip white space before punctuations
+		$puncts_pattern = '/[\s]+([\~\!\@\#\$\%\^\&\*\_\+\`\-\=\{\}\|\[\]\\\:\"\;\'\<\>\?\,\.\/])+/';
+		$str = preg_replace( $puncts_pattern, '\1', $str );
 
 		//Strip ()
 		$both_pattern = '/^[\(]([^\(|\)]+)[\)]$/';
@@ -1042,118 +1107,6 @@ class Scrib {
 		return( FALSE );
 	}
 
-	function meditor_save_record( $post_id , $r ) {
-		$stopwords = array( 'and', 'the', 'new', 'use', 'for', 'hampshire', 'london', 'england', 'united', 'states' );
-
-		$facets = array();
-
-		if ( is_array( $r['arc'] )){
-			$facets['dy'] = $facets['dm'] = $facets['creator'] = $facets['subject'] = $facets['geog'] = $facets['format'] = $facets['lang'] = $facets['collection'] = array();
-
-
-			// dates
-			if( isset( $r['arc']['description'][0]['cy'] )){
-				$facets['dy'][] = $r['arc']['description'][0]['cy'];
-				$facets['dy'][] = substr( $r['arc']['description'][0]['cy'], 0, -1 ) .'0s';
-				$facets['dy'][] = substr( $r['arc']['description'][0]['cy'], 0, -2 ) .'00s';
-			}
-			if( isset( $r['arc']['description'][0]['cm'] ))
-				$facets['dm'][] = date( 'F', strtotime( '2008-'. $r['arc']['description'][0]['cm'] .'-01' )); 
-
-			foreach( $r['arc']['date_coverage'] as $temp ){
-				if( isset( $temp['y'] )){
-					$facets['dy'][] = $temp['y'];
-					$facets['dy'][] = substr( $temp['y'], 0, -1 ) .'0s';
-					$facets['dy'][] = substr( $temp['y'], 0, -2 ) .'00s';
-				}
-				if( isset( $temp['m'] ))
-					$facets['dm'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' )); 
-			}
-
-			// creators
-			foreach( $r['arc']['creator'] as $temp )
-				if( !empty( $temp['name'] )){
-					$facets['creator'][] = $temp['name'];
-
-					if( $tempsplit = preg_split( '/[ |,|;|-]/', $temp['name'] ))
-						foreach( $tempsplit as $tempsplittoo )
-							if( !empty( $tempsplittoo ) && !is_numeric( $tempsplittoo ) && ( 2 < strlen( $tempsplittoo )) && ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
-								$facets['creator'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
-				}
-
-			// subjects
-			foreach( $r['arc']['subject'] as $temp )
-				foreach( $temp as $temptoo ){
-					if( !empty( $temptoo ))
-						$facets['subject'][] = $temptoo;
-
-					if( $tempsplit = preg_split( '/[ |,|;|-]/', $temptoo ))
-						foreach( $tempsplit as $tempsplittoo )
-							if( !empty( $tempsplittoo ) && !is_numeric( $tempsplittoo ) && ( 2 < strlen( $tempsplittoo )) && ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
-								$facets['subject'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
-				}
-
-			// geography
-			foreach( $r['arc']['geog'] as $temp )
-				foreach( $temp as $temptoo )
-					if( !empty( $temptoo ))
-						$facets['geog'][] = $temptoo;
-
-			// format
-			foreach( $r['arc']['format'] as $temp )
-				foreach( $temp as $temptoo )
-					if( !empty( $temptoo ))
-						$facets['format'][] = $temptoo;
-
-			// language
-			if( isset( $r['arc']['description'][0]['lang'] ))
-				$facets['lang'][] = $r['arc']['description'][0]['lang'];
-
-			// collection
-			if( isset( $r['arc']['source'][0]['collection'] ))
-				$facets['collection'][] = $r['arc']['source'][0]['collection'];
-
-/*
-TODO: update relationships to other posts when a post is saved.
-//post_id
-			if( !empty( $r['arc']['rel_parent'][0]['a'] ))
-				foreach( $r['arc']['rel_parent'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-
-			if( !empty( $r['arc']['rel_child'][0]['a'] ))
-				foreach( $r['arc']['rel_child'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-
-			if( !empty( $r['arc']['rel_previous'][0]['a'] ))
-				foreach( $r['arc']['rel_previous'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-
-			if( !empty( $r['arc']['rel_next'][0]['a'] ))
-				foreach( $r['arc']['rel_next'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-
-			if( !empty( $r['arc']['rel_reverse'][0]['a'] ))
-				foreach( $r['arc']['rel_reverse'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-*/
-
-//			$facets['category'] = (int) $this->options['catalog_category_id'];
-			wp_set_object_terms( $post_id, (int) $this->options['catalog_category_id'], 'category', FALSE );
-		}
-
-		if ( count( $facets )){
-			foreach( $facets as $taxonomy => $tags ){
-
-				if( 'post_tag' == $taxonomy ){
-					wp_set_post_tags($post_id, $tags, TRUE);
-					continue;
-				}
-	
-				wp_set_object_terms($post_id, array_unique( array_filter( $tags )), $taxonomy, FALSE);
-			}
-		}
-	}
-
 	function meditor_pre_save_filters( $content ) {
 		if ( is_array( $_REQUEST['scrib_meditor'] )){
 			switch( current_filter() ){
@@ -1173,63 +1126,6 @@ TODO: update relationships to other posts when a post is saved.
 		return( $content );
 	}
 
-	function meditor_pre_excerpt( $content, $r ) {
-		if( $r['arc'] ){
-			$result = '<ul class="summaryrecord dcimage"><li>[icon size="s" /]</li></ul>';
-			return($result);
-		}
-		return( $content );
-	}
-
-	function meditor_pre_content( $content, $r ) {
-		if( $r['arc'] ){
-			global $bsuite;
-
-			$result = '<ul class="fullrecord dcimage">[icon size="l" /]<pre>';
-			$result .= print_r( $r, TRUE );
-			$result .= print_r( $r['arc']['rel_parent'], TRUE );
-			$result .='</pre>';
-
-			if( !empty( $r['arc']['rel_parent'][0]['a'] )){
-				$result .= '<li class="rel_parent"><h3>Parent</h3><ul>';
-				foreach( $r['arc']['rel_parent'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-				$result .= '</ul></li>';
-			}
-
-			if( !empty( $r['arc']['rel_child'][0]['a'] )){
-				$result .= '<li class="rel_child"><h3>Children</h3><ul>';
-				foreach( $r['arc']['rel_child'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-				$result .= '</ul></li>';
-			}
-
-			if( !empty( $r['arc']['rel_previous'][0]['a'] )){
-				$result .= '<li class="rel_previous"><h3>Previous Page</h3><ul>';
-				foreach( $r['arc']['rel_previous'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-				$result .= '</ul></li>';
-			}
-
-			if( !empty( $r['arc']['rel_next'][0]['a'] )){
-				$result .= '<li class="rel_next"><h3>Next Page</h3><ul>';
-				foreach( $r['arc']['rel_next'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-				$result .= '</ul></li>';
-			}
-
-			if( !empty( $r['arc']['rel_reverse'][0]['a'] )){
-				$result .= '<li class="rel_reverse"><h3>Reverse Side</h3><ul>';
-				foreach( $r['arc']['rel_reverse'] as $temp )
-					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
-				$result .= '</ul></li>';
-			}
-
-			$result .='</ul>';
-			return($result);
-		}
-		return( $content );
-	}
 
 
 	public function meditor_register_menus(){
@@ -1258,10 +1154,11 @@ TODO: update relationships to other posts when a post is saved.
 	public function meditor_register_defaults( ){
 		$this->meditor_register( 'marcish', 
 			array(
-				'_title' => 'Bibliographic Record',
+				'_title' => 'Bibliographic and Archive Item Record',
 				'_elements' => array( 
 					'title' => array(
-						'_title' => 'Title',
+						'_title' => 'Additional Titles',
+						'_description' => 'Alternate titles or additional forms of this title. Think translations, uniform, and series titles.',
 						'_repeatable' => TRUE,
 						'_elements' => array( 
 							'a' => array(
@@ -1269,6 +1166,926 @@ TODO: update relationships to other posts when a post is saved.
 								'_input' => array(
 									'_type' => 'text',
 									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'attribution' => array(
+						'_title' => 'Attribution',
+						'_description' => 'The statement of responsibility for this work.',
+						'_repeatable' => FALSE,
+						'_elements' => array( 
+							'a' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'creator' => array(
+						'_title' => 'Creator',
+						'_description' => 'Authors, editors, producers, and others that contributed to the creation of this work.',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'name' => array(
+								'_title' => 'Name',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'role' => array(
+								'_title' => 'Role',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'subject' => array(
+						'_title' => 'Subject',
+						'_description' => 'Words and phrases that descripe the content of the work.',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'a_type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'subject' => 'Topical Term',
+										'genre' => 'Genre',
+										'person' => 'Person',
+										'place' => 'Place',
+										'time' => 'Time',
+										'exhibit' => 'Exhibit',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'a' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'b_type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'subject' => 'Topical Term',
+										'genre' => 'Genre',
+										'person' => 'Person',
+										'place' => 'Place',
+										'time' => 'Time',
+										'exhibit' => 'Exhibit',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'b' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'c_type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'subject' => 'Topical Term',
+										'genre' => 'Genre',
+										'person' => 'Person',
+										'place' => 'Place',
+										'time' => 'Time',
+										'exhibit' => 'Exhibit',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'c' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'd_type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'subject' => 'Topical Term',
+										'genre' => 'Genre',
+										'person' => 'Person',
+										'place' => 'Place',
+										'time' => 'Time',
+										'exhibit' => 'Exhibit',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'd' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'e_type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'subject' => 'Topical Term',
+										'genre' => 'Genre',
+										'person' => 'Person',
+										'place' => 'Place',
+										'time' => 'Time',
+										'exhibit' => 'Exhibit',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'e' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'f_type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'subject' => 'Topical Term',
+										'genre' => 'Genre',
+										'person' => 'Person',
+										'place' => 'Place',
+										'time' => 'Time',
+										'exhibit' => 'Exhibit',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'f' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'g_type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'subject' => 'Topical Term',
+										'genre' => 'Genre',
+										'person' => 'Person',
+										'place' => 'Place',
+										'time' => 'Time',
+										'exhibit' => 'Exhibit',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'g' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'dictionary' => array(
+								'_title' => 'Dict.',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'subject_date' => array(
+						'_title' => 'Date Coverage',
+						'_description' => 'A calendar representation of the content of the work.',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'y' => array(
+								'_title' => 'Year',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'm' => array(
+								'_title' => 'Month',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_month' ),
+							),
+							'd' => array(
+								'_title' => 'Day',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_day' ),
+							),
+							'c' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'exact' => 'Exactly',
+										'approx' => 'Approximately',
+										'before' => 'Before',
+										'after' => 'After',
+										'circa' => 'Circa',
+										'decade' => 'Within Decade',
+										'century' => 'Within Century',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'subject_geo' => array(
+						'_title' => 'Geographic Coverage',
+						'_description' => 'A geographic coordinate representation of the content of the work.',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'point' => array(
+								'_title' => 'Point',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+							'bounds' => array(
+								'_title' => 'Bounds',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+							'name' => array(
+								'_title' => 'Name',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'callnumbers' => array(
+						'_title' => 'Call Number',
+						'_description' => 'The LC or Dewey call number and location for this work.',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'type' => array(
+								'_title' => 'Type',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'lc' => 'LC',
+										'dewey' => 'Dewey',
+									),
+									'_default' => 'dewey',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'number' => array(
+								'_title' => 'Number',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+							'location' => array(
+								'_title' => 'Location',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'text' => array(
+						'_title' => 'Textual Content',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'type' => array(
+								'_title' => 'Type',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'description' => 'Description',
+										'transcription' => 'Transcription',
+										'translation' => 'Translation',
+										'contents' => 'Contents',
+										'review' => 'Review',
+										'notes' => 'Notes',
+									),
+									'_default' => 'description',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'lang' => array(
+								'_title' => 'Language',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'content' => array(
+								'_title' => 'Content',
+								'_input' => array(
+									'_type' => 'textarea',
+								),
+								'_sanitize' => 'wp_filter_kses',
+							),
+							'notes' => array(
+								'_title' => 'Notes',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'published' => array(
+						'_title' => 'Publication Info',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'cy' => array(
+								'_title' => 'Year',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'cm' => array(
+								'_title' => 'Month',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_month' ),
+							),
+							'cd' => array(
+								'_title' => 'Day',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_day' ),
+							),
+							'cc' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'nodate' => 'Undated',
+										'exact' => 'Exactly',
+										'approx' => 'Approximately',
+										'before' => 'Before',
+										'after' => 'After',
+										'circa' => 'Circa',
+										'decade' => 'Within Decade',
+										'century' => 'Within Century',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'edition' => array(
+								'_title' => 'Edition',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'lang' => array(
+								'_title' => 'Language',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'publisher' => array(
+								'_title' => 'Publisher',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'copyright' => array(
+								'_title' => 'Copyright',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'uc' => 'Uncertain',
+										'c' => 'Copyrighted',
+										'cc' => 'Creative Commons',
+										'pd' => 'Public Domain',
+									),
+									'_default' => 'uc',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'copyright_note' => array(
+								'_title' => 'Note',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'description_physical' => array(
+						'_title' => 'Physical Description',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'dw' => array(
+								'_title' => 'Width',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'dh' => array(
+								'_title' => 'Height',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'dd' => array(
+								'_title' => 'Depth',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'du' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'inch' => 'Inches',
+										'cm' => 'Centimeters',
+									),
+									'_default' => 'inches',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'wv' => array(
+								'_title' => 'Weight',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'wu' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'ounce' => 'Ounces',
+										'pounds' => 'Pounds',
+										'g' => 'Grams',
+										'kg' => 'Kilograms',
+									),
+									'_default' => 'ounce',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'duration' => array(
+								'_title' => 'Length',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'duration_units' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'pages' => 'Pages',
+										'minutes' => 'Minutes',
+									),
+									'_default' => 'pages',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'cv' => array(
+								'_title' => 'Cost',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'cu' => array(
+								'_title' => 'Currency',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+						),
+					),
+					'linked_urls' => array(
+						'_title' => 'Linked URL',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'name' => array(
+								'_title' => 'Name',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'href' => array(
+								'_title' => 'href',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'format' => array(
+						'_title' => 'Format',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'a' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'b' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'c' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'd' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'e' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'f' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'g' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'dictionary' => array(
+								'_title' => 'Dict.',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'idnumbers' => array(
+						'_title' => 'Standard Numbers',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'type' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'id' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'src' => array(
+								'_title' => 'Source',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'source' => array(
+						'_title' => 'Archival Source',
+						'_repeatable' => FALSE,
+						'_elements' => array( 
+
+							'file' => array(
+								'_title' => 'File Name',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'dy' => array(
+								'_title' => 'Digitized Year',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'absint',
+							),
+							'dm' => array(
+								'_title' => 'Month',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_month' ),
+							),
+							'dd' => array(
+								'_title' => 'Day',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_day' ),
+							),
+							'box' => array(
+								'_title' => 'Box Number',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'folder' => array(
+								'_title' => 'Folder Number',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'collection' => array(
+								'_title' => 'Collection',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'collection_num' => array(
+								'_title' => 'Collection Number',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'publisher' => array(
+								'_title' => 'Publisher',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'exhibit' => array(
+						'_title' => 'Exhibit',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'a' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+						),
+					),
+					'relelated' => array(
+						'_title' => 'Related Records',
+						'_repeatable' => TRUE,
+						'_elements' => array( 
+							'rel' => array(
+								'_title' => 'Relationship',
+								'_input' => array(
+									'_type' => 'select',
+									'_values' => array( 
+										'parent' => 'Parent',
+										'child' => 'Child',
+										'next' => 'Next In Series/Next Page',
+										'previous' => 'Previous In Series/Previous Page',
+										'reverse' => 'Reverse Side',
+									),
+									'_default' => 'exact',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
+							),
+							'record' => array(
+								'_title' => 'Record',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => array( $this, 'meditor_sanitize_related' ),
+							),
+						),
+					),
+					'addrecord' => array(
+						'_title' => 'Add New Record',
+						'_repeatable' => FALSE,
+						'_elements' => array( 
+							'a' => array(
+								'_title' => '',
+								'_input' => array(
+									'_type' => '_function',
+									'_function' => array( $this, 'meditor_add_related_edlinks' ),
 								),
 							),
 						),
@@ -1940,29 +2757,51 @@ TODO: update relationships to other posts when a post is saved.
 			)
 		);
 
-		// actions and filters for dcimage
+		// actions and filters for arc form
 		add_action('scrib_meditor_form_arc', array(&$this, 'meditor_form_hook'));
+		add_action('scrib_meditor_form_marcish', array(&$this, 'meditor_form_hook'));
 
-		// taxonomies for dcimage
-		register_taxonomy( 'creator', 'post');
-		register_taxonomy( 'subject', 'post');
-		register_taxonomy( 'collection', 'post');
-		register_taxonomy( 'lang', 'post');
-		register_taxonomy( 'dy', 'post');
-		register_taxonomy( 'dm', 'post');
-		register_taxonomy( 'geog', 'post');
+		// taxonomies for all default forms
+		register_taxonomy( 'creator', 'post'); // creator/author
+		register_taxonomy( 'creatorkey', 'post'); // creator/author keyword
+		register_taxonomy( 'title', 'post');
+		register_taxonomy( 'lang', 'post'); // language
+		register_taxonomy( 'cy', 'post'); // created/published year
+		register_taxonomy( 'cm', 'post'); // created/published month
 		register_taxonomy( 'format', 'post');
+		register_taxonomy( 'subject', 'post');
+		register_taxonomy( 'subjkey', 'post');
+		register_taxonomy( 'genre', 'post');
+		register_taxonomy( 'person', 'post');
+		register_taxonomy( 'place', 'post');
+		register_taxonomy( 'time', 'post');
+		register_taxonomy( 'exhibit', 'post');
+		register_taxonomy( 'sy', 'post'); // subject year
+		register_taxonomy( 'sm', 'post'); // subject month
+		register_taxonomy( 'sd', 'post'); // subject day
+		register_taxonomy( 'collection', 'post');
+		register_taxonomy( 'sourceid', 'post');
+		register_taxonomy( 'isbn', 'post');
+		register_taxonomy( 'issn', 'post');
+		register_taxonomy( 'lccn', 'post');
+		register_taxonomy( 'asin', 'post');
+		register_taxonomy( 'ean', 'post');
+		register_taxonomy( 'oclc', 'post');
 
 		// general actions and filters for all default forms
-		add_action('admin_menu', array(&$this, 'meditor_register_menus'));
-		add_filter( 'the_content', array(&$this, 'meditor_the_content'));
-		add_filter( 'the_excerpt', array(&$this, 'meditor_the_excerpt'));
+		add_action( 'admin_menu', array(&$this, 'meditor_register_menus'));
 
-		add_action('scrib_meditor_save_record', array(&$this, 'meditor_save_record'), 1, 2);
+		add_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
+		add_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
+		add_filter( 'the_content', array(&$this, 'marcish_the_content'));
 
-		add_filter('scrib_meditor_pre_excerpt', array(&$this, 'meditor_pre_excerpt'), 1, 2);
-		add_filter('scrib_meditor_pre_content', array(&$this, 'meditor_pre_content'), 1, 2);
+		add_filter('scrib_meditor_pre_excerpt', array(&$this, 'arc_pre_excerpt'), 1, 2);
+		add_filter('scrib_meditor_pre_content', array(&$this, 'arc_pre_content'), 1, 2);
+		add_filter( 'the_content', array(&$this, 'arc_the_content'));
+		add_filter( 'the_excerpt', array(&$this, 'arc_the_excerpt'));
 
+		add_action('scrib_meditor_save_record', array(&$this, 'marcish_save_record'), 1, 2);
+		add_action('scrib_meditor_save_record', array(&$this, 'arc_save_record'), 1, 2);
 		add_filter('scrib_meditor_add_parent', array(&$this, 'meditor_add_parent'), 1, 2);
 		add_filter('scrib_meditor_add_child', array(&$this, 'meditor_add_child'), 1, 2);
 		add_filter('scrib_meditor_add_next', array(&$this, 'meditor_add_next'), 1, 2);
@@ -1975,14 +2814,20 @@ TODO: update relationships to other posts when a post is saved.
 
 	public function meditor_unregister_defaults(){
 		remove_action( 'admin_menu', array( &$this, 'meditor_register_menus'));
-		remove_filter( 'the_content', array( &$this, 'meditor_the_content' ));
-		remove_filter( 'the_excerpt', array( &$this, 'meditor_the_excerpt' ));
+
+		remove_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
+		remove_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
+		remove_filter( 'the_content', array(&$this, 'marcish_the_content'));
+
+		remove_filter('scrib_meditor_pre_excerpt', array(&$this, 'arc_pre_excerpt'), 1, 2);
+		remove_filter('scrib_meditor_pre_content', array(&$this, 'arc_pre_content'), 1, 2);
+		remove_filter( 'the_content', array(&$this, 'arc_the_content'));
+		remove_filter( 'the_excerpt', array(&$this, 'arc_the_excerpt'));
 
 		remove_action('scrib_meditor_form_arc', array(&$this, 'meditor_form_hook'));
-		remove_action('scrib_meditor_save_record', array(&$this, 'meditor_save_record'), 1, 2);
-
-		remove_filter('scrib_meditor_pre_excerpt', array(&$this, 'meditor_pre_excerpt'), 1, 2);
-		remove_filter('scrib_meditor_pre_content', array(&$this, 'meditor_pre_content'), 1, 2);
+		add_action('scrib_meditor_form_marcish', array(&$this, 'meditor_form_hook'));
+		remove_action('scrib_meditor_save_record', array(&$this, 'marcish_save_record'), 1, 2);
+		remove_action('scrib_meditor_save_record', array(&$this, 'arc_save_record'), 1, 2);
 
 		remove_filter('scrib_meditor_add_parent', array(&$this, 'meditor_add_parent'), 1, 2);
 		remove_filter('scrib_meditor_add_child', array(&$this, 'meditor_add_child'), 1, 2);
@@ -1991,19 +2836,627 @@ TODO: update relationships to other posts when a post is saved.
 		remove_filter('scrib_meditor_add_reverse', array(&$this, 'meditor_add_reverse'), 1, 2);
 	}
 
-	public function meditor_the_content( $content ){
+	public function meditor_form_hook(){
+		add_action('admin_footer', array(&$this, 'meditor_footer_activatejs'));
+	}
+
+	public function meditor_footer_activatejs(){
+?>
+		<script type="text/javascript">
+			scrib_meditor();
+		</script>
+<?php
+	}
+
+	public function meditor_make_content_closable( $content ){
+		return( '<div class="inside">'. $content .'</div>');
+	}
+
+
+
+	function marcish_parse_parts( &$r ){
+		$parsed = array();
+		foreach( $r['idnumbers'] as $temp ){
+			switch( $temp['type'] ){ 
+				case 'sourceid' :
+					$parsed['sourceid'][] = $temp['id'];
+					break; 
+				case 'lccn' :
+					$parsed['lccn'][] = $temp['id'];
+					break; 
+				case 'isbn' :
+					$parsed['isbn'][] = $temp['id'];
+					break; 
+				case 'issn' :
+					$parsed['issn'][] = $temp['id'];
+					break; 
+				case 'asin' :
+					$parsed['asin'][] = $temp['id'];
+					break; 
+				case 'olid' :
+					$parsed['olid'][] = $temp['id'];
+					break; 
+			} 
+		}
+		if ( isset( $parsed['sourceid'] ))
+			$parsed['sourceid'] = $this->array_unique_deep( $parsed['sourceid'] );
+		if ( isset( $parsed['lccn'] ))
+			$parsed['lccn'] = $this->array_unique_deep( $parsed['lccn'] );
+		if ( isset( $parsed['isbn'] ))
+			$parsed['isbn'] = $this->array_unique_deep( $parsed['isbn'] );
+		if ( isset( $parsed['issn'] ))
+			$parsed['issn'] = $this->array_unique_deep( $parsed['issn'] );
+		if ( isset( $parsed['asin'] ))
+			$parsed['asin'] = $this->array_unique_deep( $parsed['asin'] );
+		if ( isset( $parsed['olid'] ))
+			$parsed['olid'] = $this->array_unique_deep( $parsed['olid'] );
+
+		foreach( $r['text'] as $temp ){
+			switch( $temp['type'] ){ 
+				case 'contents' :
+					$parsed['contents'][] = $temp['content'];
+					break; 
+				case 'notes' :
+					$parsed['notes'][] = $temp['content'];
+					break; 
+			} 
+		}
+
+		$spare_keys = array( 'a', 'b', 'c', 'd', 'e', 'f', 'g' );
+		foreach( $r['subject'] as $temp ){
+			$subjline = array();
+			foreach( $spare_keys as $spare_key ){
+				if( isset(  $temp[ $spare_key ] )){
+					switch( $temp[ $spare_key .'_type' ] ){
+						case 'genre' :
+							$parsed['genre'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+							break; 
+						case 'person' :
+							$parsed['person'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+							break; 
+						case 'place' :
+							$parsed['place'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+							break; 
+						case 'time' :
+							$parsed['time'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+							break; 
+						case 'exhibit' :
+							$parsed['exhibit'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+							break; 
+					} 
+					$parsed['subjkey'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+					$subjline[] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+				}
+			}
+			if( count( $subjline ))
+				$parsed['subject'][] = $subjline;
+		}
+		if ( isset( $parsed['subject'] ))
+			$parsed['subject'] = $this->array_unique_deep( $parsed['subject'] );
+		if ( isset( $parsed['genre'] ))
+			$parsed['genre'] = $this->array_unique_deep( $parsed['genre'] );
+		if ( isset( $parsed['person'] ))
+			$parsed['person'] = $this->array_unique_deep( $parsed['person'] );
+		if ( isset( $parsed['place'] ))
+			$parsed['place'] = $this->array_unique_deep( $parsed['place'] );
+		if ( isset( $parsed['time'] ))
+			$parsed['time'] = $this->array_unique_deep( $parsed['time'] );
+		if ( isset( $parsed['exhibit'] ))
+			$parsed['exhibit'] = $this->array_unique_deep( $parsed['exhibit'] );
+
+		return( $parsed );
+	}
+
+	function marcish_pre_excerpt( $content, $r ) {
+		if( isset( $r['marcish'] ))
+			return( $this->marcish_parse_excerpt( $r['marcish'] ));
+		return( $content );
+	}
+
+	function marcish_pre_content( $content, $r ) {
+		if( isset( $r['marcish'] ))
+			return( $this->marcish_parse_words( $r['marcish'] ));
+		return( $content );
+	}
+
+	public function marcish_the_excerpt( $content ){
 		global $id;
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
+			return( $this->marcish_parse_excerpt( $r['marcish'] ));
+	}
+
+	function marcish_parse_excerpt( &$r ){
+
+		$parsed = $this->marcish_parse_parts( $r );
+		$result = '<ul class="fullrecord">';
+/*
+		if($r['img']->large->url ){
+			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="'. $r['img']->large->url .'" width="'. $r['img']->large->width .'" height="'. $r['img']->large->height .'" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
+		}else{
+			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="' . get_settings('siteurl') .'/'. $scrib->path_web .'/img/jacket/blank_'. urlencode(strtolower($r['format'][0])) .'.png" width="100" height="135" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
+		}
+*/
+
+		if( isset( $r['attribution'][0]['a'] ))
+			$result .= '<li class="attribution"><h3>Attribution</h3>'. $r['attribution'][0]['a'] .'</li>';
+
+		$pubdeets = array();
+		if( isset( $r['format'][0]['a'] ))
+			$pubdeets[] = '<span class="format">'. $r['format'][0]['a'] .'</span>';
+
+		if( isset( $r['published'][0]['edition'] ))
+			$pubdeets[] = '<span class="edition">'. $r['published'][0]['edition'] .'</span>';
+
+		if( isset( $r['published'][0]['publisher'] ))
+			$pubdeets[] = '<span class="publisher">'. $r['published'][0]['publisher'] .'</span>';
+
+		if( isset( $r['published'][0]['cy'] ))
+			$pubdeets[] = '<span class="pubyear">'. $r['published'][0]['cy'] .'</span>';
+
+		if( count( $pubdeets ))
+			$result .= '<li class="publication_details"><h3>Publication Details</h3>'. implode( '<span class="meta-sep">, </span>', $pubdeets ) .'</li>';
+
+/*
+print_r( $r['format'] );
+
+		$result .= '<li class="availability"><h3>Availability</h3>[scrib_availability sourceid="'. $r['the_sourceid'] .'"]</li>';
+*/
+
+		if( isset( $r['linked_urls'][0]['href'] )){
+			$result .= '<li class="linked_urls">'. ( 1 < count( $r['linked_urls'] ) ? '<h3>Links</h3>' : '<h3>Link</h3>' ) .'<ul>';
+			foreach( $r['linked_urls'] as $temp )
+				$result .= '<li><a href="' . $temp['href'] .'" title="go to this linked website">' . $temp['name'] .'</a></li>';
+			$result .= '</ul></li>';
+		}
+
+/* this was the amazon description
+		if( !empty( $r['description'] ))
+			$result .= '<li class="description"><h3>Description</h3>'. $r['description'] .'</li>';
+		else if( !empty( $r['shortdescription'] ))
+			$result .= '<li class="description"><h3>Description</h3>'. $r['shortdescription'] .'</li>';
+*/
+
+		$result .= '</ul>';
+
+		return($result);
+	}
+
+	public function marcish_the_content( $content ){
+		global $id;
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
+			return( $this->marcish_parse_content( $r['marcish'] ));
+	}
+
+	function marcish_parse_content( &$r ){
+		$parsed = $this->marcish_parse_parts( $r );
+
+		$result = '<ul class="fullrecord">';
+/*
+		if($r['img']->large->url ){
+			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="'. $r['img']->large->url .'" width="'. $r['img']->large->width .'" height="'. $r['img']->large->height .'" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
+		}else{
+			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="' . get_settings('siteurl') .'/'. $scrib->path_web .'/img/jacket/blank_'. urlencode(strtolower($r['format'][0])) .'.png" width="100" height="135" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
+		}
+*/
+
+		if( isset( $r['title'][0]['a'] )){
+			$result .= '<li class="title">'. ( 1 < count( $r['title'] ) ? '<h3>Titles</h3>' : '<h3>Title</h3>') .'<ul>';
+			foreach( $r['title'] as $temp ){
+				$result .= '<li>' . $temp['a'] . '</li>';
+			}
+			$result .= '</ul></li>';
+		}
+
+		if( isset( $r['attribution'][0]['a'] ))
+			$result .= '<li class="attribution"><h3>Attribution</h3>'. $r['attribution'][0]['a'] .'</li>';
+
+		$pubdeets = array();
+		if( isset( $r['format'][0]['a'] ))
+			$pubdeets[] = '<span class="format">'. $r['format'][0]['a'] .'</span>';
+
+		if( isset( $r['published'][0]['edition'] ))
+			$pubdeets[] = '<span class="edition">'. $r['published'][0]['edition'] .'</span>';
+
+		if( isset( $r['published'][0]['publisher'] ))
+			$pubdeets[] = '<span class="publisher">'. $r['published'][0]['publisher'] .'</span>';
+
+		if( isset( $r['published'][0]['cy'] ))
+			$pubdeets[] = '<span class="pubyear">'. $r['published'][0]['cy'] .'</span>';
+
+		if( count( $pubdeets ))
+			$result .= '<li class="publication_details"><h3>Publication Details</h3>'. implode( '<span class="meta-sep">, </span>', $pubdeets ) .'</li>';
+
+/*
+print_r( $r['format'] );
+
+		$result .= '<li class="availability"><h3>Availability</h3>[scrib_availability sourceid="'. $r['the_sourceid'] .'"]</li>';
+*/
+
+		if( isset( $r['callnumbers'][0]['number'] )){
+			$result .= '<li class="callnumber">'. ( 1 < count( $r['callnumbers'] ) ? '<h3>Call Numbers</h3>' : '<h3>Call Number</h3>') .'<ul>';
+			foreach( $r['callnumbers'] as $temp )
+				$result .= '<li class="call-number-'. $temp['type'] .'">' . $temp['number'] .' ('. $temp['type'] .')'. ( isset( $temp['location'] ) ? ', '. $temp['location'] : '' ) .'</li>';
+			$result .= '</ul></li>';
+		}
+
+		if( isset( $r['linked_urls'][0]['href'] )){
+			$result .= '<li class="linked_urls">'. ( 1 < count( $r['linked_urls'] ) ? '<h3>Links</h3>' : '<h3>Link</h3>' ) .'<ul>';
+			foreach( $r['linked_urls'] as $temp )
+				$result .= '<li><a href="' . $temp['href'] .'" title="go to this linked website">' . $temp['name'] .'</a></li>';
+			$result .= '</ul></li>';
+		}
+
+/* this was the amazon description
+		if( !empty( $r['description'] ))
+			$result .= '<li class="description"><h3>Description</h3>'. $r['description'] .'</li>';
+		else if( !empty( $r['shortdescription'] ))
+			$result .= '<li class="description"><h3>Description</h3>'. $r['shortdescription'] .'</li>';
+*/
+
+		// authors or, er, creators
+		if( isset( $r['creator'][0]['name'] )){
+			$result .= '<li class="creator">'. ( 1 < count( $r['creator'] ) ? '<h3>Authors</h3>' : '<h3>Author</h3>') .'<ul>';
+			foreach( $r['creator'] as $temp ){
+				$result .= '<li><a href="'. $this->get_tag_link( array( 'taxonomy' => 'creator', 'slug' => urlencode( $temp['name'] ))).'" rel="tag">' . $temp['name'] . '</a>' . ( 'Author' <> $temp['role'] ? ', ' . $temp['role'] : '' ) .'</li>';
+			}
+			$result .= '</ul></li>';
+		}
+
+		if( isset( $parsed['genre'] )){
+			$result .= '<li class="genre"><h3>Genre</h3><ul>';
+			foreach( $parsed['genre'] as $temp )
+				$result .= '<li><a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a></li>';
+			$result .= '</ul></li>';
+		}
+		if( isset( $parsed['place'] )){
+			$result .= '<li class="place"><h3>Place</h3><ul>';
+			foreach( $parsed['place'] as $temp )
+				$result .= '<li><a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a></li>';
+			$result .= '</ul></li>';
+		}
+		if( isset( $parsed['time'] )){
+			$result .= '<li class="time"><h3>Time</h3><ul>';
+			foreach( $parsed['time'] as $temp )
+				$result .= '<li><a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a></li>';
+			$result .= '</ul></li>';
+		}
+		if( isset( $parsed['subject'] )){
+			$result .= '<li class="subject"><h3>Subject</h3><ul>';
+			foreach( $parsed['subject'] as $temp ){
+				$temptext = $templink = array();
+				foreach( $temp as $temptoo ){
+					$templink[ $temptoo['type'] ][] = $temptoo['value'];
+					$temptext[] = '<span>'. $temptoo['value'] . '</span>';
+				}
+				$result .= '<li><a href="'. $this->get_search_link( $templink ) .'" title="Search for other items matching this subject.">'. implode( ' &mdash; ', $temptext ) .'</a></li>';
+			}
+			$result .= '</ul></li>';
+		}
+
+		// do the notes and contents
+		if( isset( $parsed['notes'] )){
+			$result .= '<li class="notes"><h3>Notes</h3><ul>';
+			foreach( $parsed['notes'] as $temp )
+				$result .= '<li>' . $temp . '</li>';
+			$result .= '</ul></li>';
+		}
+
+		if( isset( $parsed['contents'][0] )){
+			$result .= '<li class="contents"><h3>Contents</h3>' . $parsed['contents'][0] .'</li>';
+		}
+
+
+		// handle most of the standard numbers
+		if( isset( $parsed['isbn'] )){
+			$result .= '<li class="isbn"><h3>ISBN</h3><ul>';
+			foreach( $parsed['isbn'] as $temp )
+				$result .= '<li id="isbn-'. strtolower( $temp ) .'">'. strtolower( $temp ) . '</li>';
+			$result .= '</ul></li>';
+		}
+		if( isset( $parsed['issn'] )){
+			$result .= '<li class="issn"><h3>ISSN</h3><ul>';
+			foreach( $parsed['issn'] as $temp )
+				$result .= '<li id="issn-'. strtolower( $temp ) .'">'. strtolower( $temp ) . '</li>';
+			$result .= '</ul></li>';
+		}
+		if( isset( $parsed['lccn'] )){
+			$result .= '<li class="lccn"><h3>LCCN</h3><ul>';
+			foreach( $parsed['lccn'] as $temp )
+				$result .= '<li id="lccn-'. $temp .'"><a href="http://lccn.loc.gov/'. urlencode( $temp ) .'?referer=scriblio" rel="tag">'. $temp .'</a></li>';
+			$result .= '</ul></li>';
+		}
+		if( isset( $parsed['olid'] )){
+			$result .= '<li class="olid"><h3>Open Library ID</h3><ul>';
+			foreach( $parsed['lccn'] as $temp )
+				$result .= '<li id="olid-'. $temp .'" ><a href="http://openlibrary.org'. $temp .'?referer=scriblio" rel="tag">'. $temp .'</a></li>';
+			$result .= '</ul></li>';
+		}
+
+		$result .= '</ul>';
+
+		return($result);
+	}
+
+	function marcish_parse_words( &$r ){
+		$parsed = $this->marcish_parse_parts( $r );
+
+		$result = '';
+		if( isset( $r['title'][0]['a'] ))
+			foreach( $r['title'] as $temp )
+				$result .= $temp['a'] . "\n";
+
+		if( isset( $r['attribution'][0]['a'] ))
+			$result .= $r['attribution'][0]['a'] ."\n";
+
+		if( isset( $r['callnumbers'][0]['number'] ))
+			foreach( $r['callnumbers'] as $temp )
+				$result .= $temp['number'] ."\n";
+
+		if( isset( $r['creator'][0]['name'] ))
+			foreach( $r['creator'] as $temp )
+				$result .= $temp['name'] ."\n";
+
+		if( isset( $parsed['subject'] )){
+			foreach( $parsed['subject'] as $temp ){
+				$temptext = array();
+				foreach( $temp as $temptoo )
+					$temptext[] = $temptoo['value'];
+				$result .= implode( ' -- ', $temptext ) ."\n";
+			}
+		}
+
+		if( isset( $parsed['notes'] ))
+			foreach( $parsed['notes'] as $temp )
+				$result .= $temp ."\n";
+
+		if( isset( $parsed['contents'][0] ))
+			$result .= $parsed['contents'][0] ."\n";
+
+		if( isset( $parsed['isbn'] ))
+			foreach( $parsed['isbn'] as $temp )
+				$result .= $temp ."\n";
+		if( isset( $parsed['issn'] ))
+			foreach( $parsed['issn'] as $temp )
+				$result .= $temp ."\n";
+		if( isset( $parsed['lccn'] ))
+			foreach( $parsed['lccn'] as $temp )
+				$result .= $temp ."\n";
+		if( isset( $parsed['olid'] ))
+			foreach( $parsed['olid'] as $temp )
+				$result .= $temp ."\n";
+		if( isset( $parsed['sourceid'] ))
+			foreach( $parsed['sourceid'] as $temp )
+				$result .= $temp ."\n";
+
+		return( strip_tags( $result ));
+	}
+
+	function marcish_save_record( $post_id , $r ) {
+		$stopwords = array( 'and', 'the', 'new', 'use', 'for', 'united', 'states' );
+
+		$facets = array();
+		if ( is_array( $r['marcish'] )){
+
+			$facets['creator'] = 
+			$facets['creatorkey'] = 
+			$facets['lang'] = 
+			$facets['cy'] = 
+			$facets['cm'] = 
+			$facets['format'] = 
+			$facets['subject'] = 
+			$facets['subjkey'] = 
+			$facets['genre'] = 
+			$facets['person'] = 
+			$facets['place'] = 
+			$facets['time'] = 
+			$facets['exhibit'] = 
+			$facets['sy'] = 
+			$facets['sm'] = 
+			$facets['sd'] = 
+			$facets['collection'] = 
+			$facets['sourceid'] = 
+			$facets['isbn'] = 
+			$facets['issn'] = 
+			$facets['lccn'] = 
+			$facets['asin'] = 
+			$facets['ean'] = 
+			$facets['olid'] = 
+			$facets['oclc'] = array();
+
+
+			$parsed = $this->marcish_parse_parts( $r['marcish'] );
+
+			// creators
+			if( isset( $r['marcish']['creator'][0] )){
+				foreach( $r['marcish']['creator'] as $temp )
+					if( !empty( $temp['name'] )){
+						$facets['creator'][] = $temp['name'];
+	
+						if( $tempsplit = preg_split( '/[ |,|;|-]/', $temp['name'] ))
+							foreach( $tempsplit as $tempsplittoo )
+								if( !empty( $tempsplittoo ) && !is_numeric( $tempsplittoo ) && ( 2 < strlen( $tempsplittoo )) && ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
+									$facets['creatorkey'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
+					}
+			}
+
+			// Title
+			if( isset( $r['marcish']['title'][0] ))
+				foreach( $r['marcish']['title'] as $temp )
+					$facets['title'][] = $temp['a'];
+
+			// Language
+			if( isset( $r['marcish']['published'][0]['lang'] ))
+				$facets['lang'][] = $r['marcish']['published'][0]['lang'];
+
+			// dates
+			if( isset( $r['marcish']['published'][0]['cy'] )){
+				$facets['cy'][] = $r['marcish']['published'][0]['cy'];
+				$facets['cy'][] = substr( $r['marcish']['published'][0]['cy'], 0, -1 ) .'0s';
+				$facets['cy'][] = substr( $r['marcish']['published'][0]['cy'], 0, -2 ) .'00s';
+			}
+			if( isset( $r['marcish']['published'][0]['cm'] ))
+				$facets['cm'][] = date( 'F', strtotime( '2008-'. $r['marcish']['published'][0]['cm'] .'-01' )); 
+
+			if( isset( $r['marcish']['subject_date'][0] )){
+				foreach( $r['marcish']['subject_date'] as $temp ){
+					if( isset( $temp['y'] )){
+						$facets['sy'][] = $temp['y'];
+						$facets['sy'][] = substr( $temp['y'], 0, -1 ) .'0s';
+						$facets['sy'][] = substr( $temp['y'], 0, -2 ) .'00s';
+					}
+					if( isset( $temp['m'] ))
+						$facets['sm'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' )); 
+					if( isset( $temp['d'] ))
+						$facets['sd'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' )); 
+				}
+			}
+
+			// subjects
+			if( isset( $parsed['subjkey'][0] )){
+				foreach( $parsed['subjkey'] as $sk => $sv ){
+					$facets[ $sv['type'] ][] = $sv['value'];
+
+					if( $tempsplit = preg_split( '/[ |,|;|-]/', $sv['value'] ))
+						foreach( $tempsplit as $tempsplittoo )
+							if( !empty( $tempsplittoo ) 
+								&& !is_numeric( $tempsplittoo ) 
+								&& ( 2 < strlen( $tempsplittoo )) 
+								&& ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
+									$facets['subjkey'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
+				}
+			}
+
+			// standard numbers
+			if ( isset( $parsed['sourceid'] ))
+				$facets['sourceid'] = $parsed['sourceid'];
+			if ( isset( $parsed['lccn'] ))
+				$facets['lccn'] = $parsed['lccn'];
+			if ( isset( $parsed['isbn'] ))
+				$facets['isbn'] = $parsed['isbn'];
+			if ( isset( $parsed['issn'] ))
+				$facets['issn'] = $parsed['issn'];
+			if ( isset( $parsed['asin'] ))
+				$facets['asin'] = $parsed['asin'];
+			if ( isset( $parsed['olid'] ))
+				$facets['olid'] = $parsed['olid'];
+
+			foreach( $r['marcish']['idnumbers'] as $temp ){
+				switch( $temp['type'] ) {
+					case 'sourceid' :
+					case 'isbn' :
+					case 'issn' :
+					case 'lccn' :
+					case 'asin' :
+					case 'ean' :
+					case 'oclc' :
+						if( !empty( $temp['id'] ))
+							$facets[ $temp['type'] ][] = $temp['id'];
+						break; 
+				}
+			}
+
+			// format
+			if( isset( $r['marcish']['format'][0] ))
+				foreach( $r['marcish']['format'] as $temp )
+					foreach( $temp as $temptoo )
+						if( !empty( $temptoo ))
+							$facets['format'][] = $temptoo;
+
+			// collection
+			if( isset( $r['marcish']['source'][0]['collection'] ))
+				$facets['collection'][] = $r['marcish']['source'][0]['collection'];
+
+			wp_set_object_terms( $post_id, (int) $this->options['catalog_category_id'], 'category', FALSE );
+		}
+
+		if ( count( $facets )){
+			foreach( $facets as $taxonomy => $tags ){
+
+				if( 'post_tag' == $taxonomy ){
+					wp_set_post_tags($post_id, $tags, TRUE);
+					continue;
+				}
+	
+				wp_set_object_terms($post_id, array_unique( array_filter( $tags )), $taxonomy, FALSE);
+			}
+		}
+	}
+
+	function arc_pre_excerpt( $content, $r ) {
+		if( $r['arc'] ){
+			$result = '<ul class="summaryrecord dcimage"><li>[icon size="s" /]</li></ul>';
+			return($result);
+		}
+		return( $content );
+	}
+
+	function arc_pre_content( $content, $r ) {
+		if( $r['arc'] ){
+			global $bsuite;
+
+			$result = '<ul class="fullrecord dcimage">[icon size="l" /]<pre>';
+			$result .= print_r( $r, TRUE );
+			$result .= print_r( $r['arc']['rel_parent'], TRUE );
+			$result .='</pre>';
+
+			if( !empty( $r['arc']['rel_parent'][0]['a'] )){
+				$result .= '<li class="rel_parent"><h3>Parent</h3><ul>';
+				foreach( $r['arc']['rel_parent'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+				$result .= '</ul></li>';
+			}
+
+			if( !empty( $r['arc']['rel_child'][0]['a'] )){
+				$result .= '<li class="rel_child"><h3>Children</h3><ul>';
+				foreach( $r['arc']['rel_child'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+				$result .= '</ul></li>';
+			}
+
+			if( !empty( $r['arc']['rel_previous'][0]['a'] )){
+				$result .= '<li class="rel_previous"><h3>Previous Page</h3><ul>';
+				foreach( $r['arc']['rel_previous'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+				$result .= '</ul></li>';
+			}
+
+			if( !empty( $r['arc']['rel_next'][0]['a'] )){
+				$result .= '<li class="rel_next"><h3>Next Page</h3><ul>';
+				foreach( $r['arc']['rel_next'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+				$result .= '</ul></li>';
+			}
+
+			if( !empty( $r['arc']['rel_reverse'][0]['a'] )){
+				$result .= '<li class="rel_reverse"><h3>Reverse Side</h3><ul>';
+				foreach( $r['arc']['rel_reverse'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+				$result .= '</ul></li>';
+			}
+
+			$result .='</ul>';
+			return($result);
+		}
+		return( $content );
+	}
+
+	public function arc_the_content( $content ){
+		global $id;
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
+			return( $this->marcish_the_content( $r['marcish'] ));
+
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['arc'] )){
 			global $bsuite;
 			$bigimg = $bsuite->icon_get_a( $id, 'b' );
 
-			$result = '<ul class="fullrecord arc"><li class="image"><a href="'. $bigimg['url'] .'" title="view larger image">[icon size="l" /]</a>
+			$result = '<ul class="fullrecord arc">';
+			$result .= apply_filters( 'scrib_meditor_content_icon', ('<li class="image"><a href="'. $bigimg['url'] .'" title="view larger image">[icon size="l" /]</a>
 				<ul class="options">
 					<li><a href="#bsuite_share_embed" title="'. __( 'Link to or embed this item in your site', 'Scrib' ) .'">Embed</a></li>
 					<li><a href="#bsuite_share_bookmark" title="'. __( 'Bookmark or share this item', 'Scrib' ) .'">Share</a></li>
 					<li><a href="#comments" title="'. __( 'Discuss this item in the comments', 'Scrib' ) .'">Discuss</a></li>
 					<li><a href="#tagthis" title="'. __( 'Recognize somebody or something? Tag them!', 'Scrib' ) .'">Tag</a></li>
-				</ul><hr /></li>';
+				</ul><hr /></li>' ));
 
 			if( isset( $r['arc']['title'][0]['a'] )){
 				$result .= '<li class="alt_title"><h3>'. ( isset( $r['arc']['title'][1]['a'] ) ? 'Alternate Title' : 'Alternate Titles' ) .'</h3><ul>';
@@ -2135,8 +3588,11 @@ TODO: update relationships to other posts when a post is saved.
 		return( $content );
 	}
 
-	public function meditor_the_excerpt( $content ){
+	public function arc_the_excerpt( $content ){
 		global $id;
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
+			return( $this->marcish_the_excerpt( $r['marcish'] ));
+
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['arc'] )){
 			global $bsuite;
 
@@ -2151,22 +3607,234 @@ TODO: update relationships to other posts when a post is saved.
 		return( $content );
 	}
 
-	public function meditor_form_hook(){
-		add_action('admin_footer', array(&$this, 'meditor_footer_activatejs'));
+	function arc_save_record( $post_id , $r ) {
+		$stopwords = array( 'and', 'the', 'new', 'use', 'for', 'hampshire', 'london', 'england', 'united', 'states' );
+
+		$facets = array();
+
+		if ( is_array( $r['arc'] )){
+			$facets['dy'] = $facets['dm'] = $facets['creator'] = $facets['subject'] = $facets['geog'] = $facets['format'] = $facets['lang'] = $facets['collection'] = array();
+
+
+			// dates
+			if( isset( $r['arc']['description'][0]['cy'] )){
+				$facets['dy'][] = $r['arc']['description'][0]['cy'];
+				$facets['dy'][] = substr( $r['arc']['description'][0]['cy'], 0, -1 ) .'0s';
+				$facets['dy'][] = substr( $r['arc']['description'][0]['cy'], 0, -2 ) .'00s';
+			}
+			if( isset( $r['arc']['description'][0]['cm'] ))
+				$facets['dm'][] = date( 'F', strtotime( '2008-'. $r['arc']['description'][0]['cm'] .'-01' )); 
+
+			foreach( $r['arc']['date_coverage'] as $temp ){
+				if( isset( $temp['y'] )){
+					$facets['dy'][] = $temp['y'];
+					$facets['dy'][] = substr( $temp['y'], 0, -1 ) .'0s';
+					$facets['dy'][] = substr( $temp['y'], 0, -2 ) .'00s';
+				}
+				if( isset( $temp['m'] ))
+					$facets['dm'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' )); 
+			}
+
+			// creators
+			foreach( $r['arc']['creator'] as $temp )
+				if( !empty( $temp['name'] )){
+					$facets['creator'][] = $temp['name'];
+
+					if( $tempsplit = preg_split( '/[ |,|;|-]/', $temp['name'] ))
+						foreach( $tempsplit as $tempsplittoo )
+							if( !empty( $tempsplittoo ) && !is_numeric( $tempsplittoo ) && ( 2 < strlen( $tempsplittoo )) && ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
+								$facets['creator'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
+				}
+
+			// subjects
+			foreach( $r['arc']['subject'] as $temp )
+				foreach( $temp as $temptoo ){
+					if( !empty( $temptoo ))
+						$facets['subject'][] = $temptoo;
+
+					if( $tempsplit = preg_split( '/[ |,|;|-]/', $temptoo ))
+						foreach( $tempsplit as $tempsplittoo )
+							if( !empty( $tempsplittoo ) && !is_numeric( $tempsplittoo ) && ( 2 < strlen( $tempsplittoo )) && ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
+								$facets['subject'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
+				}
+
+			// geography
+			foreach( $r['arc']['geog'] as $temp )
+				foreach( $temp as $temptoo )
+					if( !empty( $temptoo ))
+						$facets['geog'][] = $temptoo;
+
+			// format
+			foreach( $r['arc']['format'] as $temp )
+				foreach( $temp as $temptoo )
+					if( !empty( $temptoo ))
+						$facets['format'][] = $temptoo;
+
+			// language
+			if( isset( $r['arc']['description'][0]['lang'] ))
+				$facets['lang'][] = $r['arc']['description'][0]['lang'];
+
+			// collection
+			if( isset( $r['arc']['source'][0]['collection'] ))
+				$facets['collection'][] = $r['arc']['source'][0]['collection'];
+
+			// exhibit
+			foreach( $r['arc']['exhibit'] as $temp )
+				if( !empty( $temp['a'] ))
+					$facets['exhibit'][] = $temp['a'];
+
+/*
+TODO: update relationships to other posts when a post is saved.
+//post_id
+			if( !empty( $r['arc']['rel_parent'][0]['a'] ))
+				foreach( $r['arc']['rel_parent'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+
+			if( !empty( $r['arc']['rel_child'][0]['a'] ))
+				foreach( $r['arc']['rel_child'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+
+			if( !empty( $r['arc']['rel_previous'][0]['a'] ))
+				foreach( $r['arc']['rel_previous'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+
+			if( !empty( $r['arc']['rel_next'][0]['a'] ))
+				foreach( $r['arc']['rel_next'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+
+			if( !empty( $r['arc']['rel_reverse'][0]['a'] ))
+				foreach( $r['arc']['rel_reverse'] as $temp )
+					$result .= '<li>' . $bsuite->icon_get_h( $temp['a'], 's' ) . '</li>';
+*/
+
+//			$facets['category'] = (int) $this->options['catalog_category_id'];
+			wp_set_object_terms( $post_id, (int) $this->options['catalog_category_id'], 'category', FALSE );
+		}
 	}
 
-	public function meditor_footer_activatejs(){
-?>
-		<script type="text/javascript">
-			scrib_meditor();
-		</script>
-<?php
+
+	function import_insert_harvest( &$bibr ){
+		global $wpdb;
+
+		$wpdb->get_results("REPLACE INTO $this->harvest_table
+			( source_id, harvest_date, imported, content, enriched ) 
+			VALUES ( '". $wpdb->escape( $bibr['_sourceid'] ) ."', NOW(), 0, '". $wpdb->escape( serialize( $bibr )) ."', 0 )" );
 	}
 
-	public function meditor_make_content_closable( $content ){
-		return( '<div class="inside">'. $content .'</div>');
+	function import_post_exists( &$idnumbers ) {
+		$post_ids = array();
+		foreach( $idnumbers as $idnum )
+			if( is_taxonomy( $idnum['type'] ) && is_term( $idnum['id'] ))
+				$post_ids = array_merge( $post_ids, get_objects_in_term( is_term( $idnum['id'] ), $idnum['type'] ));
+
+		if( count( $post_ids ))
+			return( $post_ids[0] );
+		return( FALSE );
 	}
 
+	function import_insert_post( &$bibr ){
+//		return(1);
+		global $wpdb, $bsuite;
+
+		wp_defer_term_counting( TRUE ); // may improve performance
+		remove_filter( 'content_save_pre', array( &$bsuite, 'innerindex_nametags' )); // don't build an inner index for catalog records
+		remove_filter( 'publish_post', '_publish_post_hook', 5, 1 ); // avoids pinging links in catalog records
+		remove_filter( 'save_post', '_save_post_hook', 5, 2 ); // don't bother
+		kses_remove_filters(); // don't kses filter catalog records
+		define( 'WP_IMPORTING', TRUE ); // may improve performance by preventing exection of some unknown hooks
+
+		if( $this->import_post_exists( $bibr['idnumbers'] ))
+			$postdata['ID']			= $this->import_post_exists( $bibr['idnumbers'] );
+	
+		$postdata['post_title'] = $wpdb->escape(str_replace('\"', '"', $bibr['title'][0]['a']));
+		$postdata['post_date'] = 
+			$postdata['post_date_gmt'] = 
+			$postdata['post_modified'] = 
+			$postdata['post_modified_gmt'] = $bibr['_acqdate'];
+		$postdata['comment_status'] = get_option('default_comment_status');
+		$postdata['ping_status'] 	= get_option('default_ping_status');
+		$postdata['post_status'] 	= 'publish';
+		$postdata['post_type'] 		= 'post';
+		$postdata['post_author'] 	= $this->options['catalog_author_id'];
+
+		unset( $bibr['_acqdate'] );
+		unset( $bibr['_sourceid'] );
+
+		$postdata['post_content'] = $this->marcish_parse_words( $bibr );
+		$postdata['post_excerpt'] = $this->marcish_parse_excerpt( $bibr );
+
+		if( empty( $postdata['post_title'] ))
+			return( FALSE );
+
+		$post_id = wp_insert_post($postdata); // insert the post
+		if($post_id){
+			add_post_meta( $post_id, 'scrib_meditor_content', array( 'marcish' => $bibr ), TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', array( 'marcish' => $bibr ) );
+			do_action( 'scrib_meditor_save_record', $post_id, array( 'marcish' => $bibr ));
+			return( $post_id );
+		}
+		return(FALSE);
+	}
+
+	function import_harvest_tobepublished_count() {
+		global $wpdb; 
+		return( $wpdb->get_var( 'SELECT COUNT(*) FROM '. $this->harvest_table .' WHERE imported = 0' ));
+	}
+
+	function import_harvest_publish() { 
+		global $wpdb; 
+
+		$interval = 25;
+
+		if( isset( $_GET[ 'n' ] ) == false ) {
+			$n = 0;
+		} else {
+			$n = absint( $_GET[ 'n' ] );
+		}
+	
+		$posts = $wpdb->get_results('SELECT * FROM '. $this->harvest_table .' WHERE imported = 0 LIMIT 0,'. $interval, ARRAY_A);
+
+		if( is_array( $posts )) {
+			echo "<p>Fetching records in batches of $interval...publishing them...making coffee. Please be patient.<br /><br /></p>";
+			echo '<ol>';
+			foreach( $posts as $post ) {
+				set_time_limit( 900 );
+
+				$post_id = $this->import_insert_post( unserialize( $post['content'] ));
+
+				if( $post_id ){
+					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1 WHERE source_id = "'. $post['source_id'] .'"' );
+					echo '<li><a href="'. get_permalink( $post_id ) .'" target="_blank">'. get_the_title( $post_id ) .'</a></li>';
+					flush();
+				}else{
+					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = -1 WHERE source_id = "'. $post['source_id'] .'"' );
+				}
+			}
+
+			echo '</ol>';
+			?>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename( dirname( __FILE__ )); ?>/scriblio.php&command=<?php _e('Publish Harvested Records', 'Scriblio') ?>&n=<?php echo ( $n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p>
+			<script language='javascript'>
+			<!--
+
+			function nextpage() {
+				location.href="?page=<?php echo plugin_basename( dirname( __FILE__ )); ?>/scriblio.php&command=<?php _e('Publish Harvested Records', 'Scriblio') ?>&n=<?php echo ( $n + $interval) ?>";
+
+			}
+			setTimeout( "nextpage()", 250 );
+
+			//-->
+			</script>
+			<?php
+			echo '<p>'. $this->import_harvest_tobepublished_count() .' records remain to be published.</p>';
+		} else {
+			echo '<p>That&#039;s all folks. kthnxbye.</p>';
+		}
+
+		echo '<pre>';
+		print_r( $wpdb->queries );
+		echo '</pre>';
+		?><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php
+	} 
 
 
 
@@ -2356,7 +4024,7 @@ TODO: update relationships to other posts when a post is saved.
 			;");
 
 			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&command=<?php _e('Rebuild Search Suggest Table.', 'Scriblio') ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/scriblio.php&command=<?php _e('Rebuild Search Suggest Table.', 'Scriblio') ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
 			<script language='javascript'>
 			<!--
 
@@ -2430,10 +4098,21 @@ TODO: update relationships to other posts when a post is saved.
 	
 	public function get_tag_link( $tag ) {
 		global $wp_rewrite;
+
+		if( is_object( $tag ))
+			$tag = get_object_vars( $tag );
+
+		$taglink = $this->options['browse_url'] . '?' . $tag['taxonomy'] . '=' . $tag['slug'];
+
+		return $taglink;
+
+/*
+		global $wp_rewrite;
 		$taglink = $this->options['browse_url'] . '?' . $tag->taxonomy . '=' . $tag->slug;
 
 //		return apply_filters('tag_link', $taglink, $tag_id);
 		return $taglink;
+*/
 	}
 	
 	public function the_taxonomies_for_bsuite_suggestive( $taxonomies ) {
@@ -3095,6 +4774,14 @@ TODO: update relationships to other posts when a post is saved.
 
 		$this->widget_facets_register();
 	}
+
+	public function array_unique_deep( $array ) {
+		$uniquer = array();
+		foreach( $array as $key => $val )
+			$uniquer[ md5( serialize( $val )) ] = $val;
+
+		return( array_values( $uniquer ));
+	} 
 
 
 }

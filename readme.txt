@@ -1,9 +1,9 @@
 === Scriblio ===
 Contributors: misterbisson
 Tags: scriblio, library, libraries, catalog, facets, faceting, search, browsing, metadata
-Requires at least: 2.6.3
+Requires at least: 2.7
 Tested up to: 2.7
-Stable tag: trunk
+Stable tag: 2.6b01
 
 Scriblio enables faceted searching/browsing features and metadata tools that turn WordPress into a library catalog or digital archive.
 

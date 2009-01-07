@@ -28,9 +28,9 @@ function scrib_meditor() {
 	jQuery("#postexcerpt").hide();
 	jQuery("#postdivrich").hide();
 
-//	jQuery("#titlediv h3").hide();
-//	jQuery("#titlewrap").hide();
-	jQuery("#titlediv h3 label").text("Primary Title");
+	jQuery("#titlediv #title").css({ marginLeft:"5px", width:"98%" });
+	jQuery("#titlediv").addClass("postbox");
+	jQuery("#titlediv #titlewrap").before('<h3 class="hndle"><label for="title">Primary Title</label></h3>');
 
 	jQuery("#scrib_meditor_div h3").text("Details");
 	jQuery("#scrib_meditor_div").removeClass('closed');
@@ -45,6 +45,7 @@ jQuery(document).ready(function(){
 	// make the list sortable
 	// http://docs.jquery.com/UI/Sortables
 	jQuery("#scrib_meditor ul.sortable").sortable({
+		handle: ".sortable-handle",
 		stop: function(){
 			jQuery(this).scrib_renumber();
 		}

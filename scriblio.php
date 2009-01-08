@@ -65,6 +65,8 @@ class Scrib {
 		add_shortcode('scrib_availability', array(&$this, 'shortcode_availability'));
 		add_shortcode('scrib_taglink', array(&$this, 'shortcode_taglink'));
 
+		add_filter('bsuite_post_icon', array( &$this, 'marcish_the_bsuite_post_icon' ));
+
 		add_action('admin_menu', array( &$this, 'admin_menu_hook' ));
 		
 		add_action('save_post', array(&$this, 'meditor_save_post'), 2, 2);
@@ -2854,6 +2856,57 @@ class Scrib {
 
 
 
+	function marcish_the_bsuite_post_icon( &$input ) {
+		if( is_array( $input ))
+			return( $input );
+
+		global $id;
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] )){
+			$title = trim( $r['marcish']['title'][0]['a'] );
+			if( strpos( $title, ':', 5 ))
+				$title = substr( $title, 0, strpos( $title, ':', 5 ));
+			$attrib = trim( $r['marcish']['attribution'][0]['a'] );
+			if( strpos( $attrib, ';', 5 ))
+				$attrib = substr( $attrib, 0, strpos( $attrib, ';', 5 ));
+			return( array( 
+				't' => array( 
+					'file' => dirname( __FILE__ ) .'/img/post_icon_default/s.jpg',
+					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=1',
+					'w' => '75',
+					'h' => '100',
+					), 
+				's' => array( 
+					'file' => dirname( __FILE__ ) .'/img/post_icon_default/s.jpg',
+					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=2',
+					'w' => '100',
+					'h' => '132',
+					), 
+				'm' => array( 
+					'file' => dirname( __FILE__ ) .'/img/post_icon_default/m.jpg',
+					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=3',
+					'w' => '135',
+					'h' => '180',
+					), 
+				'l' => array( 
+					'file' => dirname( __FILE__ ) .'/img/post_icon_default/l.jpg',
+					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=4',
+					'w' => '240',
+					'h' => '320',
+					), 
+				'b' => array( 
+					'file' => dirname( __FILE__ ) .'/img/post_icon_default/b.jpg',
+					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=5',
+					'w' => '500',
+					'h' => '665',
+					), 
+				)
+			);
+		}
+
+//http://api.scriblio.net/v01a/fakejacket/This+Land+Is+Their+Land?author=Barbara+Ehrenreich.&size=4&style=4
+
+	}
+
 	function marcish_parse_parts( &$r ){
 		$parsed = array();
 		foreach( $r['idnumbers'] as $temp ){
@@ -2966,9 +3019,12 @@ class Scrib {
 	}
 
 	function marcish_parse_excerpt( &$r ){
+		global $id, $bsuite;
 
 		$parsed = $this->marcish_parse_parts( $r );
 		$result = '<ul class="fullrecord">';
+
+		$result .= '<li class="image">'. $bsuite->icon_get_h( $id, 's' ) .'</li>';
 /*
 		if($r['img']->large->url ){
 			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="'. $r['img']->large->url .'" width="'. $r['img']->large->width .'" height="'. $r['img']->large->height .'" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
@@ -3028,16 +3084,12 @@ print_r( $r['format'] );
 	}
 
 	function marcish_parse_content( &$r ){
+		global $id, $bsuite;
 		$parsed = $this->marcish_parse_parts( $r );
 
 		$result = '<ul class="fullrecord">';
-/*
-		if($r['img']->large->url ){
-			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="'. $r['img']->large->url .'" width="'. $r['img']->large->width .'" height="'. $r['img']->large->height .'" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
-		}else{
-			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="' . get_settings('siteurl') .'/'. $scrib->path_web .'/img/jacket/blank_'. urlencode(strtolower($r['format'][0])) .'.png" width="100" height="135" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
-		}
-*/
+
+		$result .= '<li class="image">'. $bsuite->icon_get_h( $id, 's' ) .'</li>';
 
 		if( isset( $r['title'][0]['a'] )){
 			$result .= '<li class="title">'. ( 1 < count( $r['title'] ) ? '<h3>Titles</h3>' : '<h3>Title</h3>') .'<ul>';
@@ -3357,10 +3409,12 @@ print_r( $r['format'] );
 
 			// format
 			if( isset( $r['marcish']['format'][0] ))
-				foreach( $r['marcish']['format'] as $temp )
+				foreach( $r['marcish']['format'] as $temp ){
+					unset( temp['src'] );
 					foreach( $temp as $temptoo )
 						if( !empty( $temptoo ))
 							$facets['format'][] = $temptoo;
+				}
 
 			// collection
 			if( isset( $r['marcish']['source'][0]['collection'] ))

@@ -1243,6 +1243,7 @@ class Scrib {
 										'place' => 'Place',
 										'time' => 'Time',
 										'exhibit' => 'Exhibit',
+										'award' => 'Award',
 									),
 									'_default' => 'exact',
 								),
@@ -1267,6 +1268,7 @@ class Scrib {
 										'place' => 'Place',
 										'time' => 'Time',
 										'exhibit' => 'Exhibit',
+										'award' => 'Award',
 									),
 									'_default' => 'exact',
 								),
@@ -1291,6 +1293,7 @@ class Scrib {
 										'place' => 'Place',
 										'time' => 'Time',
 										'exhibit' => 'Exhibit',
+										'award' => 'Award',
 									),
 									'_default' => 'exact',
 								),
@@ -1315,6 +1318,7 @@ class Scrib {
 										'place' => 'Place',
 										'time' => 'Time',
 										'exhibit' => 'Exhibit',
+										'award' => 'Award',
 									),
 									'_default' => 'exact',
 								),
@@ -1339,6 +1343,7 @@ class Scrib {
 										'place' => 'Place',
 										'time' => 'Time',
 										'exhibit' => 'Exhibit',
+										'award' => 'Award',
 									),
 									'_default' => 'exact',
 								),
@@ -1363,6 +1368,7 @@ class Scrib {
 										'place' => 'Place',
 										'time' => 'Time',
 										'exhibit' => 'Exhibit',
+										'award' => 'Award',
 									),
 									'_default' => 'exact',
 								),
@@ -1387,6 +1393,7 @@ class Scrib {
 										'place' => 'Place',
 										'time' => 'Time',
 										'exhibit' => 'Exhibit',
+										'award' => 'Award',
 									),
 									'_default' => 'exact',
 								),
@@ -1571,6 +1578,11 @@ class Scrib {
 										'contents' => 'Contents',
 										'review' => 'Review',
 										'notes' => 'Notes',
+										'firstwords' => 'First Words',
+										'lastwords' => 'Last Words',
+										'dedication' => 'Dedication',
+										'quotes' => 'Notable Quotations',
+										'sample' => 'Sample',
 									),
 									'_default' => 'description',
 								),
@@ -3410,7 +3422,7 @@ print_r( $r['format'] );
 			// format
 			if( isset( $r['marcish']['format'][0] ))
 				foreach( $r['marcish']['format'] as $temp ){
-					unset( temp['src'] );
+					unset( $temp['src'] );
 					foreach( $temp as $temptoo )
 						if( !empty( $temptoo ))
 							$facets['format'][] = $temptoo;

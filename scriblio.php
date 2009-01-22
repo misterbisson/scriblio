@@ -3,7 +3,7 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7 b01
+Version: 2.7 b02
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -2958,11 +2958,38 @@ class Scrib {
 
 		foreach( $r['text'] as $temp ){
 			switch( $temp['type'] ){ 
+				case 'description' :
+					$parsed['description'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'transcription' :
+					$parsed['transcription'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'translation' :
+					$parsed['translation'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
 				case 'contents' :
-					$parsed['contents'][] = $temp['content'];
+					$parsed['contents'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'review' :
+					$parsed['review'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
 					break; 
 				case 'notes' :
-					$parsed['notes'][] = $temp['content'];
+					$parsed['notes'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'firstwords' :
+					$parsed['firstwords'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'lastwords' :
+					$parsed['lastwords'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'dedication' :
+					$parsed['dedication'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'quotes' :
+					$parsed['quotes'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
+					break; 
+				case 'sample' :
+					$parsed['sample'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
 					break; 
 			} 
 		}

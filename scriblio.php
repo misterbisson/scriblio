@@ -3,7 +3,7 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7 b02
+Version: 2.7 b03
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -52,9 +52,10 @@ class Scrib {
 
 
 		// register WordPress hooks
-		add_filter('posts_where', array(&$this, 'posts_where'), 10);
 		add_filter('posts_request', array(&$this, 'the_query'), 10);
+		add_filter('posts_where', array(&$this, 'posts_where'), 10);
 		add_filter('parse_query', array(&$this, 'parse_query'), 10);
+
 		add_action('admin_menu', array(&$this, 'addmenus'));
 		add_filter('bsuite_tokens', array(&$this, 'tokens_set'));
 		add_filter('bsuite_suggestive_taxonomies', array(&$this, 'the_taxonomies_for_bsuite_suggestive'), 10, 2);
@@ -75,10 +76,6 @@ class Scrib {
 		add_filter('pre_post_content', array(&$this, 'meditor_pre_save_filters'));
 
 		$this->meditor_register_defaults();
-
-		add_filter('the_author', array(&$this, 'the_author_filter'), 1);
-		add_filter('author_link', array(&$this, 'author_link_filter'), 1);
-		add_filter('the_title', array(&$this, 'gbs_aggregator'), 1);
 
 		add_action('wp_footer', array(&$this, 'wp_footer_js'));
 
@@ -631,7 +628,7 @@ class Scrib {
 //error_log( $query ."\r\r". print_r( $wp_query->query_vars, TRUE ) );
 //echo "<h2>$query</h2>";
 //print_r($wp_query);
-
+//die;
 		if( $wp_query->is_admin )
 			return($query);
 
@@ -668,17 +665,18 @@ class Scrib {
 	public function parse_query( $the_wp_query ){
 		global $wp_query;
 
-		$test_query = $the_wp_query->query;
-		if( is_array( $test_query )){
-			$paged = (int) $test_query['paged'] ? (int) $test_query['paged'] : 1;
-			unset( $test_query['paged'] );
-		}
+		if( isset( $the_wp_query->query_vars['pagename'] ) && $the_wp_query->query_vars['pagename'] == $this->options['browse_name'] ){
+			$the_wp_query->query_vars['pagename'] = '';
+			$the_wp_query->query_vars['page_id'] = 0;
 
-		if( $test_query['pagename'] && count( $test_query ) == 1 && $test_query['pagename'] == $this->options['browse_name'] && !$this->parse_query_nonce){
-			$this->parse_query_nonce = TRUE;
-			return( query_posts( array('category' => get_cat_name( $this->options['catalog_category_id'] ) , 'paged' => $paged )));
+			$the_wp_query->is_search = true;
+			$the_wp_query->is_page = false;
+			
+			if( !count( array_intersect_key( $the_wp_query->query_vars, $this->taxonomies ))){
+				$the_wp_query->query_vars['category'] = get_cat_name( $this->options['catalog_category_id'] );
+				$this->forced_browse_category = TRUE;
+			}
 		}
-
 		return( $the_wp_query );
 	}
 
@@ -2808,11 +2806,17 @@ class Scrib {
 		add_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
 		add_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
 		add_filter( 'the_content', array(&$this, 'marcish_the_content'));
+		add_filter( 'the_excerpt', array(&$this, 'marcish_the_excerpt'));
+
+		add_filter('scrib_availability_excerpt', array(&$this, 'marcish_availability'), 10, 3);
+		add_filter('scrib_availability_content', array(&$this, 'marcish_availability'), 10, 3);
+		add_filter('the_author', array( &$this, 'marcish_the_author_filter' ), 1);
+		add_filter('author_link', array( &$this, 'marcish_author_link_filter' ), 1);
 
 		add_filter('scrib_meditor_pre_excerpt', array(&$this, 'arc_pre_excerpt'), 1, 2);
 		add_filter('scrib_meditor_pre_content', array(&$this, 'arc_pre_content'), 1, 2);
-		add_filter( 'the_content', array(&$this, 'arc_the_content'));
-		add_filter( 'the_excerpt', array(&$this, 'arc_the_excerpt'));
+		add_filter('the_content', array(&$this, 'arc_the_content'));
+		add_filter('the_excerpt', array(&$this, 'arc_the_excerpt'));
 
 		add_action('scrib_meditor_save_record', array(&$this, 'marcish_save_record'), 1, 2);
 		add_action('scrib_meditor_save_record', array(&$this, 'arc_save_record'), 1, 2);
@@ -2832,6 +2836,11 @@ class Scrib {
 		remove_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
 		remove_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
 		remove_filter( 'the_content', array(&$this, 'marcish_the_content'));
+
+		remove_filter('scrib_availability_excerpt', array(&$this, 'marcish_availability'), 10, 3);
+		remove_filter('scrib_availability_content', array(&$this, 'marcish_availability'), 10, 3);
+		remove_filter('the_author', array( &$this, 'marcish_the_author_filter' ), 1 );
+		remove_filter('author_link', array( &$this, 'marcish_author_link_filter' ), 1 );
 
 		remove_filter('scrib_meditor_pre_excerpt', array(&$this, 'arc_pre_excerpt'), 1, 2);
 		remove_filter('scrib_meditor_pre_content', array(&$this, 'arc_pre_content'), 1, 2);
@@ -2924,37 +2933,37 @@ class Scrib {
 		foreach( $r['idnumbers'] as $temp ){
 			switch( $temp['type'] ){ 
 				case 'sourceid' :
-					$parsed['sourceid'][] = $temp['id'];
+					$parsed['idnumbers']['sourceid'][] = $temp['id'];
 					break; 
 				case 'lccn' :
-					$parsed['lccn'][] = $temp['id'];
+					$parsed['idnumbers']['lccn'][] = $temp['id'];
 					break; 
 				case 'isbn' :
-					$parsed['isbn'][] = $temp['id'];
+					$parsed['idnumbers']['isbn'][] = $temp['id'];
 					break; 
 				case 'issn' :
-					$parsed['issn'][] = $temp['id'];
+					$parsed['idnumbers']['issn'][] = $temp['id'];
 					break; 
 				case 'asin' :
-					$parsed['asin'][] = $temp['id'];
+					$parsed['idnumbers']['asin'][] = $temp['id'];
 					break; 
 				case 'olid' :
-					$parsed['olid'][] = $temp['id'];
+					$parsed['idnumbers']['olid'][] = $temp['id'];
 					break; 
 			} 
 		}
-		if ( isset( $parsed['sourceid'] ))
-			$parsed['sourceid'] = $this->array_unique_deep( $parsed['sourceid'] );
-		if ( isset( $parsed['lccn'] ))
-			$parsed['lccn'] = $this->array_unique_deep( $parsed['lccn'] );
-		if ( isset( $parsed['isbn'] ))
-			$parsed['isbn'] = $this->array_unique_deep( $parsed['isbn'] );
-		if ( isset( $parsed['issn'] ))
-			$parsed['issn'] = $this->array_unique_deep( $parsed['issn'] );
-		if ( isset( $parsed['asin'] ))
-			$parsed['asin'] = $this->array_unique_deep( $parsed['asin'] );
-		if ( isset( $parsed['olid'] ))
-			$parsed['olid'] = $this->array_unique_deep( $parsed['olid'] );
+		if ( isset( $parsed['idnumbers']['sourceid'] ))
+			$parsed['idnumbers']['sourceid'] = $this->array_unique_deep( $parsed['idnumbers']['sourceid'] );
+		if ( isset( $parsed['idnumbers']['lccn'] ))
+			$parsed['idnumbers']['lccn'] = $this->array_unique_deep( $parsed['idnumbers']['lccn'] );
+		if ( isset( $parsed['idnumbers']['isbn'] ))
+			$parsed['idnumbers']['isbn'] = $this->array_unique_deep( $parsed['idnumbers']['isbn'] );
+		if ( isset( $parsed['idnumbers']['issn'] ))
+			$parsed['idnumbers']['issn'] = $this->array_unique_deep( $parsed['idnumbers']['issn'] );
+		if ( isset( $parsed['idnumbers']['asin'] ))
+			$parsed['idnumbers']['asin'] = $this->array_unique_deep( $parsed['idnumbers']['asin'] );
+		if ( isset( $parsed['idnumbers']['olid'] ))
+			$parsed['idnumbers']['olid'] = $this->array_unique_deep( $parsed['idnumbers']['olid'] );
 
 		foreach( $r['text'] as $temp ){
 			switch( $temp['type'] ){ 
@@ -3061,16 +3070,9 @@ class Scrib {
 		global $id, $bsuite;
 
 		$parsed = $this->marcish_parse_parts( $r );
-		$result = '<ul class="fullrecord">';
+		$result = '<ul class="summaryrecord">';
 
-		$result .= '<li class="image">'. $bsuite->icon_get_h( $id, 's' ) .'</li>';
-/*
-		if($r['img']->large->url ){
-			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="'. $r['img']->large->url .'" width="'. $r['img']->large->width .'" height="'. $r['img']->large->height .'" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
-		}else{
-			$result .= '<li class="image">[scrib_bookjacket]<img class="bookjacket" src="' . get_settings('siteurl') .'/'. $scrib->path_web .'/img/jacket/blank_'. urlencode(strtolower($r['format'][0])) .'.png" width="100" height="135" alt="'. str_replace(array('[',']'), array('{','}'), htmlentities( array_shift( $r['title'] ), ENT_QUOTES, 'UTF-8' )) .'" />[/scrib_bookjacket]</li>';
-		}
-*/
+		$result .= '<li class="image"><a href="'. get_permalink( $id ) .'" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $id )) .'">'. $bsuite->icon_get_h( $id, 's' ) .'</a></li>';
 
 		if( isset( $r['attribution'][0]['a'] ))
 			$result .= '<li class="attribution"><h3>Attribution</h3>'. $r['attribution'][0]['a'] .'</li>';
@@ -3091,12 +3093,6 @@ class Scrib {
 		if( count( $pubdeets ))
 			$result .= '<li class="publication_details"><h3>Publication Details</h3>'. implode( '<span class="meta-sep">, </span>', $pubdeets ) .'</li>';
 
-/*
-print_r( $r['format'] );
-
-		$result .= '<li class="availability"><h3>Availability</h3>[scrib_availability sourceid="'. $r['the_sourceid'] .'"]</li>';
-*/
-
 		if( isset( $r['linked_urls'][0]['href'] )){
 			$result .= '<li class="linked_urls">'. ( 1 < count( $r['linked_urls'] ) ? '<h3>Links</h3>' : '<h3>Link</h3>' ) .'<ul>';
 			foreach( $r['linked_urls'] as $temp )
@@ -3104,12 +3100,26 @@ print_r( $r['format'] );
 			$result .= '</ul></li>';
 		}
 
-/* this was the amazon description
-		if( !empty( $r['description'] ))
-			$result .= '<li class="description"><h3>Description</h3>'. $r['description'] .'</li>';
-		else if( !empty( $r['shortdescription'] ))
-			$result .= '<li class="description"><h3>Description</h3>'. $r['shortdescription'] .'</li>';
-*/
+		if( isset( $parsed['description'][0] )){
+			$result .= '<li class="description"><h3>Description</h3>' . $parsed['description'][0] .'</li>';
+		}
+
+		if( isset( $parsed['subjkey'][0] )){
+			$tags = array();
+			foreach( $parsed['subjkey'] as $temp )
+				$tags[] = '<a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a>';
+
+
+			// authors or, er, creators
+			if( isset( $r['creator'][0]['name'] ))
+				foreach( $r['creator'] as $temp )
+					$tags[] = '<a href="'. $this->get_tag_link( array( 'taxonomy' => 'creator', 'slug' => urlencode( $temp['name'] ))).'" rel="tag">' . $temp['name'] . '</a>';
+
+			$result .= '<li class="tags"><h3>Tags</h3> '. implode( ' &middot; ', $tags ) .'</li>';
+		}
+
+		if( is_array( $parsed['idnumbers'] ))
+			$result .= '<li class="availability"><h3>Availability</h3><ul>'. apply_filters( 'scrib_availability_excerpt', '', $id, $parsed['idnumbers']) .'</ul></li>';
 
 		$result .= '</ul>';
 
@@ -3157,11 +3167,8 @@ print_r( $r['format'] );
 		if( count( $pubdeets ))
 			$result .= '<li class="publication_details"><h3>Publication Details</h3>'. implode( '<span class="meta-sep">, </span>', $pubdeets ) .'</li>';
 
-/*
-print_r( $r['format'] );
-
-		$result .= '<li class="availability"><h3>Availability</h3>[scrib_availability sourceid="'. $r['the_sourceid'] .'"]</li>';
-*/
+		if( is_array( $parsed['idnumbers'] ))
+			$result .= '<li class="availability"><h3>Availability</h3><ul>'. apply_filters( 'scrib_availability_content', '', $id, $parsed['idnumbers']) .'</ul></li>';
 
 		if( isset( $r['callnumbers'][0]['number'] )){
 			$result .= '<li class="callnumber">'. ( 1 < count( $r['callnumbers'] ) ? '<h3>Call Numbers</h3>' : '<h3>Call Number</h3>') .'<ul>';
@@ -3238,27 +3245,27 @@ print_r( $r['format'] );
 
 
 		// handle most of the standard numbers
-		if( isset( $parsed['isbn'] )){
+		if( isset( $parsed['idnumbers']['isbn'] )){
 			$result .= '<li class="isbn"><h3>ISBN</h3><ul>';
-			foreach( $parsed['isbn'] as $temp )
+			foreach( $parsed['idnumbers']['isbn'] as $temp )
 				$result .= '<li id="isbn-'. strtolower( $temp ) .'">'. strtolower( $temp ) . '</li>';
 			$result .= '</ul></li>';
 		}
-		if( isset( $parsed['issn'] )){
+		if( isset( $parsed['idnumbers']['issn'] )){
 			$result .= '<li class="issn"><h3>ISSN</h3><ul>';
-			foreach( $parsed['issn'] as $temp )
+			foreach( $parsed['idnumbers']['issn'] as $temp )
 				$result .= '<li id="issn-'. strtolower( $temp ) .'">'. strtolower( $temp ) . '</li>';
 			$result .= '</ul></li>';
 		}
-		if( isset( $parsed['lccn'] )){
+		if( isset( $parsed['idnumbers']['lccn'] )){
 			$result .= '<li class="lccn"><h3>LCCN</h3><ul>';
-			foreach( $parsed['lccn'] as $temp )
+			foreach( $parsed['idnumbers']['lccn'] as $temp )
 				$result .= '<li id="lccn-'. $temp .'"><a href="http://lccn.loc.gov/'. urlencode( $temp ) .'?referer=scriblio" rel="tag">'. $temp .'</a></li>';
 			$result .= '</ul></li>';
 		}
-		if( isset( $parsed['olid'] )){
+		if( isset( $parsed['idnumbers']['olid'] )){
 			$result .= '<li class="olid"><h3>Open Library ID</h3><ul>';
-			foreach( $parsed['lccn'] as $temp )
+			foreach( $parsed['idnumbers']['lccn'] as $temp )
 				$result .= '<li id="olid-'. $temp .'" ><a href="http://openlibrary.org'. $temp .'?referer=scriblio" rel="tag">'. $temp .'</a></li>';
 			$result .= '</ul></li>';
 		}
@@ -3303,24 +3310,48 @@ print_r( $r['format'] );
 		if( isset( $parsed['contents'][0] ))
 			$result .= $parsed['contents'][0] ."\n";
 
-		if( isset( $parsed['isbn'] ))
-			foreach( $parsed['isbn'] as $temp )
+		if( isset( $parsed['idnumbers']['isbn'] ))
+			foreach( $parsed['idnumbers']['isbn'] as $temp )
 				$result .= $temp ."\n";
-		if( isset( $parsed['issn'] ))
-			foreach( $parsed['issn'] as $temp )
+		if( isset( $parsed['idnumbers']['issn'] ))
+			foreach( $parsed['idnumbers']['issn'] as $temp )
 				$result .= $temp ."\n";
-		if( isset( $parsed['lccn'] ))
-			foreach( $parsed['lccn'] as $temp )
+		if( isset( $parsed['idnumbers']['lccn'] ))
+			foreach( $parsed['idnumbers']['lccn'] as $temp )
 				$result .= $temp ."\n";
-		if( isset( $parsed['olid'] ))
-			foreach( $parsed['olid'] as $temp )
+		if( isset( $parsed['idnumbers']['olid'] ))
+			foreach( $parsed['idnumbers']['olid'] as $temp )
 				$result .= $temp ."\n";
-		if( isset( $parsed['sourceid'] ))
-			foreach( $parsed['sourceid'] as $temp )
+		if( isset( $parsed['idnumbers']['sourceid'] ))
+			foreach( $parsed['idnumbers']['sourceid'] as $temp )
 				$result .= $temp ."\n";
 
 		return( strip_tags( $result ));
 	}
+
+	function marcish_the_author_filter( $content ){
+		global $id;
+
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && isset( $r['marcish']['attribution'][0]['a'] ))
+			return( $r['marcish']['attribution'][0]['a'] );
+		else
+			return( $content );
+	}
+
+	function marcish_author_link_filter( $content ){
+		global $id;
+
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish']['creator'] )){
+			$terms = wp_get_object_terms( $id, 'creator' );
+			foreach( $terms as $term )
+				$tag['creator'][] = $term->name;
+
+			return( $this->get_search_link( $tag ));
+		}else{
+			return( $content );
+		}
+	}
+
 
 	function marcish_save_record( $post_id , $r ) {
 		$stopwords = array( 'and', 'the', 'new', 'use', 'for', 'united', 'states' );
@@ -3418,18 +3449,18 @@ print_r( $r['format'] );
 			}
 
 			// standard numbers
-			if ( isset( $parsed['sourceid'] ))
-				$facets['sourceid'] = $parsed['sourceid'];
-			if ( isset( $parsed['lccn'] ))
-				$facets['lccn'] = $parsed['lccn'];
-			if ( isset( $parsed['isbn'] ))
-				$facets['isbn'] = $parsed['isbn'];
-			if ( isset( $parsed['issn'] ))
-				$facets['issn'] = $parsed['issn'];
-			if ( isset( $parsed['asin'] ))
-				$facets['asin'] = $parsed['asin'];
-			if ( isset( $parsed['olid'] ))
-				$facets['olid'] = $parsed['olid'];
+			if ( isset( $parsed['idnumbers']['sourceid'] ))
+				$facets['sourceid'] = $parsed['idnumbers']['sourceid'];
+			if ( isset( $parsed['idnumbers']['lccn'] ))
+				$facets['lccn'] = $parsed['idnumbers']['lccn'];
+			if ( isset( $parsed['idnumbers']['isbn'] ))
+				$facets['isbn'] = $parsed['idnumbers']['isbn'];
+			if ( isset( $parsed['idnumbers']['issn'] ))
+				$facets['issn'] = $parsed['idnumbers']['issn'];
+			if ( isset( $parsed['idnumbers']['asin'] ))
+				$facets['asin'] = $parsed['idnumbers']['asin'];
+			if ( isset( $parsed['idnumbers']['olid'] ))
+				$facets['olid'] = $parsed['idnumbers']['olid'];
 
 			foreach( $r['marcish']['idnumbers'] as $temp ){
 				switch( $temp['type'] ) {
@@ -3475,7 +3506,29 @@ print_r( $r['format'] );
 		}
 	}
 
-	function arc_pre_excerpt( $content, $r ) {
+	function marcish_availability( &$content, $post_id, &$idnumbers ) {
+		if( isset( $idnumbers['issn'][0] ))
+			$gbs_key = 'issn:'. $idnumbers['issn'][0];
+		else if( isset( $idnumbers['isbn'][0] ))
+			$gbs_key = 'isbn:'. $idnumbers['isbn'][0];
+		else if( isset( $idnumbers['lccn'][0] ))
+			$gbs_key = 'lccn:'. $idnumbers['lccn'][0];
+
+		if( $gbs_key ){
+			$this->gbs_keys[] = $gbs_key;
+
+			return( $content . '<li id="gbs_'. str_replace( array(':', ' '), '_', $gbs_key ) .'" class="gbs_link"></li>' );
+		}
+
+		return( $content );
+	}
+
+	public function marcish_availability_gbslink(){
+		if( count( $this->gbs_keys ))
+			echo '<script src="http://books.google.com/books?bibkeys='. urlencode( implode( ',', array_unique( $this->gbs_keys ))) .'&jscmd=viewapi&callback=jQuery.GBDisplay"></script>';
+	}
+
+	function arc_pre_excerpt( &$content, $r ) {
 		if( $r['arc'] ){
 			$result = '<ul class="summaryrecord dcimage"><li>[icon size="s" /]</li></ul>';
 			return($result);
@@ -3935,58 +3988,10 @@ TODO: update relationships to other posts when a post is saved.
 
 
 
-	public function the_author_filter( $content ){
-		if(!$this->is_scrib())
-			return($content);
-
-		global $id;
-		return( get_post_meta( $id, 'scrib_the_author', TRUE ));
-	}
-
-	public function author_link_filter( $content ){
-		if(!$this->is_scrib())
-			return($content);
-
-		global $id;
-
-		$tag->taxonomy = 'auth';
-		$tag->slug = urlencode( get_post_meta( $id, 'scrib_the_author_link', TRUE ));
-		
-		return( $this->get_tag_link( $tag ));
-	}
 
 	public function wp_footer_js(){
 		$this->suggest_js();
-		$this->gbs_link();
-	}
-
-	public function gbs_aggregator($content){
-		if(!$this->is_scrib())
-			return($content);
-
-/* old way, but hurts performance
-		$gbs_id = $this->parse_content();
-		$this->gbs_ids[] = $gbs_id['gbs_id'];
-*/
-		$this->gbs_ids[] = $this->gbs_id();		
-		return($content);
-	}
-
-	public function gbs_link(){
-		if( count( $this->gbs_ids ))
-			echo '<script src="http://books.google.com/books?bibkeys='. urlencode( implode( ',', array_unique( $this->gbs_ids ))) .'&jscmd=viewapi&callback=jQuery.GBDisplay"></script>';
-	}
-
-	public function gbs_id(){
-		global $id;
-		return( array_shift( unserialize( get_post_meta( $id, 'scrib_the_bibkeys', TRUE ))));
-	}
-
-	public function the_gbs_id(){
-		$gbs_id = $this->gbs_id();
-		if( $gbs_id )
-			return( str_replace( array(':', ' '), '_', $gbs_id ));
-		return( FALSE );
+		$this->marcish_availability_gbslink();
 	}
 
 
@@ -4014,7 +4019,7 @@ TODO: update relationships to other posts when a post is saved.
 		if( function_exists( 'scrib_availability' ) )
 			return( scrib_availability( $arg['sourceid'] ));
 		else
-			return( '<span id="gbs_'. $this->the_gbs_id() .'" class="gbs_info"></span>' );
+			return( '<span id="gbs_'. $this->the_gbs_id() .'" class="gbs_link"></span>' );
 	}
 
 	public function shortcode_taglink( $arg ){
@@ -4383,18 +4388,9 @@ TODO: update relationships to other posts when a post is saved.
 
 
 
-
-
-
-
-
-
-
-
-
 	public function is_scrib(){
-		global $post;
-		if($post->post_author == $this->options['catalog_author_id'])
+		global $id;
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
 			return(TRUE);
 		else
 			return(FALSE);
@@ -4899,19 +4895,5 @@ function scrib_the_related(){
 	global $scrib;
 	echo $scrib->the_related_bookjackets();
 }
-
-/*
-function scrib_availability($sourceid){
-	global $scrib;
-	return('<span id="gbs_'. $scrib->the_gbs_id() .'" class="gbs_info"></span>');
-
-	// this function can be used to get the current availability of an item from the ILS,
-	// though, because of the differences between ILS and their local configuration,
-	// it is up to the local site to develop their own code.
-	//
-	// Example code can be found at http://about.scriblio.net/wiki/scrib_availability 
-}
-}
-*/
 
 ?>

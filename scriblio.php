@@ -3,7 +3,7 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7 b03
+Version: 2.7 b04
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -671,8 +671,8 @@ class Scrib {
 
 			$the_wp_query->is_search = true;
 			$the_wp_query->is_page = false;
-			
-			if( !count( array_intersect_key( $the_wp_query->query_vars, $this->taxonomies ))){
+
+			if( !count( array_intersect_key( $the_wp_query->query_vars, array_flip( $this->taxonomies ) ))){
 				$the_wp_query->query_vars['category'] = get_cat_name( $this->options['catalog_category_id'] );
 				$this->forced_browse_category = TRUE;
 			}

@@ -52,8 +52,6 @@ class Scrib {
 
 
 		// register WordPress hooks
-		add_filter('posts_request', array(&$this, 'the_query'), 10);
-		add_filter('posts_where', array(&$this, 'posts_where'), 10);
 		add_filter('parse_query', array(&$this, 'parse_query'), 10);
 
 		add_action('admin_menu', array(&$this, 'addmenus'));
@@ -341,7 +339,7 @@ class Scrib {
 		return( $wpdb->get_col( "SELECT taxonomy FROM $wpdb->term_taxonomy GROUP BY taxonomy" ));
 	}
 
-	public function is_term($term, $taxonomy = '') {
+	public function is_term( $term, $taxonomy = '' ){
 		global $wpdb;
 		
 		$wild = FALSE;
@@ -370,317 +368,137 @@ class Scrib {
 		return $wpdb->get_col("SELECT tt.term_taxonomy_id FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy as tt ON tt.term_id = t.term_id WHERE $where AND tt.taxonomy = '$taxonomy'");
 	}
 
-	public function get_matching_posts(){
-		global $bsuite, $wp_query, $wpdb;
-		$post_ids = NULL;
-		if( $this->search_terms ){
-			$search_terms = $this->search_terms;
-
-			// figure out what page of posts to show
-			// $paged, $posts_per_page, and $limit are here for cases
-			// where the query doesn't have an explicit LIMIT declaration
-			$paged = (int) $wp_query->query_vars['paged'] ? (int) $wp_query->query_vars['paged'] : 1;
-			$posts_per_page = (int) $wp_query->query_vars['posts_per_page'] ? (int) $wp_query->query_vars['posts_per_page'] : (int) get_settings('posts_per_page');
-			$this->posts_per_page = $posts_per_page;
-			
-			$cache_key = md5( serialize( $this->search_terms ) . $paged );
-			$cache = wp_cache_get( $cache_key , 'scrib_search' );
-
-			if ( isset($cache['count']) && $cache['count'] === 0 ){
-				$this->the_matching_posts = FALSE;
-				$this->the_matching_post_counts = $cache['post_counts'];
-				$this->the_matching_facets = FALSE;
-				$this->the_matching_posts_count = 0;
-				$this->the_matching_posts_ordinals = FALSE;
-				return(FALSE);
-			}
-
-			if( !$cache ){
-				$from = $where = array();
-
-				$what = ' a.ID ';
-				$orderby = 'ORDER BY a.post_date_gmt DESC';
-				$keyword_select = '';
-				$from[] = " FROM $wpdb->posts a ";
-				$limit_sql = 'LIMIT '. ($paged - 1) * $posts_per_page .', 1000';
-
-				// the keywords
-				if( !empty( $search_terms['s'] )){
-					$boolean = '';
-					if(ereg('"|\+|\-|\(|\<|\>|\*', $this->search_terms['s']))
-						$boolean = ' IN BOOLEAN MODE';
-
-					if($this->options['sphinxsearch'] && empty($boolean)){
-						// get the sphinx client library & configuration
-						require_once(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/includes/sphinxapi.php');
-						require_once(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/conf_sphinx.php');
-
-						// init sphinx & apply the config
-						$sphinx = new SphinxClient ();
-						$sphinx->SetServer ( $sphinx_host, $sphinx_port );
-						$sphinx->SetLimits ( $sphinx_recstart, $sphinx_reclimit, $sphinx_recoffset );
-						$sphinx->SetWeights ( $sphinx_weights);
-						$sphinx->SetMatchMode ( $sphinx_matchmode );
-						$sphinx->SetSortMode ( $sphinx_sortmode, $sphinx_sortby );
-
-						// searching the catalog or blog posts or all
-						if($wp_query->query_vars['scope'] == 'catalog')
-							$sphinx->SetFilter ( 'type', array ( 1 ) );
-						if($wp_query->query_vars['scope'] == 'blog')
-							$sphinx->SetFilter ( 'type', array ( 0 ) );
+	public function parse_query( &$the_wp_query ){
+//print_r( $the_wp_query );
 		
-						// do the search
-						$res = $sphinx->Query ( implode($this->search_terms['s'], ' '), $sphinx_index );
-				
-						if ( is_array($res['matched']) ){
-//print_r(array_keys($res['matched']));
-//print_r($res['matched']);		
-							$keyword_post_ids = array_keys($res['matched']);
-							if (SAVEQUERIES) {
-								unset( $res['matches'] );
-								unset( $res['matched'] );
-								$wpdb->queries[] = $res;
-							}
-						}
-
-						if( !count( $keyword_post_ids )){
-							wp_cache_add( $cache_key , array('count' => 0), 'scrib_search' );
-							$this->the_matching_posts = FALSE;
-							$this->the_matching_post_counts = $matching_post_counts;
-							$this->the_matching_facets = FALSE;
-							$this->the_matching_posts_count = 0;
-							$this->the_matching_posts_ordinals = FALSE;
-							return(FALSE);
-						}
-
-						unset($search_terms['s']);
-					}else{
-						$what = " a.ID, MATCH (b.content, b.title) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."'$boolean) AS score ";
-						$from[] = " INNER JOIN $bsuite->search_table b ON ( b.post_id = a.ID ) ";
-						$where[] = " AND (MATCH (b.content, b.title) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."'$boolean)) ";
-						$orderby = ' ORDER BY score DESC ';
-						unset($search_terms['s']);
-					}
-				}
-
-				// the other facets
-				if(!empty($search_terms)){
-					foreach($search_terms as $taxonomy => $values){
-						foreach($values as $key => $value){
-							if(!$tt_ids[] = $this->is_term ( $value, $taxonomy ))
-								$matching_post_counts[$taxonomy][$key] = 0;
-							else
-								$matching_post_counts[$taxonomy][$key] = $wpdb->get_var("SELECT COUNT(term_taxonomy_id) FROM $wpdb->term_relationships WHERE term_taxonomy_id IN (". implode($this->is_term ( $value, $taxonomy ) , ',' ) .')' );
-
-							if($matching_post_counts[$taxonomy][$key] < 1){
-								wp_cache_add( $cache_key , array( 'count' => 0, 'post_counts' => $matching_post_counts ), 'scrib_search' );
-								$this->the_matching_posts = FALSE;
-								$this->the_matching_post_counts = $matching_post_counts;
-								$this->the_matching_facets = FALSE;
-								$this->the_matching_posts_count = 0;
-								$this->the_matching_posts_ordinals = FALSE;
-								return(FALSE);
-							}
-						}
-					}
-				}
-
-				$tt_ids = array_filter( $tt_ids );
-				$taliases = range( 'a','z' );
-				$i = 1;
-				if(count($tt_ids) > 0){
-					foreach($tt_ids as $tt_id){
-						$from[] = " INNER JOIN $wpdb->term_relationships ". $taliases[ceil($i / 26)] . $taliases[($i % 26)] .' ON a.ID = '. $taliases[ceil($i / 26)] . $taliases[($i % 26)] .'.object_id ';
-						$where[] = ' AND '. $taliases[ceil($i / 26)] . $taliases[($i % 26)] .'.term_taxonomy_id IN ('. implode($tt_id, ',') .') ';
-						$i++;
-					}
-				}
-
-				// it's a piece of cake to bake a pretty cake
-				// bring this all together and find the right posts
-				if( isset( $this->search_terms['s'] ) && $this->options['sphinxsearch'] ){
-					$keyword_select = 'AND a.ID IN ('. implode($keyword_post_ids, ',') .')' ;
-					$limit_sql = '';
-					$orderby = '';
-				}
-			
-				$post_ids = $wpdb->get_col('SELECT SQL_CALC_FOUND_ROWS '. $what . implode($from) .' WHERE 1=1 '. implode($where) .' '. $keyword_select .' AND (a.post_type IN ("post", "page") AND (a.post_status IN ("publish", "private"))) GROUP BY a.ID '. $orderby .' '. $limit_sql);
-			
-				if( count( $post_ids )){
-					if( isset( $this->search_terms['s'] ) && $this->options['sphinxsearch'] ){
-						$cache['ordinals'] = array_flip( $keyword_post_ids );
-						foreach($post_ids as $post_id)
-							$new_order[$cache['ordinals'][$post_id]] = $post_id;
-						ksort( $new_order );
-						$post_ids = array_values( $new_order );
-					}
-
-					$cache['count'] = $wpdb->get_var( 'SELECT FOUND_ROWS()' );
-					$post_ids = array_slice( $post_ids, 0, $posts_per_page );
-					$cache['facets'] = $wpdb->get_results("SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
-						FROM (
-							SELECT ". $what . implode($from) .' WHERE 1=1 '. implode($where) .' '. $keyword_select .' AND (a.post_type IN ("post", "page") AND (a.post_status IN ("publish", "private"))) GROUP BY a.ID '. $orderby .' '. $limit_sql .
-						") p
-						INNER JOIN $wpdb->term_relationships c ON p.ID = c.object_id
-						INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
-						INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
-						GROUP BY c.term_taxonomy_id ORDER BY `count` DESC LIMIT 1000");
-					$cache['posts'] = $post_ids;
-					$cache['ordinals'] = array_flip( $post_ids );
-					$cache['post_counts'] = $matching_post_counts;
-				}else{
-					$cache = array('count' => 0);
-				}
-
-				wp_cache_add( $cache_key , $cache, 'scrib_search' );
-			}
-
-			if(is_array($cache)){
-				$this->the_matching_posts = $cache['posts'];
-				$this->the_matching_post_counts = $matching_post_counts;
-				$this->the_matching_facets = $cache['facets'];
-				$this->the_matching_posts_count = $cache['count'];
-				$this->the_matching_posts_ordinals = $cache['ordinals'];
-				add_filter('the_posts', array(&$this, 'sort_matching_posts'));
-				return(TRUE);
-			}else{
-				$this->the_matching_posts = FALSE;
-				$this->the_matching_post_counts = $matching_post_counts;
-				$this->the_matching_facets = FALSE;
-				$this->the_matching_posts_count = 0;
-				$this->the_matching_posts_ordinals = FALSE;
-				return(FALSE);
-			}
-		}
-	}
-
-	public function sort_matching_posts($the_posts){
-
-//		$GLOBALS['wp_query']->found_posts = $GLOBALS['wp_query']->post_count = $this->the_matching_posts_count;
-		$GLOBALS['wp_query']->max_num_pages = ceil( $this->the_matching_posts_count / $this->posts_per_page);
-
-//print_r($the_posts);
-//print_r($this->the_matching_posts_ordinals);
-
-		// insert the ordinal into each post for sorting
-		foreach($the_posts as $post){
-//echo $post->ID . '='. $this->the_matching_posts_ordinals[$post->ID] .', ';
-			$new_order[$this->the_matching_posts_ordinals[$post->ID]] = $post;
-		}
-
-		// now that the posts are re-keyed, sort them
-		ksort($new_order);
-
-		// This shuffle resets the keys on the array.
-		// A function later in WP expects the array keys to be sequential,
-		// and the output here might otherwise be non-sequential.
-		array_unshift($new_order, 'Junk');
-		array_shift($new_order);
-
-//print_r($new_order);
-		return($new_order);
-	}
-
-	public function search_terms(){
-		global $wp_query;
-		
-		$temp = array_intersect_key($wp_query->query_vars, array_flip($this->taxonomies));
+		$temp = array_intersect_key( $the_wp_query->query_vars, array_flip( $this->taxonomies ));
 
 		$terms = FALSE;
 		if( count( $temp )){
 			$terms  = array();
-			reset($temp);
-			while (list($key, $val) = each($temp)) {
-				$values = (explode('|', urldecode($val)));
-				foreach($values as $val){
-					$terms[$key][] = $val;
-				}
+			foreach( $temp as $key => $val ){
+				$values = ( explode( '|', urldecode( $val ) ));
+				foreach( $values as $val )
+					$terms[ $key ][] = $val;
 			}
-			$this->is_browse = TRUE;
-			$wp_query->is_search = TRUE;
-			$wp_query->is_singular = FALSE;
-			$wp_query->is_page = FALSE;
-			$wp_query->is_home = FALSE;
 		}
-		
-		if(!empty($wp_query->query_vars['s']))
-			$terms['s'] = explode('|', stripslashes(urldecode($wp_query->query_vars['s'])));
 
-		$this->search_terms = $terms;
-		return(array_filter($terms));
-	}
+		if( !empty( $the_wp_query->query_vars['s'] )){
+			$terms['s'] = explode( '|', stripslashes( urldecode( $the_wp_query->query_vars['s'] )));
+			unset( $the_wp_query->query_vars['s'] );
+		}
 
-	public function posts_where($query){
-		// hide catalog entries from front page and rss feeds.
-		global $wp_query;
-		if( $wp_query->is_home )
-			return(" AND post_author <> {$this->options['catalog_author_id']}". $query);
+		$this->search_terms = array_filter( $terms );
 
-		if($wp_query->is_feed && ( count( $wp_query->query ) < 2))
-			return(" AND post_author <> {$this->options['catalog_author_id']}". $query);
-
-		return($query);
-	}
-
-	public function the_query($query, $limit = NULL){
-		global $bsuite, $wp_query, $wpdb;
-
-//error_log( $query ."\r\r". print_r( $wp_query->query_vars, TRUE ) );
-//echo "<h2>$query</h2>";
-//print_r($wp_query);
-//die;
-		if( $wp_query->is_admin )
-			return($query);
-
-//echo "<h2>$query</h2>";
-//print_r($wp_query);
-
-		// establish the query vars
-		$this->search_terms();
-
-		if( !$wp_query->is_search ) // return immediately if this is not a search/browse request
-			return($query);
-
-//print_r($this->taxonomies);
-//print_r($this->search_terms);
-
-		// figure out if we have matching posts, and which ones they are
-		$this->get_matching_posts();
-		if(is_array($this->the_matching_posts))
-			$query = "SELECT * FROM $wpdb->posts WHERE 1=1 
-				AND ID IN (" . implode($this->the_matching_posts, ', ') .
-				') AND post_status IN ("publish", "private")';
-		else
-			$query = "SELECT * FROM $wpdb->posts WHERE 1=2";
-		
-//print_r($wp_query);
-//echo "<h2>$query</h2>";
-
-		$this->the_query_string = $query;
-		return($query);
-	}
-
-
-
-	public function parse_query( $the_wp_query ){
-		global $wp_query;
+		if( $the_wp_query->is_search ){
+			$this->is_browse = TRUE;
+			$this->add_search_filters();
+			return( $the_wp_query );
+		}
 
 		if( isset( $the_wp_query->query_vars['pagename'] ) && $the_wp_query->query_vars['pagename'] == $this->options['browse_name'] ){
 			$the_wp_query->query_vars['pagename'] = '';
 			$the_wp_query->query_vars['page_id'] = 0;
+			unset( $the_wp_query->queried_object );
+			unset( $the_wp_query->queried_object_id );
 
-			$the_wp_query->is_search = true;
-			$the_wp_query->is_page = false;
+			$this->is_browse = TRUE;
+			$the_wp_query->is_category = TRUE;
+			$the_wp_query->is_search = TRUE;
+			$the_wp_query->is_page = FALSE;
+			$the_wp_query->is_singular = FALSE;
 
-			if( !count( array_intersect_key( $the_wp_query->query_vars, array_flip( $this->taxonomies ) ))){
-				$the_wp_query->query_vars['category'] = get_cat_name( $this->options['catalog_category_id'] );
-				$this->forced_browse_category = TRUE;
-			}
+			if( count( $this->search_terms )){
+				$this->add_search_filters();
+				return( $the_wp_query );
+			}else{
+				$the_wp_query->query_vars['cat'] = $this->options['catalog_category_id'];
+				add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
+				$this->search_terms = array();
+				return( $the_wp_query );
+			}			
 		}
+
 		return( $the_wp_query );
 	}
 
 
+	public function add_search_filters(){
+		global $wpdb, $bsuite;
+
+		$search_terms = $this->search_terms;
+
+		if( !empty( $search_terms['s'] )){
+			$boolean = '';
+			if(ereg('"|\+|\-|\(|\<|\>|\*', $this->search_terms['s']))
+				$boolean = ' IN BOOLEAN MODE';
+
+			$this->posts_fields[] = ", MATCH ( scrib_b.content, scrib_b.title ) AGAINST ('". $wpdb->escape( implode($this->search_terms['s'], ' ' )) ."'$boolean) AS score ";
+			$this->posts_join[] = " INNER JOIN $bsuite->search_table scrib_b ON ( scrib_b.post_id = $wpdb->posts.ID ) ";
+			$this->posts_where[] = " AND (MATCH ( scrib_b.content, scrib_b.title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."'$boolean)) ";
+			$this->posts_orderby[] = ' score DESC, ';
+
+			add_filter( 'posts_fields',		array( &$this, 'posts_fields' ), 7 );
+			add_filter( 'posts_orderby',	array( &$this, 'posts_orderby' ), 7 );
+
+			unset( $search_terms['s'] );
+		}
+
+		if( !empty( $search_terms )){
+			foreach($search_terms as $taxonomy => $values){
+				foreach($values as $key => $value){
+					if( !$tt_ids[] = $this->is_term ( $value, $taxonomy ))
+						$matching_post_counts[$taxonomy][$key] = 0;
+					else
+						$matching_post_counts[$taxonomy][$key] = $wpdb->get_var("SELECT COUNT( term_taxonomy_id ) FROM $wpdb->term_relationships WHERE term_taxonomy_id IN (". implode( $this->is_term ( $value, $taxonomy ) , ',' ) .')' );
+				}
+			}
+		}
+
+		$tt_ids = array_filter( $tt_ids );
+		$taliases = range( 'a','z' );
+		$i = 1;
+		if(count($tt_ids) > 0){
+			foreach( $tt_ids as $tt_id ){
+				$alias = $taliases[ ceil($i / 26) ] . $taliases[ ($i % 26) ];
+				$this->posts_join[] = " INNER JOIN $wpdb->term_relationships scrib_$alias ON $wpdb->posts.ID = scrib_$alias.object_id ";
+				$this->posts_where[] = " AND scrib_$alias.term_taxonomy_id IN (". implode( ',', $tt_id ) .') ';
+				$i++;
+			}
+		}
+
+		add_filter( 'posts_join',		array( &$this, 'posts_join' ), 7 );
+		add_filter( 'posts_where',		array( &$this, 'posts_where' ), 7 );
+		add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
+
+	}
+
+	public function posts_fields( $query ) {
+		return( $query . implode( $this->posts_fields ));
+	}
+	public function posts_orderby( $query ) {
+		return( implode( $this->posts_orderby ) . $query );
+	}
+	public function posts_join( $query ) {
+		return( $query . implode( $this->posts_join ));
+	}
+	public function posts_where( $query ) {
+		return( $query . implode( $this->posts_where ));
+	}
+	public function posts_request( $query ) {
+		global $wpdb;
+
+		$this->the_matching_facets = $wpdb->get_results("SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
+			FROM (
+				". str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, 1000', $query )) .
+			") p
+			INNER JOIN $wpdb->term_relationships c ON p.ID = c.object_id
+			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
+			INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
+			GROUP BY c.term_taxonomy_id ORDER BY `count` DESC LIMIT 1500");
+
+		return($query);
+	}
 
 	public function editsearch() {
 		global $wpdb, $wp_query, $bsuite;
@@ -4177,18 +3995,19 @@ TODO: update relationships to other posts when a post is saved.
 
 	public function get_search_link( $input ) {
 	
-		$tags = FALSE;
-		reset($input);
-		while (list($key, $val) = each($input)) {
-			$tags[$key] = implode('|', $val);
-		}
+		$tags = array();
+		foreach( $input as $key => $val )
+			$tags[ $key ] = implode( '|', $val );
 
-		if (!empty($tags['s'])) {
+//		if( $this->forced_browse_category )
+
+
+		if ( !empty( $tags['s'] )) {
 			$keywords = $tags['s'];
-			unset($tags['s']);
-			$taglink = $this->options['search_url'] . urlencode($keywords) .'?'. http_build_query($tags);
+			unset( $tags['s'] );
+			$taglink = $this->options['search_url'] . urlencode( $keywords ) .'?'. http_build_query($tags);
 		}else{
-			$taglink = $this->options['browse_url'] .'?'. http_build_query($tags);
+			$taglink = $this->options['browse_url'] .'?'. http_build_query( $tags );
 		}
 
 		return trim($taglink, '?');
@@ -4296,7 +4115,7 @@ TODO: update relationships to other posts when a post is saved.
 		return $return;
 	}
 	
-	public function &generate_tag_cloud( $tags, $args = '' ) {
+	public function generate_tag_cloud( &$tags, &$args = '' ) {
 		global $wp_rewrite;
 		$defaults = array(
 			'smallest' => 8, 'largest' => 22, 'unit' => 'pt', 'number' => 45,

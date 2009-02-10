@@ -43,9 +43,6 @@ if( empty( $options['catalog_category_id'] ) || !get_category( $options['catalog
 	$options = $newoptions = get_option('scrib');
 }
 
-if ($_REQUEST['command'] == __('Rebuild Search Suggest Table', 'Scriblio')){
-	$this->suggest_init_table();
-}
 if ($_REQUEST['command'] == __('Publish Harvested Records', 'Scriblio')){
 	$this->import_harvest_publish();
 }
@@ -120,7 +117,7 @@ foreach($this->taxonomies_getall() as $taxonomy){
 	</form>
 	<h3>Commands:</h3>
 	<form method="post" name="scrib_commands" name="scrib_commands">
-		<div class="submit"><input type="submit" name="command" value="<?php _e('Rebuild Search Suggest Table', 'Scriblio'); ?>" /><input type="submit" name="command" value="<?php _e('Publish Harvested Records', 'Scriblio'); ?>" /> (<?php echo $this->import_harvest_tobepublished_count() ?> records remain to be published)</div>
+		<div class="submit"><input type="submit" name="command" value="<?php _e('Publish Harvested Records', 'Scriblio'); ?>" /> (<?php echo $this->import_harvest_tobepublished_count() ?> records remain to be published)</div>
 	</form>
 
 </div></div>

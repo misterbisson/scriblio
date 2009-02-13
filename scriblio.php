@@ -376,27 +376,26 @@ class Scrib {
 	public function parse_query( &$the_wp_query ){
 //print_r( $the_wp_query );
 		
-		$temp = array_intersect_key( $the_wp_query->query_vars, array_flip( $this->taxonomies ));
 
-		$terms = FALSE;
-		if( count( $temp )){
-			$terms  = array();
-			foreach( $temp as $key => $val ){
-				$values = ( explode( '|', urldecode( $val ) ));
-				foreach( $values as $val )
-					$terms[ $key ][] = $val;
-			}
-		}
-
+		$terms  = array();
 		if( !empty( $the_wp_query->query_vars['s'] )){
 			$terms['s'] = explode( '|', stripslashes( urldecode( $the_wp_query->query_vars['s'] )));
 			unset( $the_wp_query->query_vars['s'] );
 		}
 
+		$temp = array_intersect_key( $the_wp_query->query_vars, array_flip( $this->taxonomies ));
+		if( count( $temp )){
+			foreach( $temp as $key => $val ){
+				$values = ( explode( '|', urldecode( $val ) ));
+				foreach( $values as $val )
+					$terms[ $key ][] = $val;
+			}
+			$this->is_browse = TRUE;
+		}
+
 		$this->search_terms = array_filter( $terms );
 
 		if( $the_wp_query->is_search ){
-			$this->is_browse = TRUE;
 			$this->add_search_filters();
 			return( $the_wp_query );
 		}
@@ -443,7 +442,7 @@ class Scrib {
 				FROM $bsuite->search_table
 				WHERE (MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."'$boolean))
 				ORDER BY score DESC
-				LIMIT 1000
+				LIMIT 0, 1250
 			) scrib_b ON ( scrib_b.post_id = $wpdb->posts.ID )";
 			$this->posts_where[] = '';
 			$this->posts_orderby[] = ' scrib_b.score DESC, ';
@@ -4545,7 +4544,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 	public function widget_editsearch($args) {
 		if(!is_search())
 			return;
-		
+
 		global $wp_query;
 		extract($args);
 		$options = get_option('widget_scrib_searchedit');

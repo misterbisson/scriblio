@@ -3,7 +3,7 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7 b04
+Version: 2.7 b05
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -62,7 +62,6 @@ class Scrib {
 		if ( isset( $_GET['scrib_suggest'] ) )
 			add_action( 'init', array( &$this, 'suggest_search' ));
 
-
 		add_action('admin_menu', array(&$this, 'addmenus'));
 		add_filter('bsuite_suggestive_taxonomies', array(&$this, 'the_taxonomies_for_bsuite_suggestive'), 10, 2);
 		add_filter('bsuite_link2me', array(&$this, 'link2me'), 10, 2);
@@ -72,8 +71,6 @@ class Scrib {
 		add_shortcode('scrib_availability', array(&$this, 'shortcode_availability'));
 		add_shortcode('scrib_taglink', array(&$this, 'shortcode_taglink'));
 		add_shortcode('scrib_hitcount', array(&$this, 'shortcode_hitcount'));
-
-		add_filter('bsuite_post_icon', array( &$this, 'marcish_the_bsuite_post_icon' ), 5, 2);
 
 		add_action('admin_menu', array( &$this, 'admin_menu_hook' ));
 		
@@ -92,7 +89,7 @@ class Scrib {
 	}
 
 	function init(){
-		global $wpdb, $wp_rewrite;
+		global $wpdb, $wp_rewrite, $bsuite;
 
 		$this->suggest_table = $wpdb->prefix . 'scrib_suggest';
 		$this->harvest_table = $wpdb->prefix . 'scrib_harvest';
@@ -122,6 +119,8 @@ class Scrib {
 
 		$this->kses_allowedposttags(); // allow more tags
 
+		if( $bsuite->loadavg < get_option( 'bsuite_load_max' )) // only do cron if load is low-ish
+			add_filter('bsuite_interval', array( &$this, 'import_harvest_passive' ));
 	}
 
 	public function activate() {
@@ -810,8 +809,7 @@ class Scrib {
 				die( wp_redirect( admin_url( 'post-new.php' ) .'?'. http_build_query( $_GET ) ));
 		}
 
-		add_submenu_page('post-new.php', 'bSuite bStat Reports', 'Archive Item', 'edit_posts', 'post-new.php?scrib_meditor_form=arc' );
-		add_submenu_page('post-new.php', 'bSuite bStat Reports', 'Bibliographic Record', 'edit_posts',  'post-new.php?scrib_meditor_form=marcish' );
+		add_submenu_page('post-new.php', 'Add New Bibliographic/Archive Record', 'New Catalog Record', 'edit_posts',  'post-new.php?scrib_meditor_form=marcish' );
 	}
 
 	public function meditor_register( $handle , $prototype ){
@@ -845,10 +843,6 @@ class Scrib {
 	}
 
 	public function meditor_suggest_tags(){
-		$s = sanitize_title( trim( $_REQUEST['q'] ));
-		if ( strlen( $s ) < 2 )
-			die; // require 2 chars for matching
-		
 		if ( isset( $_GET['tax'] )){
 			$taxonomy = explode(',', $_GET['tax'] );
 			$taxonomy = array_filter( array_map( 'sanitize_title', array_map( 'trim', $taxonomy )));
@@ -856,19 +850,31 @@ class Scrib {
 			$taxonomy = $this->taxonomies_for_suggest;
 		}
 
+		$s = sanitize_title( trim( $_REQUEST['q'] ));
+		if ( strlen( $s ) < 3 )
+			$s = '';
+
 		$cachekey = md5( $s . implode( $taxonomy ));
 
 		if( !$suggestion = wp_cache_get( $cachekey , 'scrib_suggest_meditor' )){
-			global $wpdb;
+			if ( strlen( $s ) < 3 ){
+				foreach( get_terms( $taxonomy, array( 'number' => 25, 'orderby' => 'count', 'order' => 'DESC' ) ) as $term )
+					$suggestion[] = $term->name;
 
-			$suggestion = implode( array_unique( $wpdb->get_col( "SELECT t.name, tt.taxonomy, LENGTH(t.name) AS len
-				FROM $wpdb->term_taxonomy AS tt 
-				INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id 
-				WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "') 
-				AND t.slug LIKE ('" . $s . "%')
-				ORDER BY len ASC, tt.count DESC
-				LIMIT 25;
-			")), "\n" );
+				$suggestion = implode( $suggestion, "\n" );
+			}else{
+				global $wpdb;
+	
+				$suggestion = implode( array_unique( $wpdb->get_col( "SELECT t.name, tt.taxonomy, LENGTH(t.name) AS len
+					FROM $wpdb->term_taxonomy AS tt 
+					INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id 
+					WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "') 
+					AND t.slug LIKE ('" . $s . "%')
+					ORDER BY len ASC, tt.count DESC
+					LIMIT 25;
+				")), "\n" );
+			}
+
 			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest_meditor' );
 		}
 
@@ -1867,6 +1873,8 @@ class Scrib {
 		// actions and filters for marcish form
 		add_action('scrib_meditor_form_marcish', array(&$this, 'meditor_form_hook'));
 
+		add_filter('bsuite_post_icon', array( &$this, 'marcish_the_bsuite_post_icon' ), 5, 2);
+
 		add_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
 		add_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
 		add_filter( 'the_content', array(&$this, 'marcish_the_content'));
@@ -1889,6 +1897,8 @@ class Scrib {
 
 	public function marcish_unregister(){
 		remove_action('scrib_meditor_form_marcish', array(&$this, 'meditor_form_hook'));
+
+		remove_filter('bsuite_post_icon', array( &$this, 'marcish_the_bsuite_post_icon' ), 5, 2);
 
 		remove_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
 		remove_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
@@ -2096,6 +2106,8 @@ class Scrib {
 		global $id;
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
 			return( $this->marcish_parse_excerpt( $r['marcish'] ));
+
+		return( $content );
 	}
 
 	function marcish_parse_excerpt( &$r ){
@@ -2162,6 +2174,8 @@ class Scrib {
 		global $id;
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
 			return( $this->marcish_parse_content( $r['marcish'] ));
+
+		return( $content );
 	}
 
 	function marcish_parse_content( &$r ){
@@ -3497,6 +3511,17 @@ class Scrib {
 			else if( isset( $r['arc']['description'][0]['cy'] ) && isset( $r['arc']['description'][0]['cm'] ))
 				$result .= '<li class="date_created"><h3>Date Created</h3><ul><li>'. date( 'F', strtotime( '2008-'. $r['arc']['description'][0]['cm'] .'-01')) .', '. $r['arc']['description'][0]['cy'] . ( 'exact' == $r['arc']['description'][0]['cc'] ? '' : ' <span class="certainty">'. $r['arc']['description'][0]['cc'] .'</span>' ) .'</li></ul></li>';
 
+			else if( isset( $r['arc']['description'][0]['cy'] ))
+				$result .= '<li class="date_created"><h3>Date Created</h3><ul><li>'. $r['arc']['description'][0]['cy'] . ( 'exact' == $r['arc']['description'][0]['cc'] ? '' : ' <span class="certainty">'. $r['arc']['description'][0]['cc'] .'</span>' ) .'</li></ul></li>';
+
+/*
+			else if( isset( $r['arc']['description'][0]['cm'] ) && isset( $r['arc']['description'][0]['cd'] ))
+				$result .= '<li class="date_created"><h3>Date Created</h3><ul><li>'. date( 'F j', strtotime( '2008-'. $r['arc']['description'][0]['cm'] .'-'. $r['arc']['description'][0]['cd'])) . ( 'exact' == $r['arc']['description'][0]['cc'] ? '' : ' <span class="certainty">'. $r['arc']['description'][0]['cc'] .'</span>' ) .'</li></ul></li>';
+*/
+
+			else if( isset( $r['arc']['description'][0]['cc'] ) && 'nodate' == $r['arc']['description'][0]['cc'])
+				$result .= '<li class="date_created"><h3>Date Created</h3><ul><li><span class="certainty">Uncertain</span></li></ul></li>';
+
 			if( isset( $r['arc']['transcript'][0]['a'] )){
 				$result .= '<li class="transcript"><h3>Transcription</h3><ul><li>'. $r['arc']['transcript'][0]['a'] .'</li></ul></li>' ;
 			}
@@ -3865,6 +3890,8 @@ TODO: update relationships to other posts when a post is saved.
 		$wpdb->get_results("REPLACE INTO $this->harvest_table
 			( source_id, harvest_date, imported, content, enriched ) 
 			VALUES ( '". $wpdb->escape( $bibr['_sourceid'] ) ."', NOW(), 0, '". $wpdb->escape( serialize( $bibr )) ."', 0 )" );
+
+		wp_cache_set( $bibr['_sourceid'], time() + 2500000, 'scrib_harvested', time() + 2500000 );
 	}
 
 	function import_post_exists( &$idnumbers ) {
@@ -3907,7 +3934,7 @@ TODO: update relationships to other posts when a post is saved.
 		unset( $bibr['_sourceid'] );
 
 		$postdata['post_content'] = $this->marcish_parse_words( $bibr );
-		$postdata['post_excerpt'] = $this->marcish_parse_excerpt( $bibr );
+		$postdata['post_excerpt'] = '';
 
 		if( empty( $postdata['post_title'] ))
 			return( FALSE );
@@ -3985,6 +4012,34 @@ TODO: update relationships to other posts when a post is saved.
 		?><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php
 	} 
 
+	function import_harvest_passive(){ 
+		global $wpdb, $bsuite; 
+
+		if( !$bsuite->get_lock( 'scrib_harvest_passive' ))
+			return( FALSE );
+
+		$posts = $wpdb->get_results('SELECT * FROM '. $this->harvest_table .' WHERE imported = 0 LIMIT 25', ARRAY_A);
+
+		if( is_array( $posts )) {
+			foreach( $posts as $post ) {
+				set_time_limit( 900 );
+
+				$post_id = $this->import_insert_post( unserialize( $post['content'] ));
+
+				if( $post_id ){
+					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1 WHERE source_id = "'. $post['source_id'] .'"' );
+				}else{
+					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = -1 WHERE source_id = "'. $post['source_id'] .'"' );
+				}
+			}
+
+			wp_defer_term_counting( FALSE ); // now update the term counts that we'd defered earlier
+
+		}
+
+		wp_defer_term_counting( FALSE ); // now update the term counts that we'd defered earlier
+	} 
+
 
 
 
@@ -4001,6 +4056,7 @@ TODO: update relationships to other posts when a post is saved.
 		// [scrib_bookjacket]<img... />[/scrib_bookjacket]
 		global $id, $bsuite;
 
+return('');
 
 		if( !is_singular() ){
 			return('<a href="'. get_permalink( $id ) .'">'. $content .'</a>');
@@ -4016,6 +4072,9 @@ TODO: update relationships to other posts when a post is saved.
 		$arg = shortcode_atts( array(
 			'sourceid' => FALSE
 		), $arg );
+
+global $id, $scribiii_import;
+return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		if( function_exists( 'scrib_availability' ) )
 			return( scrib_availability( $arg['sourceid'] ));
@@ -4794,5 +4853,3 @@ function scrib_the_related(){
 	global $scrib;
 	echo $scrib->the_related_bookjackets();
 }
-
-?>

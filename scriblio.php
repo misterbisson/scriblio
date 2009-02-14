@@ -379,7 +379,7 @@ class Scrib {
 
 		$terms  = array();
 		if( !empty( $the_wp_query->query_vars['s'] )){
-			$terms['s'] = explode( '|', stripslashes( urldecode( $the_wp_query->query_vars['s'] )));
+			$terms['s'] = array_filter( explode( '|', stripslashes( urldecode( $the_wp_query->query_vars['s'] ))));
 			unset( $the_wp_query->query_vars['s'] );
 		}
 
@@ -390,12 +390,14 @@ class Scrib {
 				foreach( $values as $val )
 					$terms[ $key ][] = $val;
 			}
-			$this->is_browse = TRUE;
 		}
 
 		$this->search_terms = array_filter( $terms );
 
 		if( $the_wp_query->is_search ){
+			if( !count( $temp ))
+				$this->is_browse = TRUE;
+
 			$this->add_search_filters();
 			return( $the_wp_query );
 		}
@@ -3894,13 +3896,28 @@ TODO: update relationships to other posts when a post is saved.
 	}
 
 	function import_post_exists( &$idnumbers ) {
-		$post_ids = array();
-		foreach( $idnumbers as $idnum )
-			if( is_taxonomy( $idnum['type'] ) && is_term( $idnum['id'] ))
-				$post_ids = array_merge( $post_ids, get_objects_in_term( is_term( $idnum['id'] ), $idnum['type'] ));
+		global $wpdb;
 
-		if( count( $post_ids ))
+		$post_ids = $tt_ids = array();
+		foreach( $idnumbers as $idnum )
+			$tt_ids[] = get_term( is_term( $idnum['id'] ), $idnum['type'] );
+
+		foreach( $tt_ids as $k => $tt_id )
+			if( isset( $tt_id->term_taxonomy_id ))
+				$tt_ids[ $k ] = (int) $tt_id->term_taxonomy_id;
+
+		if( count( $tt_ids ))
+			$post_ids = $wpdb->get_col( "SELECT object_id, COUNT(*) AS hits
+				FROM $wpdb->term_relationships
+				WHERE term_taxonomy_id IN ('". implode( '\',\'', $tt_ids ) ."')
+				GROUP BY object_id
+				ORDER BY hits DESC
+				LIMIT 100" );
+
+		// TODO: this matches the post with the most similar standard numbers; what should be done with the other posts?
+		if( is_array( $post_ids ) && 0 < absint( $post_ids[0] ))
 			return( $post_ids[0] );
+
 		return( FALSE );
 	}
 

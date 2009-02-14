@@ -3902,11 +3902,13 @@ TODO: update relationships to other posts when a post is saved.
 		foreach( $idnumbers as $idnum )
 			$tt_ids[] = get_term( is_term( $idnum['id'] ), $idnum['type'] );
 
-		foreach( $tt_ids as $k => $tt_id )
-			if( isset( $tt_id->term_taxonomy_id ))
-				$tt_ids[ $k ] = (int) $tt_id->term_taxonomy_id;
+		if( count( $tt_ids )){
+			foreach( $tt_ids as $k => $tt_id )
+				if( isset( $tt_id->term_taxonomy_id ))
+					$tt_ids[ $k ] = (int) $tt_id->term_taxonomy_id;
+				else
+					unset( $tt_ids[ $k ] );
 
-		if( count( $tt_ids ))
 			$post_ids = $wpdb->get_col( "SELECT object_id, COUNT(*) AS hits
 				FROM $wpdb->term_relationships
 				WHERE term_taxonomy_id IN ('". implode( '\',\'', $tt_ids ) ."')
@@ -3914,11 +3916,40 @@ TODO: update relationships to other posts when a post is saved.
 				ORDER BY hits DESC
 				LIMIT 100" );
 
-		// TODO: this matches the post with the most similar standard numbers; what should be done with the other posts?
-		if( is_array( $post_ids ) && 0 < absint( $post_ids[0] ))
-			return( $post_ids[0] );
+			if( count( $post_ids ) && 0 < absint( $post_ids[0] )){
+				// de-index the duplicate posts
+				// TODO: what if they have comments? What if others have linked to them?
+				if( 1 < count( $post_ids ))
+					$this->import_deindex_post( $post_ids ); 
+	
+				return( $post_ids[0] );
+			}
+		}
 
 		return( FALSE );
+	}
+
+	function import_deindex_post( $post_ids ){
+		// sets a post's status to draft so that it no longer appears in searches
+		// TODO: need to find a better status to hide it from searches, 
+		// but not invalidate incoming links or remove comments
+		global $wpdb;
+
+		foreach( (array) $post_ids as $post_id ){
+			$post_id = absint( $post_id );
+			if( !$post_id )
+				continue;
+	
+			// set the post to draft (TODO: use a WP function instead of writing to DB)
+			$wpdb->get_results( "UPDATE $wpdb->posts SET post_status = 'draft' WHERE ID = $post_id" );
+
+			// clear the post/page cache
+			clean_page_cache( $post_id );
+			clean_post_cache( $post_id );
+
+			// do the post transition
+			wp_transition_post_status( 'draft', 'publish', $post_id );
+		}
 	}
 
 	function import_insert_post( &$bibr ){

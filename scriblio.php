@@ -677,6 +677,18 @@ class Scrib {
 
 			$record = is_array( get_post_meta( $post_id, 'scrib_meditor_content', true )) ? get_post_meta( $post_id, 'scrib_meditor_content', true ) : array();
 
+			if( is_array( $_REQUEST['scrib_meditor'] )){
+				foreach( $_REQUEST['scrib_meditor'] as $key => &$val )
+					unset( $record[ $this->meditor_input->form_key ] );
+
+				$record = $this->meditor_merge_meta( $record, $this->meditor_sanitize_input( $_REQUEST['scrib_meditor'] ));
+
+				add_post_meta( $post_id, 'scrib_meditor_content', $record, TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', $record );
+	
+				do_action( 'scrib_meditor_save_record', $post_id, $record );
+			}
+			
+/*
 			foreach( $_REQUEST['scrib_meditor'] as $this->meditor_input->form_key => $this->meditor_input->form ){
 				unset( $record[ $this->meditor_input->form_key ] );
 				foreach( $this->meditor_input->form as $this->meditor_input->group_key => $this->meditor_input->group )
@@ -699,7 +711,59 @@ class Scrib {
 			add_post_meta( $post_id, 'scrib_meditor_content', $record, TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', $record );
 
 			do_action( 'scrib_meditor_save_record', $post_id, $record );
+*/
 		}
+	}
+
+	function meditor_merge_meta( $orig = array(), $new = array(), $nsourceid = FALSE ){
+		if( $forms = array_intersect( array_keys( $orig ), array_keys( $new ))){
+			$return = array();
+			foreach( $forms as $form ){
+				$sections = array_unique( array_merge( array_keys( $orig[ $form ] ), array_keys( $new[ $form ] )));
+
+				foreach( $sections as $section ){
+					// remove metadata that's sourced from the new sourceid
+					if( $nsourceid )
+						foreach( $orig[ $form ][ $section ] as $key => $val )
+							if( isset( $val['src'] ) && ( $val['src'] == $nsourceid ))
+								unset( $orig[ $form ][ $section ][ $key ] );
+
+					$return[ $form ][ $section ] = $this->array_unique_deep( array_merge( count( $new[ $form ][ $section ] ) ? $new[ $form ][ $section ] : array() , count( $orig[ $form ][ $section ] ) ? $orig[ $form ][ $section ] : array() ));
+				}
+			}
+
+			if( $diff = array_diff( array_keys( $orig ), array_keys( $new ))){
+				foreach( $diff as $form )
+					$return[ $form ] = array_merge( is_array( $orig[ $form ] ) ? $orig[ $form ] : array(), is_array( $new[ $form ] ) ? $new[ $form ] : array() );
+			}
+
+			return( $return );
+
+		}else{
+			return( array_merge( is_array( $orig ) ? $orig : array(), is_array( $new ) ? $new : array() ));
+		}
+	}
+
+	function meditor_sanitize_input( &$input ){
+		$record = array();
+		foreach( $input as $this->meditor_input->form_key => $this->meditor_input->form ){
+			foreach( $this->meditor_input->form as $this->meditor_input->group_key => $this->meditor_input->group )
+				foreach( $this->meditor_input->group as $this->meditor_input->iteration_key => $this->meditor_input->iteration )
+					foreach( $this->meditor_input->iteration as $this->meditor_input->key => $this->meditor_input->val ){
+						if( is_callable( $this->meditor_forms[ $this->meditor_input->form_key ]['_elements'][ $this->meditor_input->group_key ]['_elements'][ $this->meditor_input->key ]['_sanitize'] )){
+							$filtered = FALSE;
+
+							$filtered = call_user_func( $this->meditor_forms[ $this->meditor_input->form_key ]['_elements'][ $this->meditor_input->group_key ]['_elements'][ $this->meditor_input->key ]['_sanitize'] , stripslashes( $this->meditor_input->val ));
+
+							if( !empty( $filtered ))
+								$record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] = stripslashes( $filtered );
+						}else{
+							if( !empty( $record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] ))
+								$record[ $this->meditor_input->form_key ][ $this->meditor_input->group_key ][ $this->meditor_input->key ][ $this->meditor_input->iteration_key ][ $this->meditor_input->key ] = stripslashes( $this->meditor_input->val );
+						}
+					}
+		}
+		return( $record );
 	}
 
 	function meditor_sanitize_month( $val ){
@@ -886,6 +950,18 @@ class Scrib {
 
 
 	public function marcish_register( ){
+		$subject_types = array(
+			'subject' => 'Topical Term',
+			'genre' => 'Genre',
+			'person' => 'Person/Character',
+			'place' => 'Place',
+			'time' => 'Time',
+			'tag' => 'Tag',
+			'exhibit' => 'Exhibit',
+			'award' => 'Award',
+			'readlevel' => 'Reading Level',
+		);
+
 		$this->meditor_register( 'marcish', 
 			array(
 				'_title' => 'Bibliographic and Archive Item Record',
@@ -968,16 +1044,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
-										'subject' => 'Topical Term',
-										'genre' => 'Genre',
-										'person' => 'Person',
-										'place' => 'Place',
-										'time' => 'Time',
-										'exhibit' => 'Exhibit',
-										'award' => 'Award',
-									),
-									'_default' => 'exact',
+									'_values' => $subject_types,									'_default' => 'exact',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -993,16 +1060,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
-										'subject' => 'Topical Term',
-										'genre' => 'Genre',
-										'person' => 'Person',
-										'place' => 'Place',
-										'time' => 'Time',
-										'exhibit' => 'Exhibit',
-										'award' => 'Award',
-									),
-									'_default' => 'exact',
+									'_values' => $subject_types,									'_default' => 'exact',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1018,16 +1076,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
-										'subject' => 'Topical Term',
-										'genre' => 'Genre',
-										'person' => 'Person',
-										'place' => 'Place',
-										'time' => 'Time',
-										'exhibit' => 'Exhibit',
-										'award' => 'Award',
-									),
-									'_default' => 'exact',
+									'_values' => $subject_types,									'_default' => 'exact',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1043,16 +1092,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
-										'subject' => 'Topical Term',
-										'genre' => 'Genre',
-										'person' => 'Person',
-										'place' => 'Place',
-										'time' => 'Time',
-										'exhibit' => 'Exhibit',
-										'award' => 'Award',
-									),
-									'_default' => 'exact',
+									'_values' => $subject_types,									'_default' => 'exact',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1068,16 +1108,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
-										'subject' => 'Topical Term',
-										'genre' => 'Genre',
-										'person' => 'Person',
-										'place' => 'Place',
-										'time' => 'Time',
-										'exhibit' => 'Exhibit',
-										'award' => 'Award',
-									),
-									'_default' => 'exact',
+									'_values' => $subject_types,									'_default' => 'exact',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1093,16 +1124,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
-										'subject' => 'Topical Term',
-										'genre' => 'Genre',
-										'person' => 'Person',
-										'place' => 'Place',
-										'time' => 'Time',
-										'exhibit' => 'Exhibit',
-										'award' => 'Award',
-									),
-									'_default' => 'exact',
+									'_values' => $subject_types,									'_default' => 'exact',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1118,16 +1140,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
-										'subject' => 'Topical Term',
-										'genre' => 'Genre',
-										'person' => 'Person',
-										'place' => 'Place',
-										'time' => 'Time',
-										'exhibit' => 'Exhibit',
-										'award' => 'Award',
-									),
-									'_default' => 'exact',
+									'_values' => $subject_types,									'_default' => 'exact',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1275,7 +1288,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
-								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'location' => array(
 								'_title' => 'Location',
@@ -1283,7 +1296,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
-								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'src' => array(
 								'_title' => 'Source',
@@ -1512,7 +1525,7 @@ class Scrib {
 									'_type' => 'select',
 									'_values' => array( 
 										'ounce' => 'Ounces',
-										'pounds' => 'Pounds',
+										'pound' => 'Pounds',
 										'g' => 'Grams',
 										'kg' => 'Kilograms',
 									),
@@ -3885,12 +3898,12 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function import_insert_harvest( &$bibr ){
+	function import_insert_harvest( &$bibr, $enriched = 0 ){
 		global $wpdb;
 
 		$wpdb->get_results("REPLACE INTO $this->harvest_table
 			( source_id, harvest_date, imported, content, enriched ) 
-			VALUES ( '". $wpdb->escape( $bibr['_sourceid'] ) ."', NOW(), 0, '". $wpdb->escape( serialize( $bibr )) ."', 0 )" );
+			VALUES ( '". $wpdb->escape( $bibr['_sourceid'] ) ."', NOW(), 0, '". $wpdb->escape( serialize( $bibr )) ."', ". absint( $enriched ) ." )" );
 
 		wp_cache_set( $bibr['_sourceid'], time() + 2500000, 'scrib_harvested', time() + 2500000 );
 	}
@@ -3963,22 +3976,45 @@ TODO: update relationships to other posts when a post is saved.
 		kses_remove_filters(); // don't kses filter catalog records
 		define( 'WP_IMPORTING', TRUE ); // may improve performance by preventing exection of some unknown hooks
 
-		if( $this->import_post_exists( $bibr['idnumbers'] ))
-			$postdata['ID']			= $this->import_post_exists( $bibr['idnumbers'] );
-	
-		$postdata['post_title'] = $wpdb->escape(str_replace('\"', '"', $bibr['title'][0]['a']));
-		$postdata['post_date'] = 
-			$postdata['post_date_gmt'] = 
-			$postdata['post_modified'] = 
-			$postdata['post_modified_gmt'] = $bibr['_acqdate'];
+		if( $this->import_post_exists( $bibr['_idnumbers'] )){
+			$postdata['ID'] = $this->import_post_exists( $bibr['_idnumbers'] );
+
+			$oldrecord = get_post_meta( $postdata['ID'], 'scrib_meditor_content', true );
+
+			$postdata['post_title'] = $wpdb->escape( get_post_field( 'post_title', $postdata['ID'] ));
+
+			if( isset( $bibr['_acqdate'] ))
+				$postdata['post_date'] = 
+				$postdata['post_date_gmt'] = 
+				$postdata['post_modified'] = 
+				$postdata['post_modified_gmt'] = get_post_field( 'post_date', $postdata['ID'] );
+
+		}else{
+			$postdata['post_title'] = $wpdb->escape( str_replace( '\"', '"', $bibr['_title'] ));
+			
+			if( isset( $bibr['_acqdate'] ))
+				$postdata['post_date'] = 
+				$postdata['post_date_gmt'] = 
+				$postdata['post_modified'] = 
+				$postdata['post_modified_gmt'] = $bibr['_acqdate'];
+		}
+
 		$postdata['comment_status'] = get_option('default_comment_status');
 		$postdata['ping_status'] 	= get_option('default_ping_status');
 		$postdata['post_status'] 	= 'publish';
 		$postdata['post_type'] 		= 'post';
 		$postdata['post_author'] 	= $this->options['catalog_author_id'];
 
+		if( isset( $bibr['_icon'] ))
+			$the_icon = $bibr['_icon'];
+
+		$nsourceid = $bibr['_sourceid'];
+
+		unset( $bibr['_title'] );
 		unset( $bibr['_acqdate'] );
+		unset( $bibr['_idnumbers'] );
 		unset( $bibr['_sourceid'] );
+		unset( $bibr['_icon'] );
 
 		$postdata['post_content'] = $this->marcish_parse_words( $bibr );
 		$postdata['post_excerpt'] = '';
@@ -3986,10 +4022,21 @@ TODO: update relationships to other posts when a post is saved.
 		if( empty( $postdata['post_title'] ))
 			return( FALSE );
 
-		$post_id = wp_insert_post($postdata); // insert the post
+		// sanitize the input record
+		$bibr = $this->meditor_sanitize_input( $bibr );
+
+		// merge it with the old record
+		if( is_array( $oldrecord ))
+			$bibr = $this->meditor_merge_meta( $oldrecord, $bibr, $nsourceid );
+
+		$post_id = wp_insert_post( $postdata ); // insert the post
 		if($post_id){
-			add_post_meta( $post_id, 'scrib_meditor_content', array( 'marcish' => $bibr ), TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', array( 'marcish' => $bibr ) );
-			do_action( 'scrib_meditor_save_record', $post_id, array( 'marcish' => $bibr ));
+			add_post_meta( $post_id, 'scrib_meditor_content', $bibr, TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', $bibr );
+			do_action( 'scrib_meditor_save_record', $post_id, $bibr );
+
+			if( isset( $the_icon ))
+				add_post_meta( $post_id, 'bsuite_post_icon', $the_icon, TRUE ) or update_post_meta( $post_id, 'bsuite_post_icon', $the_icon );
+
 			return( $post_id );
 		}
 		return(FALSE);
@@ -4011,7 +4058,7 @@ TODO: update relationships to other posts when a post is saved.
 			$n = absint( $_GET[ 'n' ] );
 		}
 	
-		$posts = $wpdb->get_results('SELECT * FROM '. $this->harvest_table .' WHERE imported = 0 LIMIT 0,'. $interval, ARRAY_A);
+		$posts = $wpdb->get_results('SELECT * FROM '. $this->harvest_table .' WHERE imported = 0 ORDER BY enriched DESC LIMIT 0,'. $interval, ARRAY_A);
 
 		if( is_array( $posts )) {
 			echo "<p>Fetching records in batches of $interval...publishing them...making coffee. Please be patient.<br /><br /></p>";
@@ -4019,7 +4066,14 @@ TODO: update relationships to other posts when a post is saved.
 			foreach( $posts as $post ) {
 				set_time_limit( 900 );
 
-				$post_id = $this->import_insert_post( unserialize( $post['content'] ));
+				$r = unserialize( $post['content'] );
+				if( !is_array( $r ))
+					continue;
+
+				if( !array_intersect_key( $r, $this->meditor_forms ))
+					$r = $this->import_harvest_upgradeoldarray( $r );
+
+				$post_id = $this->import_insert_post( $r );
 
 				if( $post_id ){
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1 WHERE source_id = "'. $post['source_id'] .'"' );
@@ -4043,7 +4097,7 @@ TODO: update relationships to other posts when a post is saved.
 				location.href="?page=<?php echo plugin_basename( dirname( __FILE__ )); ?>/scriblio.php&command=<?php _e('Publish Harvested Records', 'Scriblio') ?>&n=<?php echo ( $n + $interval) ?>";
 
 			}
-			setTimeout( "nextpage()", 250 );
+			setTimeout( "nextpage()", 1250 );
 
 			//-->
 			</script>
@@ -4059,19 +4113,38 @@ TODO: update relationships to other posts when a post is saved.
 		?><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php
 	} 
 
+	function import_harvest_upgradeoldarray( &$r ){ 
+		$r = array( 'marcish' => $r );
+		$r['_title'] = $r['marcish']['title'][0]['a'];
+		$r['_acqdate'] = $r['marcish']['_acqdate'];
+		unset( $r['marcish']['_acqdate'] );
+		$r['_sourceid'] = $r['marcish']['_sourceid'];
+		unset( $r['marcish']['_sourceid'] );
+		$r['_idnumbers'] = $r['marcish']['idnumbers'];
+		
+		return( $r );
+	}
+
 	function import_harvest_passive(){ 
 		global $wpdb, $bsuite; 
 
 		if( !$bsuite->get_lock( 'scrib_harvest_passive' ))
 			return( FALSE );
 
-		$posts = $wpdb->get_results('SELECT * FROM '. $this->harvest_table .' WHERE imported = 0 LIMIT 25', ARRAY_A);
+		$posts = $wpdb->get_results('SELECT * FROM '. $this->harvest_table .' WHERE imported = 0 ORDER BY enriched DESC LIMIT 25', ARRAY_A);
 
 		if( is_array( $posts )) {
 			foreach( $posts as $post ) {
 				set_time_limit( 900 );
 
-				$post_id = $this->import_insert_post( unserialize( $post['content'] ));
+				$r = unserialize( $post['content'] );
+				if( !is_array( $r ))
+					continue;
+
+				if( !array_intersect_key( $r, $this->meditor_forms ))
+					$r = $this->import_harvest_upgradeoldarray( $r );
+
+				$post_id = $this->import_insert_post( $r );
 
 				if( $post_id ){
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1 WHERE source_id = "'. $post['source_id'] .'"' );
@@ -4871,8 +4944,15 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 	public function array_unique_deep( $array ) {
 		$uniquer = array();
-		foreach( $array as $key => $val )
-			$uniquer[ md5( serialize( $val )) ] = $val;
+		foreach( $array as $val ){
+				$key = $val;
+				if( is_array( $val )){
+					if( isset( $key['src'] ))
+						unset( $key['src'] );
+				}
+	
+				$uniquer[ md5( strtolower( serialize( $key ))) ] = $val;
+		}
 
 		return( array_values( $uniquer ));
 	} 

@@ -3935,8 +3935,8 @@ TODO: update relationships to other posts when a post is saved.
 				if( 1 < count( $post_ids ))
 					$this->import_deindex_post( $post_ids ); 
 	
-				return( $post_ids[0] );
 			}
+			return( $post_ids[0] );
 		}
 
 		return( FALSE );
@@ -3969,6 +3969,8 @@ TODO: update relationships to other posts when a post is saved.
 //		return(1);
 		global $wpdb, $bsuite;
 
+		if( !defined( 'DOING_AUTOSAVE' ) )
+			define( 'DOING_AUTOSAVE', TRUE ); // prevents revision tracking
 		wp_defer_term_counting( TRUE ); // may improve performance
 		remove_filter( 'content_save_pre', array( &$bsuite, 'innerindex_nametags' )); // don't build an inner index for catalog records
 		remove_filter( 'publish_post', '_publish_post_hook', 5, 1 ); // avoids pinging links in catalog records

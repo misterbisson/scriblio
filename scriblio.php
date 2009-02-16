@@ -4007,6 +4007,9 @@ TODO: update relationships to other posts when a post is saved.
 				else
 					unset( $tt_ids[ $k ] );
 
+			if( !count( $tt_ids ))
+				return( FALSE );
+
 			$post_ids = $wpdb->get_col( "SELECT object_id, COUNT(*) AS hits
 				FROM $wpdb->term_relationships
 				WHERE term_taxonomy_id IN ('". implode( '\',\'', $tt_ids ) ."')

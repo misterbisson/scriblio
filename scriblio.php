@@ -4014,12 +4014,12 @@ TODO: update relationships to other posts when a post is saved.
 				ORDER BY hits DESC
 				LIMIT 100" );
 
-			if( count( $post_ids ) && 0 < absint( $post_ids[0] )){
+			if( 1 < count( $post_ids )){
 				// de-index the duplicate posts
 				// TODO: what if they have comments? What if others have linked to them?
-				if( 1 < count( $post_ids ))
-					$this->import_deindex_post( $post_ids ); 
-	
+				$this->import_deindex_post( $post_ids ); 
+
+				sleep( 2 ); // give the database a moment to settle
 			}
 
 			foreach( $post_ids as $post_id )
@@ -5048,7 +5048,14 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$uniquer[ md5( strtolower( serialize( $key ))) ] = $val;
 		}
 		return( array_values( $uniquer ));
-	} 
+	}
+
+	public function make_utf8( $text ){
+		if( function_exists( 'mb_convert_encoding' ))
+			return( mb_convert_encoding( $text, 'UTF-8', 'LATIN1, ASCII, ISO-8859-1, UTF-8'));
+	
+		return( $text );
+	}
 
 }
 

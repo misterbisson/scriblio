@@ -3936,7 +3936,10 @@ TODO: update relationships to other posts when a post is saved.
 					$this->import_deindex_post( $post_ids ); 
 	
 			}
-			return( $post_ids[0] );
+
+			foreach( $post_ids as $post_id )
+				if( get_post( $post_id ))
+					return( $post_id );
 		}
 
 		return( FALSE );
@@ -3983,13 +3986,13 @@ TODO: update relationships to other posts when a post is saved.
 
 			$oldrecord = get_post_meta( $postdata['ID'], 'scrib_meditor_content', true );
 
-			$postdata['post_title'] = $wpdb->escape( get_post_field( 'post_title', $postdata['ID'] ));
+			$postdata['post_title'] = strlen( get_post_field( 'post_title', $postdata['ID'] )) ? get_post_field( 'post_title', $postdata['ID'] ) : $bibr['_title'];
 
 			if( isset( $bibr['_acqdate'] ))
 				$postdata['post_date'] = 
 				$postdata['post_date_gmt'] = 
 				$postdata['post_modified'] = 
-				$postdata['post_modified_gmt'] = get_post_field( 'post_date', $postdata['ID'] );
+				$postdata['post_modified_gmt'] = strlen( get_post_field( 'post_date', $postdata['ID'] )) ? get_post_field( 'post_date', $postdata['ID'] ) : $bibr['_acqdate'];
 
 		}else{
 			$postdata['post_title'] = $wpdb->escape( str_replace( '\"', '"', $bibr['_title'] ));

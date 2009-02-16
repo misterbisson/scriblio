@@ -55,7 +55,8 @@ class Scrib {
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
 		add_action('init', array(&$this, 'init'));
 
-		add_filter('parse_query', array(&$this, 'parse_query'), 10);
+		add_action('parse_query', array(&$this, 'parse_query'), 10);
+		add_action( 'pre_get_posts', array( &$this, 'pre_get_posts' ), 7 );
 		add_filter( 'posts_orderby', array( &$this, 'posts_orderby' ), 7 );
 
 		add_action('wp_ajax_meditor_suggest_tags', array( &$this, 'meditor_suggest_tags' ));
@@ -375,7 +376,6 @@ class Scrib {
 
 	public function parse_query( &$the_wp_query ){
 //print_r( $the_wp_query );
-		
 
 		$terms  = array();
 		if( !empty( $the_wp_query->query_vars['s'] )){
@@ -428,6 +428,14 @@ class Scrib {
 		return( $the_wp_query );
 	}
 
+	public function pre_get_posts( &$the_wp_query ){
+		if( isset( $the_wp_query->query_vars['category'] ) && !$this->is_browse )
+			die( wp_redirect( $this->options['browse_url'] ));
+
+		if( is_home() || is_front_page() )
+			$the_wp_query->query_vars['category__not_in'] = array( $this->options['catalog_category_id'] );
+		return( $the_wp_query );
+	}
 	public function add_search_filters(){
 		global $wpdb, $bsuite;
 

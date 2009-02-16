@@ -46,10 +46,11 @@ class Scrib {
 		wp_register_script( 'scrib-googlebook', $this->path_web . '/js/scrib.googlebook.js', array('jquery'), '20080422' );
 		wp_enqueue_script( 'scrib-googlebook' );	
 
+		wp_register_style( 'scrib-display', $this->path_web .'/css/display.css' );
+		wp_enqueue_style( 'scrib-display' );
 		wp_register_style( 'scrib-suggest', $this->path_web .'/css/suggest.css' );
 		wp_enqueue_style( 'scrib-suggest' );
 		add_action('wp_head', 'wp_print_styles', '9');
-
 
 		// register WordPress hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
@@ -429,13 +430,18 @@ class Scrib {
 	}
 
 	public function pre_get_posts( &$the_wp_query ){
-		if( isset( $the_wp_query->query_vars['category'] ) && !$this->is_browse )
+/*
+		// redirect requests for the catalog category page to the browse page
+		if( isset( $the_wp_query->query_vars['category'] ) && $the_wp_query->query_vars['category'] == get_cat_name( $this->options['catalog_category_id'] ) && !$this->is_browse )
 			die( wp_redirect( $this->options['browse_url'] ));
+*/
 
+		// hide catalog entries from the front page
 		if( is_home() || is_front_page() )
 			$the_wp_query->query_vars['category__not_in'] = array( $this->options['catalog_category_id'] );
 		return( $the_wp_query );
 	}
+
 	public function add_search_filters(){
 		global $wpdb, $bsuite;
 

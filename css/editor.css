@@ -98,6 +98,10 @@ ul#scrib_meditor {
 
 
 /* styles for marcish form */
+#scrib_meditor li.suppress {
+	display: none;
+}
+
 #scrib_meditor-marcish-attribution .a input{
 	margin-left: 35px;
 	width: 565px;

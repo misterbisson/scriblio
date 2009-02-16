@@ -722,13 +722,19 @@ class Scrib {
 				$sections = array_unique( array_merge( array_keys( $orig[ $form ] ), array_keys( $new[ $form ] )));
 
 				foreach( $sections as $section ){
+					// preserve the bits that are to be suppressed
+					$suppress = array();
+					foreach( $orig[ $form ][ $section ] as $key => $val )
+						if( $val['suppress'] )
+							$suppress[ $form ][ $section ][ $key ] = $val;
+
 					// remove metadata that's sourced from the new sourceid
 					if( $nsourceid )
 						foreach( $orig[ $form ][ $section ] as $key => $val )
 							if( isset( $val['src'] ) && ( $val['src'] == $nsourceid ))
 								unset( $orig[ $form ][ $section ][ $key ] );
 
-					$return[ $form ][ $section ] = $this->array_unique_deep( array_merge( count( $new[ $form ][ $section ] ) ? $new[ $form ][ $section ] : array() , count( $orig[ $form ][ $section ] ) ? $orig[ $form ][ $section ] : array() ));
+					$return[ $form ][ $section ] = $this->array_unique_deep( array_merge( count( $new[ $form ][ $section ] ) ? $new[ $form ][ $section ] : array() , count( $orig[ $form ][ $section ] ) ? $orig[ $form ][ $section ] : array() , $suppress ));
 				}
 			}
 
@@ -979,6 +985,13 @@ class Scrib {
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
+							),
 							'src' => array(
 								'_title' => 'Source',
 								'_input' => array(
@@ -1024,6 +1037,13 @@ class Scrib {
 									'_autocomplete' => 'off',
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
 							),
 							'src' => array(
 								'_title' => 'Source',
@@ -1160,6 +1180,13 @@ class Scrib {
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
+							),
 							'src' => array(
 								'_title' => 'Source',
 								'_input' => array(
@@ -1216,6 +1243,13 @@ class Scrib {
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
+							),
 							'src' => array(
 								'_title' => 'Source',
 								'_input' => array(
@@ -1254,6 +1288,13 @@ class Scrib {
 									'_autocomplete' => 'off',
 								),
 								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
 							),
 							'src' => array(
 								'_title' => 'Source',
@@ -1298,6 +1339,13 @@ class Scrib {
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
+							),
 							'src' => array(
 								'_title' => 'Source',
 								'_input' => array(
@@ -1341,6 +1389,13 @@ class Scrib {
 									'_autocomplete' => 'off',
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
 							),
 							'src' => array(
 								'_title' => 'Source',
@@ -1459,6 +1514,13 @@ class Scrib {
 									'_autocomplete' => 'off',
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
 							),
 							'src' => array(
 								'_title' => 'Source',
@@ -1600,6 +1662,13 @@ class Scrib {
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
+							),
 							'src' => array(
 								'_title' => 'Source',
 								'_input' => array(
@@ -1679,6 +1748,13 @@ class Scrib {
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
+							),
 							'src' => array(
 								'_title' => 'Source',
 								'_input' => array(
@@ -1709,6 +1785,13 @@ class Scrib {
 									'_autocomplete' => 'off',
 								),
 								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'suppress' => array(
+								'_title' => 'Suppress',
+								'_input' => array(
+									'_type' => 'checkbox',
+								),
+								'_sanitize' => 'absint',
 							),
 							'src' => array(
 								'_title' => 'Source',
@@ -3911,7 +3994,9 @@ TODO: update relationships to other posts when a post is saved.
 	function import_post_exists( &$idnumbers ) {
 		global $wpdb;
 
+		$post_id = FALSE;
 		$post_ids = $tt_ids = array();
+
 		foreach( $idnumbers as $idnum )
 			$tt_ids[] = get_term( is_term( $idnum['id'] ), $idnum['type'] );
 
@@ -3968,7 +4053,7 @@ TODO: update relationships to other posts when a post is saved.
 		}
 	}
 
-	function import_insert_post( &$bibr ){
+	function import_insert_post( $bibr ){
 //		return(1);
 		global $wpdb, $bsuite;
 
@@ -3981,6 +4066,7 @@ TODO: update relationships to other posts when a post is saved.
 		kses_remove_filters(); // don't kses filter catalog records
 		define( 'WP_IMPORTING', TRUE ); // may improve performance by preventing exection of some unknown hooks
 
+		$postdata = array();
 		if( $this->import_post_exists( $bibr['_idnumbers'] )){
 			$postdata['ID'] = $this->import_post_exists( $bibr['_idnumbers'] );
 
@@ -4062,7 +4148,7 @@ TODO: update relationships to other posts when a post is saved.
 		} else {
 			$n = absint( $_GET[ 'n' ] );
 		}
-	
+
 		$posts = $wpdb->get_results('SELECT * FROM '. $this->harvest_table .' WHERE imported = 0 ORDER BY enriched DESC LIMIT 0,'. $interval, ARRAY_A);
 
 		if( is_array( $posts )) {
@@ -4071,8 +4157,11 @@ TODO: update relationships to other posts when a post is saved.
 			foreach( $posts as $post ) {
 				set_time_limit( 900 );
 
+				$r = array();
+				$post_id = FALSE;
+
 				$r = unserialize( $post['content'] );
-				if( !is_array( $r ))
+				if( !count( $r ))
 					continue;
 
 				if( !array_intersect_key( $r, $this->meditor_forms ))
@@ -4088,7 +4177,6 @@ TODO: update relationships to other posts when a post is saved.
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = -1 WHERE source_id = "'. $post['source_id'] .'"' );
 				}
 			}
-
 			echo '</ol>';
 
 			wp_defer_term_counting( FALSE ); // now update the term counts that we'd defered earlier
@@ -4100,7 +4188,6 @@ TODO: update relationships to other posts when a post is saved.
 
 			function nextpage() {
 				location.href="?page=<?php echo plugin_basename( dirname( __FILE__ )); ?>/scriblio.php&command=<?php _e('Publish Harvested Records', 'Scriblio') ?>&n=<?php echo ( $n + $interval) ?>";
-
 			}
 			setTimeout( "nextpage()", 1250 );
 
@@ -4950,18 +5037,18 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 	public function array_unique_deep( $array ) {
 		$uniquer = array();
 		foreach( $array as $val ){
-				$key = $val;
-				if( is_array( $val )){
-					if( isset( $key['src'] ))
-						unset( $key['src'] );
-				}
-	
-				$uniquer[ md5( strtolower( serialize( $key ))) ] = $val;
-		}
+			$key = $val;
+			if( is_array( $val )){
+				if( isset( $key['src'] ))
+					unset( $key['src'] );
+				if( isset( $key['suppress'] ))
+					unset( $key['suppress'] );
+			}
 
+			$uniquer[ md5( strtolower( serialize( $key ))) ] = $val;
+		}
 		return( array_values( $uniquer ));
 	} 
-
 
 }
 

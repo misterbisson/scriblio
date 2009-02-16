@@ -4171,10 +4171,11 @@ TODO: update relationships to other posts when a post is saved.
 
 				if( $post_id ){
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1 WHERE source_id = "'. $post['source_id'] .'"' );
-					echo '<li><a href="'. get_permalink( $post_id ) .'" target="_blank">'. get_the_title( $post_id ) .'</a></li>';
+					echo '<li><a href="'. get_permalink( $post_id ) .'" target="_blank">'. get_the_title( $post_id ) .'</a> from '. $post['source_id'] .'</li>';
 					flush();
 				}else{
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = -1 WHERE source_id = "'. $post['source_id'] .'"' );
+					echo '<li>Failed to publish '. $post['source_id'] .'</li>';
 				}
 			}
 			echo '</ol>';

@@ -4374,30 +4374,58 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		}
 
 		$cachekey = md5( $s . implode( $taxonomy ));
-
 		if(!$suggestion = wp_cache_get( $cachekey , 'scrib_suggest' )){
 			global $wpdb;
 
+/* old, innefficient way:
 			$results = $wpdb->get_results( "SELECT t.name, tt.taxonomy, LENGTH(t.name) AS len
 				FROM $wpdb->term_taxonomy AS tt 
 				INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id 
 				WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "') 
 				AND t.slug LIKE ('" . $s . "%')
 				ORDER BY len ASC, tt.count DESC
+				LIMIT 50;
+			");
+*/
+
+			$results = $wpdb->get_results( "SELECT t.name, tt.taxonomy, t.len
+				FROM 
+				(
+					SELECT term_id, name, LENGTH(name) AS len
+					FROM $wpdb->terms 
+					WHERE slug LIKE ('" . $s . "%')
+					ORDER BY len ASC
+					LIMIT 100
+				) t
+				JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id 
+				WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "')
+				ORDER BY len ASC, tt.count DESC
 				LIMIT 25;
 			");
-	
+
+
+
+			$searchfor = $suggestion = $beginswith = array();
+			$searchfor[] = 'Search for "<a href="'. $this->get_search_link( array( 's' => array( attribute_escape( $_REQUEST['q'] )))) .'">'. attribute_escape( $_REQUEST['q'] ) .'</a>"';
 			$template = '<span class="taxonomy_name">%%taxonomy%%</span> <a href="%%link%%">%%term%%</a>';
 			foreach($results as $term){
-				if('hint' == $term->taxonomy)
+				if('hint' == $term->taxonomy){
 					$suggestion[] = str_replace(array('%%term%%','%%taxonomy%%','%%link%%'), array($term->name, $this->taxonomy_name['s'], $this->get_search_link(array('s' => array( $this->suggest_search_fixlong( $term->name ))))), $template);
-				else
-					$suggestion[] = str_replace(array('%%term%%','%%taxonomy%%','%%link%%'), array($term->name, $this->taxonomy_name[$term->taxonomy], $this->get_search_link(array($term->taxonomy => array( $this->suggest_search_fixlong( $term->name ))))), $template);
+				}else{
+					$suggestion[] = str_replace(array('%%term%%','%%taxonomy%%','%%link%%'), array($term->name, $this->taxonomy_name[ $term->taxonomy ], $this->get_search_link(array($term->taxonomy => array( $this->suggest_search_fixlong( $term->name ))))), $template);
+
+					$beginswith[ $term->taxonomy ] = $this->taxonomy_name[ $term->taxonomy ] .' begins with "<a href="'. $this->get_search_link( array( $term->taxonomy => array( $s .'*' ))) .'">'. attribute_escape( $_REQUEST['q'] ) .'</a>"';
+ 					}
 			}
+			$suggestion = array_merge( $searchfor, array_slice( $suggestion, 0, 10 ), $beginswith );
 			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest' );
 		}
 
 		echo implode($suggestion, "\n");
+/*
+		print_r( $wpdb->queries );
+		echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php
+*/
 		die;
 	}
 

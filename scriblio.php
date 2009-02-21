@@ -4341,9 +4341,11 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 ?>
 	<script type="text/javascript">
 		jQuery(function() {
-			jQuery("#s").scribsuggest("<?php bloginfo('home'); ?>/index.php?scrib_suggest=go");
+			jQuery("#s").addClass("scrib-search");
 
-			jQuery("#s").val("<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>")
+			jQuery("input.scrib-search").scribsuggest("<?php bloginfo('home'); ?>/index.php?scrib_suggest=go");
+
+			jQuery("input.scrib-search").val("<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>")
 			.focus(function(){
 				if(this.value == "<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>") {
 					this.value = '';

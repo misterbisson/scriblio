@@ -60,6 +60,8 @@ if ($_POST['scrib-submit']) {
 	foreach($this->taxonomies_getall() as $taxonomy){
 		if(!empty($_POST['taxonomy_use_' . $taxonomy ]))
 			$newoptions['taxonomies'][$taxonomy] = $_POST['taxonomy_name_' . $taxonomy ];
+		else if( isset( $newoptions['taxonomies'][ $taxonomy ] ))
+			unset( $newoptions['taxonomies'][ $taxonomy ] );
 		if(!empty($_POST['taxonomy_for_related_' . $taxonomy ]))
 			$newoptions['taxonomies_for_related'][] = $taxonomy;
 		if(!empty($_POST['taxonomy_for_suggest_' . $taxonomy ]))

@@ -112,7 +112,7 @@ class Scrib {
 
 //		add_rewrite_endpoint( 'browse', EP_ROOT );
 
-		$this->initial_articles = array( 'a ','an ','da ','de ','the ','ye ' );
+		$this->initial_articles = array( '/^a /i','/^an /i','/^da /i','/^de /i','/^the /i','/^ye /i' );
 
 		$this->taxonomy_name = $this->options['taxonomies'];
 		$this->taxonomies = $this->taxonomies_register();
@@ -519,14 +519,20 @@ class Scrib {
 
 //echo "<h2>$query</h2>";
 
-		$this->the_matching_facets = $wpdb->get_results("SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
+		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
 			FROM (
 				". str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, 1000', $query )) .
 			") p
 			INNER JOIN $wpdb->term_relationships c ON p.ID = c.object_id
 			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
 			INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
-			GROUP BY c.term_taxonomy_id ORDER BY `count` DESC LIMIT 1500");
+			GROUP BY c.term_taxonomy_id ORDER BY `count` DESC LIMIT 1500";
+
+		$cachekey = md5( $facets_query );
+		if( !$this->the_matching_facets = wp_cache_get( $cachekey , 'scrib_facets' )){
+			$this->the_matching_facets = $wpdb->get_results( $facets_query );
+			wp_cache_set( $cachekey , $this->the_matching_facets, 'scrib_facets', 126000 );
+		}
 
 		return($query);
 	}
@@ -863,7 +869,7 @@ class Scrib {
 
 	function meditor_strip_initial_articles( $content ) {
 		// TODO: add more articles, such as those from here: http://www.loc.gov/marc/bibliographic/bdapndxf.html
-		return( str_ireplace( $this->initial_articles, '', $content ));
+		return( preg_replace( $this->initial_articles, '', $content ));
 	}
 
 	function meditor_pre_save_filters( $content ) {
@@ -960,7 +966,7 @@ class Scrib {
 				")), "\n" );
 			}
 
-			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest_meditor' );
+			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest_meditor', 1800 );
 		}
 
 		echo $suggestion;
@@ -4105,6 +4111,7 @@ TODO: update relationships to other posts when a post is saved.
 				$postdata['post_date_gmt'] = 
 				$postdata['post_modified'] = 
 				$postdata['post_modified_gmt'] = $bibr['_acqdate'];
+
 		}
 
 		$postdata['comment_status'] = get_option('default_comment_status');
@@ -4420,7 +4427,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
  					}
 			}
 			$suggestion = array_merge( $searchfor, array_slice( $suggestion, 0, 10 ), $beginswith );
-			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest' );
+			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest', 126000 );
 		}
 
 		echo implode($suggestion, "\n");
@@ -4692,7 +4699,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$cache = unserialize( curl_exec( $session ));
 			curl_close( $session );
 
-			wp_cache_add( $cache_key , $cache, 'scrib_spellcheck' );
+			wp_cache_set( $cache_key , $cache, 'scrib_spellcheck', time() + 2500000 );
 
 		}
 		if( !isset( $cache['ResultSet']['Result'] ))

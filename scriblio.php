@@ -4397,7 +4397,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			");
 */
 
-			$results = $wpdb->get_results( "SELECT t.name, tt.taxonomy, t.len
+			$results = $wpdb->get_results( "SELECT t.name, tt.taxonomy, ( ( 100 - t.len ) * tt.count ) AS hits
 				FROM 
 				(
 					SELECT term_id, name, LENGTH(name) AS len
@@ -4408,7 +4408,8 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				) t
 				JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id 
 				WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "')
-				ORDER BY len ASC, tt.count DESC
+				AND tt.count > 0
+				ORDER BY hits DESC
 				LIMIT 25;
 			");
 

@@ -33,7 +33,7 @@ class Scrib {
 
 	var $meditor_forms = array();
 
-	function __construct(){
+	public function __construct(){
 		global $wpdb;
 
 		// establish web path to this plugin's directory
@@ -90,7 +90,7 @@ class Scrib {
 		// end register WordPress hooks
 	}
 
-	function init(){
+	public function init(){
 		global $wpdb, $wp_rewrite, $bsuite;
 
 		$this->suggest_table = $wpdb->prefix . 'scrib_suggest';
@@ -500,6 +500,7 @@ class Scrib {
 	public function posts_fields( $query ) {
 		return( $query . implode( $this->posts_fields ));
 	}
+
 	public function posts_orderby( $query ) {
 		global $wp_query, $wpdb;
 
@@ -508,25 +509,28 @@ class Scrib {
 		else
 			return( str_replace( $wpdb->posts .'.post_date', $wpdb->posts .'.post_date_gmt', $query ));
 	}
+
 	public function posts_join( $query ) {
 		return( $query . implode( $this->posts_join ));
 	}
+
 	public function posts_where( $query ) {
 		return( $query . implode( $this->posts_where ));
 	}
+
 	public function posts_request( $query ) {
 		global $wpdb;
 
 //echo "<h2>$query</h2>";
 
 		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
-			FROM (
-				". str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, 1000', $query )) .
+			FROM ("
+				. str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, 1000', $query )) .
 			") p
 			INNER JOIN $wpdb->term_relationships c ON p.ID = c.object_id
 			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
 			INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
-			GROUP BY c.term_taxonomy_id ORDER BY `count` DESC LIMIT 1500";
+			GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 1500";
 
 		$cachekey = md5( $facets_query );
 		if( !$this->the_matching_facets = wp_cache_get( $cachekey , 'scrib_facets' )){
@@ -542,7 +546,7 @@ class Scrib {
 		$search_terms = $this->search_terms;
 
 		if(!empty($search_terms)){
-			echo '<ul>';	
+			echo '<ul>';
 			reset($search_terms);
 			while (list($key, $val) = each($search_terms)) {
 				for ($i = 0; count($val) > $i; $i++){
@@ -592,7 +596,7 @@ class Scrib {
 
 
 
-	function meditor_metabox( ){
+	public function meditor_metabox( ){
 		global $post_ID;
 		if( $post_ID && ( $data = get_post_meta( $post_ID, 'scrib_meditor_content', true )) ){
 			if( is_string( $data ))
@@ -614,7 +618,7 @@ class Scrib {
 		}
 	}
 
-	function meditor_form( $handle, &$prototype, &$data = array() ){
+	public function meditor_form( $handle, &$prototype, &$data = array() ){
 		echo '<ul id="scrib_meditor">';
 		foreach( $prototype['_elements'] as $key => $val ){
 			$val = is_array( $data[ $key ] ) ? $data[ $key ] : array( array() );
@@ -628,7 +632,7 @@ class Scrib {
 		do_action( 'scrib_meditor_form_'. $handle );
 	}
 
-	function meditor_form_sub( $handle, $prototype, $data, $fieldset, $ordinal ){
+	public function meditor_form_sub( $handle, $prototype, $data, $fieldset, $ordinal ){
 		static $tabindex = 1;
 
 		echo '<li class="fieldset '. ( $prototype['_repeatable'] ? 'repeatable ' : '' ) . $handle .' '. $fieldset .'"><ul class="fieldset">';
@@ -671,12 +675,16 @@ class Scrib {
 			}
 			echo '</li>';
 
+			if( isset( $prototype['_elements'][ $key ]['_suggest'] ) )
+				$this->meditor_suggest_js[ $handle .'-'. $fieldset .'-'. $key ] = 'jQuery("#scrib_meditor-'. $handle .'-'. $fieldset .' li.'. $key .' input").suggest( "admin-ajax.php?action=meditor_suggest_tags&tax='. $prototype['_elements'][ $key ]['_suggest'] .'", { delay: 500, minchars: 2 } );';
+
 			$tabindex++;
 		}
 		echo '</ul></li>';
+
 	}
 
-	function meditor_add_related_commandlinks( $null, $handle ) {
+	public function meditor_add_related_commandlinks( $null, $handle ) {
 		global $post_ID;
 		if( $post_ID ){
 			echo '<p id="scrib_meditor_addrelated">';
@@ -688,7 +696,7 @@ class Scrib {
 		}
 	}
 
-	function meditor_save_post($post_id, $post) {
+	public function meditor_save_post($post_id, $post) {
 		if ( $post_id && is_array( $_REQUEST['scrib_meditor'] )){
 
 			// make sure meta is added to the post, not a revision
@@ -735,7 +743,7 @@ class Scrib {
 		}
 	}
 
-	function meditor_merge_meta( $orig = array(), $new = array(), $nsourceid = FALSE ){
+	public function meditor_merge_meta( $orig = array(), $new = array(), $nsourceid = FALSE ){
 		if( $forms = array_intersect( array_keys( $orig ), array_keys( $new ))){
 			$return = array();
 			foreach( $forms as $form ){
@@ -770,7 +778,7 @@ class Scrib {
 		}
 	}
 
-	function meditor_sanitize_input( &$input ){
+	public function meditor_sanitize_input( &$input ){
 		$record = array();
 		foreach( $input as $this->meditor_input->form_key => $this->meditor_input->form ){
 			foreach( $this->meditor_input->form as $this->meditor_input->group_key => $this->meditor_input->group )
@@ -792,7 +800,7 @@ class Scrib {
 		return( $record );
 	}
 
-	function meditor_sanitize_month( $val ){
+	public function meditor_sanitize_month( $val ){
 		if( !is_numeric( $val ) && !empty( $val )){
 			if( strtotime( $val .' 2008' ))
 				return( date( 'm', strtotime( $val .' 2008' )));
@@ -804,20 +812,20 @@ class Scrib {
 		return( FALSE );
 	}
 	
-	function meditor_sanitize_day( $val ){
+	public function meditor_sanitize_day( $val ){
 		$val = absint( $val );
 		if( $val > 0 &&  $val < 32 )
 			return( $val );
 		return( FALSE );
 	}
 
-	function meditor_sanitize_selectlist( $val ){
+	public function meditor_sanitize_selectlist( $val ){
 		if( array_key_exists( $val, $this->meditor_forms[ $this->meditor_input->form_key ]['_elements'][ $this->meditor_input->group_key ]['_elements'][ $this->meditor_input->key ]['_input']['_values'] ))
 			return( $val );
 		return( FALSE );
 	}
 
-	function meditor_sanitize_punctuation( $str ) {
+	public function meditor_sanitize_punctuation( $str ) {
 		// props to K. T. Lam of HKUST
 
 		$str = html_entity_decode( $str );
@@ -853,7 +861,7 @@ class Scrib {
 		return( $str );
 	}
 
-	function meditor_sanitize_related( $val ){
+	public function meditor_sanitize_related( $val ){
 		if( is_numeric( $val ) && get_permalink( absint( $val )) )
 			return( absint( $val ) );
 
@@ -867,12 +875,12 @@ class Scrib {
 		return( FALSE );
 	}
 
-	function meditor_strip_initial_articles( $content ) {
+	public function meditor_strip_initial_articles( $content ) {
 		// TODO: add more articles, such as those from here: http://www.loc.gov/marc/bibliographic/bdapndxf.html
 		return( preg_replace( $this->initial_articles, '', $content ));
 	}
 
-	function meditor_pre_save_filters( $content ) {
+	public function meditor_pre_save_filters( $content ) {
 		if ( is_array( $_REQUEST['scrib_meditor'] )){
 			switch( current_filter() ){
 				case 'pre_post_title':
@@ -926,6 +934,12 @@ class Scrib {
 		<script type="text/javascript">
 			scrib_meditor();
 		</script>
+
+		<script type="text/javascript">
+			jQuery(function() {
+				<?php echo implode( "\n\t\t\t\t", $this->meditor_suggest_js ) ."\n"; ?>
+			});
+		</script>
 <?php
 	}
 
@@ -942,13 +956,13 @@ class Scrib {
 		}
 
 		$s = sanitize_title( trim( $_REQUEST['q'] ));
-		if ( strlen( $s ) < 3 )
+		if ( strlen( $s ) < 2 )
 			$s = '';
 
 		$cachekey = md5( $s . implode( $taxonomy ));
 
 		if( !$suggestion = wp_cache_get( $cachekey , 'scrib_suggest_meditor' )){
-			if ( strlen( $s ) < 3 ){
+			if ( empty( $s ) ){
 				foreach( get_terms( $taxonomy, array( 'number' => 25, 'orderby' => 'count', 'order' => 'DESC' ) ) as $term )
 					$suggestion[] = $term->name;
 
@@ -956,13 +970,20 @@ class Scrib {
 			}else{
 				global $wpdb;
 	
-				$suggestion = implode( array_unique( $wpdb->get_col( "SELECT t.name, tt.taxonomy, LENGTH(t.name) AS len
-					FROM $wpdb->term_taxonomy AS tt 
-					INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id 
-					WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "') 
-					AND t.slug LIKE ('" . $s . "%')
-					ORDER BY len ASC, tt.count DESC
-					LIMIT 25;
+				$suggestion = implode( array_unique( $wpdb->get_col( "SELECT t.name, ((( 100 - t.len ) + 1 ) * tt.count ) AS hits
+					FROM 
+					(
+						SELECT term_id, name, LENGTH(name) AS len
+						FROM $wpdb->terms 
+						WHERE slug LIKE ('" . $s . "%')
+						ORDER BY len ASC
+						LIMIT 100
+					) t
+					JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id 
+					WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "')
+					AND tt.count > 0
+					ORDER BY hits DESC
+					LIMIT 11;
 				")), "\n" );
 			}
 
@@ -1003,6 +1024,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'title',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'suppress' => array(
@@ -1048,6 +1070,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'creator',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'role' => array(
@@ -1084,7 +1107,8 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => $subject_types,									'_default' => 'exact',
+									'_values' => $subject_types,
+									'_default' => 'subject',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1094,13 +1118,15 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'subject',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'b_type' => array(
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => $subject_types,									'_default' => 'exact',
+									'_values' => $subject_types,
+									'_default' => 'subject',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1110,13 +1136,15 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'subject',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'c_type' => array(
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => $subject_types,									'_default' => 'exact',
+									'_values' => $subject_types,
+									'_default' => 'subject',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1126,13 +1154,15 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'subject',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'd_type' => array(
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => $subject_types,									'_default' => 'exact',
+									'_values' => $subject_types,
+									'_default' => 'subject',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1142,13 +1172,15 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'subject',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'e_type' => array(
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => $subject_types,									'_default' => 'exact',
+									'_values' => $subject_types,
+									'_default' => 'subject',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1158,13 +1190,15 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'subject',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'f_type' => array(
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => $subject_types,									'_default' => 'exact',
+									'_values' => $subject_types,
+									'_default' => 'subject',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1174,13 +1208,15 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'subject',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'g_type' => array(
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => $subject_types,									'_default' => 'exact',
+									'_values' => $subject_types,
+									'_default' => 'subject',
 								),
 								'_sanitize' => array( $this, 'meditor_sanitize_selectlist' ),
 							),
@@ -1190,6 +1226,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'subject',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'dictionary' => array(
@@ -1710,6 +1747,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'format',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'b' => array(
@@ -1718,6 +1756,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'format',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'c' => array(
@@ -1726,6 +1765,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'format',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'd' => array(
@@ -1734,6 +1774,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'format',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'e' => array(
@@ -1742,6 +1783,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'format',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'f' => array(
@@ -1750,6 +1792,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'format',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'g' => array(
@@ -1758,6 +1801,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
+								'_suggest' => 'format',
 								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'dictionary' => array(
@@ -2037,7 +2081,7 @@ class Scrib {
 		remove_filter('scrib_meditor_add_sibling', array(&$this, 'marcish_add_sibling'), 1, 2);
 	}
 
-	function marcish_the_bsuite_post_icon( &$input, $id ) {
+	public function marcish_the_bsuite_post_icon( &$input, $id ) {
 		if( is_array( $input ))
 			return( $input );
 
@@ -2087,7 +2131,7 @@ class Scrib {
 
 	}
 
-	function marcish_parse_parts( &$r ){
+	public function marcish_parse_parts( &$r ){
 		$parsed = array();
 		foreach( $r['idnumbers'] as $temp ){
 			switch( $temp['type'] ){ 
@@ -2207,13 +2251,13 @@ class Scrib {
 		return( $parsed );
 	}
 
-	function marcish_pre_excerpt( $content, $r ) {
+	public function marcish_pre_excerpt( $content, $r ) {
 		if( isset( $r['marcish'] ))
 			return( $this->marcish_parse_excerpt( $r['marcish'] ));
 		return( $content );
 	}
 
-	function marcish_pre_content( $content, $r ) {
+	public function marcish_pre_content( $content, $r ) {
 		if( isset( $r['marcish'] ))
 			return( $this->marcish_parse_words( $r['marcish'] ));
 		return( $content );
@@ -2227,7 +2271,7 @@ class Scrib {
 		return( $content );
 	}
 
-	function marcish_parse_excerpt( &$r ){
+	public function marcish_parse_excerpt( &$r ){
 		global $id, $bsuite;
 
 		$parsed = $this->marcish_parse_parts( $r );
@@ -2295,7 +2339,7 @@ class Scrib {
 		return( $content );
 	}
 
-	function marcish_parse_content( &$r ){
+	public function marcish_parse_content( &$r ){
 		global $id, $bsuite;
 		$parsed = $this->marcish_parse_parts( $r );
 
@@ -2438,7 +2482,7 @@ class Scrib {
 		return($result);
 	}
 
-	function marcish_parse_words( &$r ){
+	public function marcish_parse_words( &$r ){
 		$parsed = $this->marcish_parse_parts( $r );
 
 		$result = '';
@@ -2492,7 +2536,7 @@ class Scrib {
 		return( strip_tags( $result ));
 	}
 
-	function marcish_the_author_filter( $content ){
+	public function marcish_the_author_filter( $content ){
 		global $id;
 
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && isset( $r['marcish']['attribution'][0]['a'] ))
@@ -2501,7 +2545,7 @@ class Scrib {
 			return( $content );
 	}
 
-	function marcish_author_link_filter( $content ){
+	public function marcish_author_link_filter( $content ){
 		global $id;
 
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish']['creator'] )){
@@ -2516,7 +2560,7 @@ class Scrib {
 	}
 
 
-	function marcish_save_record( $post_id , $r ) {
+	public function marcish_save_record( $post_id , $r ) {
 		$stopwords = array( 'and', 'the', 'new', 'use', 'for', 'united', 'states' );
 
 		$facets = array();
@@ -2674,7 +2718,7 @@ class Scrib {
 		}
 	}
 
-	function marcish_update_related( &$from_post_id, &$rel ) {
+	public function marcish_update_related( &$from_post_id, &$rel ) {
 		if( absint( $rel['record'] ) && ( $r = get_post_meta( absint( $rel['record'] ), 'scrib_meditor_content', TRUE )) && ( is_array( $r['marcish'] )) ){
 			if( is_string( $r ))
 				$r = unserialize( $r );
@@ -2689,7 +2733,7 @@ class Scrib {
 		}
 	}
 
-	function marcish_add_parent( &$r, &$from ) {
+	public function marcish_add_parent( &$r, &$from ) {
 		// the new record is the parent, the old record is the child
 		if ( is_array( $r['marcish'] )){
 			unset( $r['marcish']['title'] );
@@ -2703,7 +2747,7 @@ class Scrib {
 		return( $r );
 	}
 
-	function marcish_add_child( &$r, &$from ) {
+	public function marcish_add_child( &$r, &$from ) {
 		// the new record is the child, the old record is the parent
 		if ( is_array( $r['marcish'] )){
 			unset( $r['marcish']['title'] );
@@ -2717,7 +2761,7 @@ class Scrib {
 		return( $r );
 	}
 
-	function marcish_add_next( &$r, &$from ) {
+	public function marcish_add_next( &$r, &$from ) {
 		// the new record is the next page in a series, the old record is the previous
 		if ( is_array( $r['marcish'] )){
 			unset( $r['marcish']['title'] );
@@ -2731,7 +2775,7 @@ class Scrib {
 		return( $r );
 	}
 
-	function marcish_add_previous( &$r, &$from ) {
+	public function marcish_add_previous( &$r, &$from ) {
 		// the new record is the previous page in a series, the old record is the next
 		if ( is_array( $r['marcish'] )){
 			unset( $r['marcish']['title'] );
@@ -2745,7 +2789,7 @@ class Scrib {
 		return( $r );
 	}
 
-	function marcish_add_reverse( &$r, &$from ) {
+	public function marcish_add_reverse( &$r, &$from ) {
 		// the new record is the reverse, the old record is the reverse
 		if ( is_array( $r['marcish'] )){
 			unset( $r['marcish']['title'] );
@@ -2759,7 +2803,7 @@ class Scrib {
 		return( $r );
 	}
 
-	function marcish_add_sibling( &$r, &$from ) {
+	public function marcish_add_sibling( &$r, &$from ) {
 		// the new record is the reverse, the old record is the reverse
 		if ( is_array( $r['marcish'] )){
 			unset( $r['marcish']['title'] );
@@ -2771,7 +2815,7 @@ class Scrib {
 		return( $r );
 	}
 
-	function marcish_availability( &$content, $post_id, &$idnumbers ) {
+	public function marcish_availability( &$content, $post_id, &$idnumbers ) {
 		if( isset( $idnumbers['issn'][0] ))
 			$gbs_key = 'issn:'. $idnumbers['issn'][0];
 		else if( isset( $idnumbers['isbn'][0] ))
@@ -3519,7 +3563,7 @@ class Scrib {
 		remove_filter('scrib_meditor_add_reverse', array(&$this, 'arc_add_reverse'), 1, 2);
 	}
 
-	function arc_pre_excerpt( &$content, $r ) {
+	public function arc_pre_excerpt( &$content, $r ) {
 		if( $r['arc'] ){
 			$result = '<ul class="summaryrecord dcimage"><li>[icon size="s" /]</li></ul>';
 			return($result);
@@ -3527,7 +3571,7 @@ class Scrib {
 		return( $content );
 	}
 
-	function arc_pre_content( $content, $r ) {
+	public function arc_pre_content( $content, $r ) {
 		if( $r['arc'] ){
 			global $bsuite;
 
@@ -3755,7 +3799,7 @@ class Scrib {
 		return( $content );
 	}
 
-	function arc_save_record( $post_id , $r ) {
+	public function arc_save_record( $post_id , $r ) {
 		$stopwords = array( 'and', 'the', 'new', 'use', 'for', 'hampshire', 'london', 'england', 'united', 'states' );
 
 		$facets = array();
@@ -3860,7 +3904,7 @@ TODO: update relationships to other posts when a post is saved.
 		}
 	}
 
-	function arc_add_related_edlinks( $null ) {
+	public function arc_add_related_edlinks( $null ) {
 		global $post_ID;
 		if( $post_ID ){
 			echo '<p id="scrib_meditor_addrelated">';
@@ -3876,7 +3920,7 @@ TODO: update relationships to other posts when a post is saved.
 		}
 	}
 
-	function arc_add_parent( &$r, &$from ) {
+	public function arc_add_parent( &$r, &$from ) {
 		// the new record is the parent, the old record is the child
 		if ( is_array( $r['arc'] )){
 			unset( $r['arc']['title'] );
@@ -3902,7 +3946,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function arc_add_child( &$r, &$from ) {
+	public function arc_add_child( &$r, &$from ) {
 		// the new record is the child, the old record is the parent
 		if ( is_array( $r['arc'] )){
 			unset( $r['arc']['title'] );
@@ -3928,7 +3972,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function arc_add_next( &$r, &$from ) {
+	public function arc_add_next( &$r, &$from ) {
 		// the new record is the next page in a series, the old record is the previous
 		if ( is_array( $r['arc'] )){
 			unset( $r['arc']['title'] );
@@ -3946,7 +3990,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function arc_add_previous( &$r, &$from ) {
+	public function arc_add_previous( &$r, &$from ) {
 		// the new record is the previous page in a series, the old record is the next
 		if ( is_array( $r['arc'] )){
 			unset( $r['arc']['title'] );
@@ -3964,7 +4008,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function arc_add_reverse( &$r, &$from ) {
+	public function arc_add_reverse( &$r, &$from ) {
 		// the new record is the reverse, the old record is the reverse
 		if ( is_array( $r['arc'] )){
 			unset( $r['arc']['transcript'] );
@@ -3978,7 +4022,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function arc_add_sibling( &$r, &$from ) {
+	public function arc_add_sibling( &$r, &$from ) {
 		// the new record is the reverse, the old record is the reverse
 		if ( is_array( $r['arc'] )){
 			unset( $r['arc']['title'] );
@@ -4001,7 +4045,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function import_insert_harvest( &$bibr, $enriched = 0 ){
+	public function import_insert_harvest( &$bibr, $enriched = 0 ){
 		global $wpdb;
 
 		$wpdb->get_results("REPLACE INTO $this->harvest_table
@@ -4011,7 +4055,7 @@ TODO: update relationships to other posts when a post is saved.
 		wp_cache_set( $bibr['_sourceid'], time() + 2500000, 'scrib_harvested', time() + 2500000 );
 	}
 
-	function import_post_exists( &$idnumbers ) {
+	public function import_post_exists( &$idnumbers ) {
 		global $wpdb;
 
 		$post_id = FALSE;
@@ -4053,7 +4097,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( FALSE );
 	}
 
-	function import_deindex_post( $post_ids ){
+	public function import_deindex_post( $post_ids ){
 		// sets a post's status to draft so that it no longer appears in searches
 		// TODO: need to find a better status to hide it from searches, 
 		// but not invalidate incoming links or remove comments
@@ -4076,7 +4120,7 @@ TODO: update relationships to other posts when a post is saved.
 		}
 	}
 
-	function import_insert_post( $bibr ){
+	public function import_insert_post( $bibr ){
 //		return(1);
 		global $wpdb, $bsuite;
 
@@ -4157,12 +4201,12 @@ TODO: update relationships to other posts when a post is saved.
 		return(FALSE);
 	}
 
-	function import_harvest_tobepublished_count() {
+	public function import_harvest_tobepublished_count() {
 		global $wpdb; 
 		return( $wpdb->get_var( 'SELECT COUNT(*) FROM '. $this->harvest_table .' WHERE imported = 0' ));
 	}
 
-	function import_harvest_publish() { 
+	public function import_harvest_publish() { 
 		global $wpdb; 
 
 		$interval = 25;
@@ -4230,7 +4274,7 @@ TODO: update relationships to other posts when a post is saved.
 		?><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php
 	} 
 
-	function import_harvest_upgradeoldarray( &$r ){ 
+	public function import_harvest_upgradeoldarray( &$r ){ 
 		$r = array( 'marcish' => $r );
 		$r['_title'] = $r['marcish']['title'][0]['a'];
 		$r['_acqdate'] = $r['marcish']['_acqdate'];
@@ -4242,7 +4286,7 @@ TODO: update relationships to other posts when a post is saved.
 		return( $r );
 	}
 
-	function import_harvest_passive(){ 
+	public function import_harvest_passive(){ 
 		global $wpdb, $bsuite; 
 
 		if( !$bsuite->get_lock( 'scrib_harvest_passive' ))
@@ -4719,7 +4763,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		return( $things );
 	}
 
-	function the_related_bookjackets($before = '<li>', $after = '</li>') {
+	public function the_related_bookjackets($before = '<li>', $after = '</li>') {
 		global $post, $bsuite;
 		$report = FALSE;
 
@@ -4791,7 +4835,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		return( $content );
 	}
 
-	function textthis_redirect(){
+	public function textthis_redirect(){
 		global $wp_query;
 
 		if( !empty( $_REQUEST['textthis'] ) && !empty( $wp_query->query_vars['p'] )){
@@ -5049,7 +5093,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		}
 	}
 	
-	function widget_facets_page() {
+	public function widget_facets_page() {
 		$options = $newoptions = get_option('widget_scrib_facets');
 	?>
 		<div class="wrap">

@@ -419,8 +419,9 @@ class Scrib {
 				$this->add_search_filters();
 				return( $the_wp_query );
 			}else{
-				$the_wp_query->query_vars['cat'] = $this->options['catalog_category_id'];
-				add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
+				$this->add_browse_filter();
+//				$the_wp_query->query_vars['cat'] = $this->options['catalog_category_id'];
+//				add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
 				$this->search_terms = array();
 				return( $the_wp_query );
 			}			
@@ -467,6 +468,40 @@ class Scrib {
 
 			unset( $search_terms['s'] );
 		}
+
+		if( !empty( $search_terms )){
+			foreach($search_terms as $taxonomy => $values){
+				foreach($values as $key => $value){
+					if( !$tt_ids[] = $this->is_term ( $value, $taxonomy ))
+						$matching_post_counts[$taxonomy][$key] = 0;
+					else
+						$matching_post_counts[$taxonomy][$key] = $wpdb->get_var("SELECT COUNT( term_taxonomy_id ) FROM $wpdb->term_relationships WHERE term_taxonomy_id IN (". implode( $this->is_term ( $value, $taxonomy ) , ',' ) .')' );
+				}
+			}
+		}
+
+		$tt_ids = array_filter( $tt_ids );
+		$taliases = range( 'a','z' );
+		$i = 1;
+		if(count($tt_ids) > 0){
+			foreach( $tt_ids as $tt_id ){
+				$alias = $taliases[ ceil($i / 26) ] . $taliases[ ($i % 26) ];
+				$this->posts_join[] = " INNER JOIN $wpdb->term_relationships scrib_$alias ON $wpdb->posts.ID = scrib_$alias.object_id ";
+				$this->posts_where[] = " AND scrib_$alias.term_taxonomy_id IN (". implode( ',', $tt_id ) .') ';
+				$i++;
+			}
+		}
+
+		add_filter( 'posts_join',		array( &$this, 'posts_join' ), 7 );
+		add_filter( 'posts_where',		array( &$this, 'posts_where' ), 7 );
+		add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
+
+	}
+
+	public function add_browse_filter(){
+		global $wpdb, $bsuite;
+
+		$search_terms = array( 'category' => array( get_cat_name( $this->options['catalog_category_id'] )));
 
 		if( !empty( $search_terms )){
 			foreach($search_terms as $taxonomy => $values){

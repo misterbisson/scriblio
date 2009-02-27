@@ -3,7 +3,7 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7.1 b00
+Version: 2.7-r2
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */

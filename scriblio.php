@@ -3,7 +3,7 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7-r1
+Version: 2.7.1 b00
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -2391,12 +2391,9 @@ class Scrib {
 			$result .= '</ul></li>';
 		}
 
-/* this was the amazon description
-		if( !empty( $r['description'] ))
-			$result .= '<li class="description"><h3>Description</h3>'. $r['description'] .'</li>';
-		else if( !empty( $r['shortdescription'] ))
-			$result .= '<li class="description"><h3>Description</h3>'. $r['shortdescription'] .'</li>';
-*/
+		if( isset( $parsed['description'][0] )){
+			$result .= '<li class="description"><h3>Description</h3>' . $parsed['description'][0] .'</li>';
+		}
 
 		// authors or, er, creators
 		if( isset( $r['creator'][0]['name'] )){
@@ -2476,6 +2473,12 @@ class Scrib {
 				$result .= '<li id="olid-'. $temp .'" ><a href="http://openlibrary.org'. $temp .'?referer=scriblio" rel="tag">'. $temp .'</a></li>';
 			$result .= '</ul></li>';
 		}
+
+		if( $temp = $bsuite->bsuggestive_bypageviews_the_related() )
+			$result .= '<li class="related_othersbrowsed"><h3>People Who Looked At This Also Looked At</h3><ul>'. $temp .'</ul></li>';
+
+		if( $temp = $bsuite->bsuggestive_the_related() )
+			$result .= '<li class="related_similar"><h3>Similar Items</h3><ul>'. $temp .'</ul></li>';
 
 		$result .= '</ul>';
 

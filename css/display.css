@@ -7,7 +7,7 @@ ul.fullrecord center{text-align:left}
 ul.fullrecord li{list-style:none}
 ul.fullrecord li h3{border-top:1px #eee solid;margin-top:5px;padding-top:0.5em;text-transform:capitalize}
 ul.fullrecord li ul{margin:0;padding:0}
-ul.fullrecord li ul li{display:block;list-style:none; margin:0; padding:0 0 0 1.75em;}
+ul.fullrecord li ul li{display:block;list-style:none; margin:0; padding:0 0 0 0.75em;}
 /* ul.fullrecord li ul li{display:block;list-style:none; margin:0; padding:0 0 0 1.75em; text-indent:-1em} */
 /* ul.fullrecord li ul li:before{content:'\00BB \0020'} */
 ul.fullrecord li.image{float:right;margin-bottom:5px;margin-left:5px}
@@ -16,9 +16,10 @@ ul.fullrecord li.title{display:none}
 ul.fullrecord li.attribution{display:block;font-weight:bold}
 ul.fullrecord li.attribution h3{display:none}
 ul.fullrecord li.publication_details h3{display:none}
+ul.fullrecord li.description p{padding:0 0 0 0.75em;}
 ul.fullrecord li.availability img{margin: 0; padding: 0; border: none;}
 ul.fullrecord li.creator{display:none}
-ul.fullrecord li.notes p{margin: 0 0 .5em 0; padding: 0; border: 1px solid #666;}
+ul.fullrecord li.notes p{margin: 0 0 .5em 0; padding: 0;}
 ul.fullrecord li.gbs_link{display:none}
 
 /********************[ Summary Record ]***********************/
@@ -27,7 +28,7 @@ ul.summaryrecord center{text-align:left}
 ul.summaryrecord li{list-style:none}
 ul.summaryrecord li h3{margin-top:5px;text-transform:capitalize}
 ul.summaryrecord li ul{margin:0;padding:0}
-ul.summaryrecord li ul li{display:block; list-style:none; margin:0; padding:0 0 0 1.75em;}
+ul.summaryrecord li ul li{display:block; list-style:none; margin:0; padding:0 0 0 0.75em;}
 /* ul.summaryrecord li ul li{display:block;list-style:none;margin:0;padding:0 0 0 1.75em;text-indent:-1em} */
 /* ul.summaryrecord li ul li:before{content:'\00BB \0020'} */
 ul.summaryrecord li.image{float:left;margin-bottom:5px;margin-right:5px}

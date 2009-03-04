@@ -147,11 +147,11 @@ class Scrib {
 					'person' => 'Person',
 					'place' => 'Place',
 					'time' => 'Time Period',
-					'time' => 'Exhibit',
 					'sy' => 'Subject Year',
 					'sm' => 'Subject Month',
 					'sd' => 'Subject Day',
 					'collection' => 'Collection',
+					'exhibit' => 'Exhibit',
 					'sourceid' => 'Source ID',
 					'isbn' => 'ISBN',
 					'issn' => 'ISSN',
@@ -161,9 +161,7 @@ class Scrib {
 					'oclc' => 'oclc',
 					'olid' => 'olid',
 
-					'olid' => 'olid',
-					'title' => 'Title',
-					),
+				),
 				'taxonomies_for_related' => array( 'creator', 'subject', 'genre', 'person', 'place', 'time', 'exhibit' ),
 				'taxonomies_for_suggest' => array( 'creator', 'creatorkey', 'subject', 'subjkey', 'genre', 'person', 'place', 'time', 'exhibit', 'title' )
 				));
@@ -205,46 +203,63 @@ class Scrib {
 		// setup widget defaults, if they don't exisit
 		if(!get_option('widget_scrib_searchedit'))
 			update_option('widget_scrib_searchedit', array(
-				'search-title' => 'Searching',
+				'search-title' => 'Searching Our Collection',
 				'search-text-top' => 'Your search found [scrib_hit_count] items with all of the following terms:',
 				'search-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by keyword relevance.',
 
-				'browse-title' => 'Browsing New Titles',
+				'browse-title' => 'Browsing Our Collection',
 				'browse-text-top' => 'We have [scrib_hit_count] items with all of the following terms:',
 				'browse-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by the date added to the collection.',
 
-				'default-title' => 'Browsing New Titles',
-				'default-text' => 'Showing new titles added to the collection. Use the facets below to explore the collection. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a>'
+				'default-title' => 'Browsing Our Collection',
+				'default-text' => 'We have [scrib_hit_count] books, CDs, DVDs, and other materials in our collection. You can click through the pages to see every last one of them, or click the links on the right to narrow it down.'
 				));
 		
 		if(!get_option('widget_scrib_facets'))
 			update_option('widget_scrib_facets', array(
 				'number' => 9, 
 				1 => array(
-					'title' => 'Narrow by Subject',
-					'facets' => 'subj',
-					'count' => '25',
+					'title' => 'Subject',
+					'facets' => 'subject,person',
+					'count' => '21',
 					'show_search' => 'on',
+					'show_singular' => 'on',
 					'format' => 'cloud'),
 				2 => array(
-					'title' => 'More in Subject',
-					'facets' => 'subj',
-					'count' => '0',
-					'show_singular' => 'on',
-					'format' => 'list'),
-				3 => array(
-					'title' => 'Format',
-					'facets' => 'format',
-					'count' => '25',
+					'title' => 'Place & Time',
+					'facets' => 'place,time',
+					'count' => '11',
 					'show_search' => 'on',
-					'format' => 'list'),
+					'show_singular' => 'on',
+					'format' => 'cloud'),
+				3 => array(
+					'title' => 'Format & Genre',
+					'facets' => 'format,genre',
+					'count' => '9',
+					'show_search' => 'on',
+					'show_singular' => 'on',
+					'format' => 'cloud'),
 				4 => array(
 					'title' => 'Author',
-					'facets' => 'auth',
-					'count' => '9',
+					'facets' => 'creator',
+					'count' => '7',
+					'show_search' => 'on',
 					'show_singular' => 'on',
-					'show_browse' => 'on',
-					'format' => 'list')
+					'format' => 'cloud')
+				5 => array(
+					'title' => 'Publication Year',
+					'facets' => 'cy',
+					'count' => '13',
+					'show_search' => 'on',
+					'show_singular' => 'on',
+					'format' => 'cloud')
+				6 => array(
+					'title' => 'Language',
+					'facets' => 'lang',
+					'count' => '7',
+					'show_search' => 'on',
+					'show_singular' => 'on',
+					'format' => 'cloud')
 				));
 
 	
@@ -560,7 +575,7 @@ class Scrib {
 
 		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
 			FROM ("
-				. str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, 1000', $query )) .
+				. str_replace( $wpdb->posts .'.* ', $wpdb->posts .'.ID ', str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, 1000', $query ))) .
 			") p
 			INNER JOIN $wpdb->term_relationships c ON p.ID = c.object_id
 			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id

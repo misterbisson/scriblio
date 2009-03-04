@@ -245,21 +245,21 @@ class Scrib {
 					'count' => '7',
 					'show_search' => 'on',
 					'show_singular' => 'on',
-					'format' => 'cloud')
+					'format' => 'cloud'),
 				5 => array(
 					'title' => 'Publication Year',
 					'facets' => 'cy',
 					'count' => '13',
 					'show_search' => 'on',
 					'show_singular' => 'on',
-					'format' => 'cloud')
+					'format' => 'cloud'),
 				6 => array(
 					'title' => 'Language',
 					'facets' => 'lang',
 					'count' => '7',
 					'show_search' => 'on',
 					'show_singular' => 'on',
-					'format' => 'cloud')
+					'format' => 'cloud'),
 				));
 
 	

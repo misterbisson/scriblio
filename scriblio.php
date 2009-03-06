@@ -3,12 +3,12 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7-r2
+Version: 2.7-r3
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
 
-/*  Copyright 2005-8  Casey Bisson & Plymouth State University
+/*  Copyright 2005-9  Casey Bisson & Plymouth State University
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -470,7 +470,7 @@ class Scrib {
 
 			$this->posts_fields[] = ", scrib_b.score ";
 			$this->posts_join[] = " INNER JOIN ( 
-				SELECT post_id, MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."') AS score 
+				SELECT post_id, ( MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."') * MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."' IN BOOLEAN MODE)) AS score 
 				FROM $bsuite->search_table
 				WHERE (MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."'$boolean))
 				ORDER BY score DESC
@@ -2088,8 +2088,10 @@ class Scrib {
 
 		add_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
 		add_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
-		add_filter( 'the_content', array(&$this, 'marcish_the_content'));
-		add_filter( 'the_excerpt', array(&$this, 'marcish_the_excerpt'));
+		add_filter( 'the_content', array(&$this, 'marcish_the_content'), 1);
+		add_filter( 'the_content_rss', array(&$this, 'marcish_the_excerpt_rss'), 11);
+		add_filter( 'the_excerpt', array(&$this, 'marcish_the_excerpt'), 1);
+		add_filter( 'the_excerpt_rss', array(&$this, 'marcish_the_excerpt_rss'), 11);
 
 		add_filter('scrib_availability_excerpt', array(&$this, 'marcish_availability'), 10, 3);
 		add_filter('scrib_availability_content', array(&$this, 'marcish_availability'), 10, 3);
@@ -2114,7 +2116,9 @@ class Scrib {
 		remove_filter('scrib_meditor_pre_excerpt', array(&$this, 'marcish_pre_excerpt'), 1, 2);
 		remove_filter('scrib_meditor_pre_content', array(&$this, 'marcish_pre_content'), 1, 2);
 		remove_filter( 'the_content', array(&$this, 'marcish_the_content'));
+		remove_filter( 'the_content_rss', array(&$this, 'marcish_the_excerpt_rss'));
 		remove_filter( 'the_excerpt', array(&$this, 'marcish_the_excerpt'));
+		remove_filter( 'the_excerpt_rss', array(&$this, 'marcish_the_excerpt_rss'));
 
 		remove_filter('scrib_availability_excerpt', array(&$this, 'marcish_availability'), 10, 3);
 		remove_filter('scrib_availability_content', array(&$this, 'marcish_availability'), 10, 3);
@@ -2375,6 +2379,71 @@ class Scrib {
 
 		if( is_array( $parsed['idnumbers'] ))
 			$result .= '<li class="availability"><h3>Availability</h3><ul>'. apply_filters( 'scrib_availability_excerpt', '', $id, $parsed['idnumbers']) .'</ul></li>';
+
+		$result .= '</ul>';
+
+		return($result);
+	}
+
+	public function marcish_the_excerpt_rss( $content ){
+		global $id;
+		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
+			return( $this->marcish_parse_excerpt_rss( $r['marcish'] ));
+
+		return( $content );
+	}
+
+	public function marcish_parse_excerpt_rss( &$r ){
+		global $id, $bsuite;
+
+		$parsed = $this->marcish_parse_parts( $r );
+		$result = '<ul class="summaryrecord">';
+
+		$result .= '<li class="image"><a href="'. get_permalink( $id ) .'" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $id )) .'">'. $bsuite->icon_get_h( $id, 's' ) .'</a></li>';
+
+		if( isset( $r['attribution'][0]['a'] ))
+			$result .= '<li class="attribution">'. $r['attribution'][0]['a'] .'</li>';
+
+		$pubdeets = array();
+		if( isset( $r['format'][0]['a'] ))
+			$pubdeets[] = '<span class="format">'. $r['format'][0]['a'] .'</span>';
+
+		if( isset( $r['published'][0]['edition'] ))
+			$pubdeets[] = '<span class="edition">'. $r['published'][0]['edition'] .'</span>';
+
+		if( isset( $r['published'][0]['publisher'] ))
+			$pubdeets[] = '<span class="publisher">'. $r['published'][0]['publisher'] .'</span>';
+
+		if( isset( $r['published'][0]['cy'] ))
+			$pubdeets[] = '<span class="pubyear">'. $r['published'][0]['cy'] .'</span>';
+
+		if( count( $pubdeets ))
+			$result .= '<li class="publication_details">'. implode( '<span class="meta-sep">, </span>', $pubdeets ) .'</li>';
+
+		if( isset( $r['linked_urls'][0]['href'] )){
+			$result .= '<li class="linked_urls"><ul>';
+			foreach( $r['linked_urls'] as $temp )
+				$result .= '<li><a href="' . $temp['href'] .'" title="go to this linked website">' . $temp['name'] .'</a></li>';
+			$result .= '</ul></li>';
+		}
+
+		if( isset( $parsed['description'][0] )){
+			$result .= '<li class="description">' . $parsed['description'][0] .'</li>';
+		}
+
+		if( isset( $parsed['subjkey'][0] )){
+			$tags = array();
+			foreach( $parsed['subjkey'] as $temp )
+				$tags[] = '<a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a>';
+
+
+			// authors or, er, creators
+			if( isset( $r['creator'][0]['name'] ))
+				foreach( $r['creator'] as $temp )
+					$tags[] = '<a href="'. $this->get_tag_link( array( 'taxonomy' => 'creator', 'slug' => urlencode( $temp['name'] ))).'" rel="tag">' . $temp['name'] . '</a>';
+
+			$result .= '<li class="tags">'. implode( ' &middot; ', $tags ) .'</li>';
+		}
 
 		$result .= '</ul>';
 

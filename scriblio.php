@@ -597,22 +597,23 @@ class Scrib {
 		if(!empty($search_terms)){
 			echo '<ul>';
 			reset($search_terms);
-			while (list($key, $val) = each($search_terms)) {
-				for ($i = 0; count($val) > $i; $i++){
-					$q = $val[$i];
+			foreach( $search_terms as $key => $vals ){
+				foreach( $vals as $i => $q ){
+					$q = stripslashes( $q );
+
 					$temp_query_vars = $search_terms;
-					unset($temp_query_vars[$key][array_search($q, $search_terms[$key])]);
-					$temp_query_vars = array_filter($temp_query_vars);
+					unset( $temp_query_vars[ $key ][ array_search( $q, $search_terms[ $key ] ) ] );
+					$temp_query_vars = array_filter( $temp_query_vars );
 
 					// build the query that excludes this search term
-					$excludesearch = '[<a href="'. $this->get_search_link($temp_query_vars) .'" title="Retry this search without this term">x</a>]';
+					$excludesearch = '[<a href="'. $this->get_search_link( $temp_query_vars ) .'" title="Retry this search without this term">x</a>]';
 
 					// build the URL singles out the search term
-					$path = $this->get_search_link(array($key => array($q))) ;
+					$path = $this->get_search_link( array( $key => array( $q ))) ;
 
-					$matches = !empty($this->the_matching_post_counts[$key][$i]) ? ' ('. $this->the_matching_post_counts[$key][$i] .' matches)' : '';
+					$matches = !empty( $this->the_matching_post_counts[ $key ][ $i ] ) ? ' ('. $this->the_matching_post_counts[ $key ][ $i ] .' matches)' : '';
 
-					echo '<li><label>'. $this->taxonomy_name[$key] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. wp_specialchars($q) .'</a>&nbsp;'. $excludesearch .'</li>';
+					echo '<li><label>'. $this->taxonomy_name[ $key ] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. convert_chars( wptexturize( $q )) .'</a>&nbsp;'. $excludesearch .'</li>';
 				}
 			}
 			echo '</ul>';
@@ -4719,8 +4720,6 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		$tag_list .= $after;
 
-		$tag_list = convert_chars( wptexturize( $tag_list ));
-
 		return $tag_list;
 	}
 
@@ -4829,7 +4828,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			break;
 		case 'list' :
 			$return = "<ul class='wp-tag-cloud'>\n\t<li>";
-			$return .= convert_chars( wptexturize( join( "</li>\n\t<li>", $a )));
+			$return .= join( "</li>\n\t<li>", $a );
 			$return .= "</li>\n</ul>\n";
 			break;
 		default :
@@ -5175,7 +5174,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 	?>
 			<?php echo $before_widget; ?>
 				<?php if ( !empty( $options[$number]['title'] ) ) { echo $before_title . $options[$number]['title'] . $after_title; } ?>
-				<?php echo $facets; ?>
+				<?php echo convert_chars( wptexturize( $facets )); ?>
 			<?php echo $after_widget; ?>
 	<?php
 	}

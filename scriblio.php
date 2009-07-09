@@ -41,10 +41,10 @@ class Scrib {
 
 		// register and queue javascripts
 		wp_register_script( 'scrib-suggest', $this->path_web . '/js/jquery.scribsuggest.js', array('jquery'), '20081030' );
-		wp_enqueue_script( 'scrib-suggest' );	
+		wp_enqueue_script( 'scrib-suggest' );
 
 		wp_register_script( 'scrib-googlebook', $this->path_web . '/js/scrib.googlebook.js', array('jquery'), '20080422' );
-		wp_enqueue_script( 'scrib-googlebook' );	
+		wp_enqueue_script( 'scrib-googlebook' );
 
 		wp_register_style( 'scrib-display', $this->path_web .'/css/display.css' );
 		wp_enqueue_style( 'scrib-display' );
@@ -75,7 +75,7 @@ class Scrib {
 		add_shortcode('scrib_hitcount', array(&$this, 'shortcode_hitcount'));
 
 		add_action('admin_menu', array( &$this, 'admin_menu_hook' ));
-		
+
 		add_action('save_post', array(&$this, 'meditor_save_post'), 2, 2);
 		add_filter('pre_post_title', array(&$this, 'meditor_pre_save_filters'));
 		add_filter('pre_post_excerpt', array(&$this, 'meditor_pre_save_filters'));
@@ -104,7 +104,7 @@ class Scrib {
 		$this->options['browse_url'] = get_permalink($this->options['browse_id']) . $slash;
 		$this->options['browse_base'] = str_replace( $this->options['site_url'] , '', $this->options['browse_url'] );
 		$this->options['browse_name'] = trim(substr(get_page_uri($this->options['browse_id']), strrpos(get_page_uri($this->options['browse_id']), '/')), '/');
-		
+
 		$this->the_matching_posts = NULL;
 		$this->the_matching_posts_ordinals = NULL;
 		$this->search_terms = NULL;
@@ -127,7 +127,7 @@ class Scrib {
 
 	public function activate() {
 		global $wpdb;
-		
+
 		// setup default options
 		if(!get_option('scrib'))
 			update_option('scrib', array(
@@ -168,7 +168,7 @@ class Scrib {
 		$options = get_option('scrib');
 
 		// setup the browse page, if it doesn't exist
-		if(empty($options['browse_id']) || $wpdb->get_var("SELECT ID FROM $wpdb->posts WHERE ID = ". intval($options['browse_id']) .' AND post_status = "publish" AND post_type = "page" ') == FALSE){		
+		if(empty($options['browse_id']) || $wpdb->get_var("SELECT ID FROM $wpdb->posts WHERE ID = ". intval($options['browse_id']) .' AND post_status = "publish" AND post_type = "page" ') == FALSE){
 			// create the default browse page
 			$postdata['post_title'] = 'Browse';
 			$postdata['post_name'] = 'browse';
@@ -180,25 +180,25 @@ class Scrib {
 			$postdata['post_excerpt']	= 'Browse new titles.';
 			$postdata['post_author'] = 0;
 			$post_id = wp_insert_post($postdata); // insert the post
-	
-			// set the options with this new page	
-			$options['browse_id'] = (int) $post_id;	
+
+			// set the options with this new page
+			$options['browse_id'] = (int) $post_id;
 			update_option('scrib', $options);
 		}
 
 		// setup the catalog author, if it doesn't exist
-		if(empty($options['catalog_author_id']) || get_userdata($options['catalog_author_id']) == FALSE){		
+		if(empty($options['catalog_author_id']) || get_userdata($options['catalog_author_id']) == FALSE){
 			// create the default author
 			$random_password = substr( md5( uniqid( microtime() )), 0, 6 );
 			$user_id = wp_create_user( 'cataloger', $random_password );
 			$user = new WP_User( $user_id );
 			$user->set_role( 'contributor' );
 
-			// set the options	
-			$options['catalog_author_id'] = (int) $user_id;	
+			// set the options
+			$options['catalog_author_id'] = (int) $user_id;
 			update_option('scrib', $options);
 		}
-		
+
 		// setup widget defaults, if they don't exisit
 		if(!get_option('widget_scrib_searchedit'))
 			update_option('widget_scrib_searchedit', array(
@@ -213,10 +213,10 @@ class Scrib {
 				'default-title' => 'Browsing Our Collection',
 				'default-text' => 'We have [scrib_hit_count] books, CDs, DVDs, and other materials in our collection. You can click through the pages to see every last one of them, or click the links on the right to narrow it down.'
 				));
-		
+
 		if(!get_option('widget_scrib_facets'))
 			update_option('widget_scrib_facets', array(
-				'number' => 9, 
+				'number' => 9,
 				1 => array(
 					'title' => 'Subject',
 					'facets' => 'subject,person',
@@ -261,7 +261,7 @@ class Scrib {
 					'format' => 'cloud'),
 				));
 
-	
+
 		// create tables
 		$charset_collate = '';
 		if ( version_compare( mysql_get_server_info(), '4.1.0', '>=' )) {
@@ -270,7 +270,7 @@ class Scrib {
 			if ( ! empty( $wpdb->collate ))
 				$charset_collate .= " COLLATE $wpdb->collate";
 		}
-	
+
 		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 		dbDelta("
 			CREATE TABLE $this->harvest_table (
@@ -295,7 +295,7 @@ class Scrib {
 
 		$allowedposttags['div']['class'] = array();
 		$allowedposttags['div']['style'] = array();
-		
+
 		$allowedposttags['h1']['id'] = array();
 		$allowedposttags['h1']['class'] = array();
 		$allowedposttags['h2']['id'] = array();
@@ -362,10 +362,10 @@ class Scrib {
 
 	public function is_term( $term, $taxonomy = '' ){
 		global $wpdb;
-		
+
 		$wild = FALSE;
 		$wild = strpos($term, '*');
-		
+
 		if ( is_int($term) ) {
 			if ( 0 == $term )
 				return 0;
@@ -374,7 +374,7 @@ class Scrib {
 			if ( ! $term = sanitize_title($term) )
 				return 0;
 
-			if($wild){	
+			if($wild){
 				$where = "t.slug LIKE '$term%'";
 			}else{
 				$where = "t.slug = '$term'";
@@ -438,7 +438,7 @@ class Scrib {
 //				add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
 				$this->search_terms = array();
 				return( $the_wp_query );
-			}			
+			}
 		}
 
 		return( $the_wp_query );
@@ -468,8 +468,8 @@ class Scrib {
 				$boolean = ' IN BOOLEAN MODE';
 
 			$this->posts_fields[] = ", scrib_b.score ";
-			$this->posts_join[] = " INNER JOIN ( 
-				SELECT post_id, ( MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."') * MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."' IN BOOLEAN MODE)) AS score 
+			$this->posts_join[] = " INNER JOIN (
+				SELECT post_id, ( MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."') * MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."' IN BOOLEAN MODE)) AS score
 				FROM $bsuite->search_table
 				WHERE (MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."'$boolean))
 				ORDER BY score DESC
@@ -606,10 +606,10 @@ class Scrib {
 
 					// build the query that excludes this search term
 					$excludesearch = '[<a href="'. $this->get_search_link($temp_query_vars) .'" title="Retry this search without this term">x</a>]';
-					
+
 					// build the URL singles out the search term
 					$path = $this->get_search_link(array($key => array($q))) ;
-					
+
 					$matches = !empty($this->the_matching_post_counts[$key][$i]) ? ' ('. $this->the_matching_post_counts[$key][$i] .' matches)' : '';
 
 					echo '<li><label>'. $this->taxonomy_name[$key] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. wp_specialchars($q) .'</a>&nbsp;'. $excludesearch .'</li>';
@@ -623,7 +623,7 @@ class Scrib {
 ?>
 <link rel='stylesheet' href='<?php echo $this->path_web ?>/css/editor.css' type='text/css' media='all' />
 <?php
-	
+
 	}
 
 	public function admin_menu_hook() {
@@ -632,7 +632,7 @@ class Scrib {
 
 		wp_register_script( 'jquery-tabindex', $this->path_web . '/js/jquery.keyboard-a11y.js', array('jquery'), '1' );
 		wp_enqueue_script( 'jquery-tabindex' );
-	
+
 		add_action( 'admin_head', array(&$this, 'admin_head_hook') );
 	}
 
@@ -686,8 +686,8 @@ class Scrib {
 
 		echo '<li class="fieldset '. ( $prototype['_repeatable'] ? 'repeatable ' : '' ) . $handle .' '. $fieldset .'"><ul class="fieldset">';
 		foreach( $prototype['_elements'] as $key => $val ){
-			$id =  "scrib_meditor-$handle-$fieldset-$ordinal-$key"; 
-			$name =  "scrib_meditor[$handle][$fieldset][$ordinal][$key]"; 
+			$id =  "scrib_meditor-$handle-$fieldset-$ordinal-$key";
+			$name =  "scrib_meditor[$handle][$fieldset][$ordinal][$key]";
 
 			$val = $data[ $key ] ? stripslashes( $data[ $key ] ) : $prototype['_elements'][ $key ]['_input']['_default'];
 
@@ -699,15 +699,15 @@ class Scrib {
 					echo '<select name="'. $name .'" id="'. $id .'" tabindex="'. $tabindex .'">';
 					foreach( $prototype['_elements'][ $key ]['_input']['_values'] as $selval => $selname )
 						echo '<option '. ( $selval == $val ? 'selected="selected" ' : '' ) .'value="'. $selval .'">'. $selname .'</option>';
-					echo '</select>';		
+					echo '</select>';
 					break;
-	
+
 				case 'checkbox':
 					echo '<input type="checkbox" name="'. $name .'" id="'. $id .'" value="1"'. ( $val ? ' checked="checked"' : '' ) .'  tabindex="'. $tabindex .'" />';
 					break;
-	
+
 				case 'textarea':
-					echo '<textarea name="'. $name .'" id="'. $id .'"  tabindex="'. $tabindex .'">'. format_to_edit( $val ) .'</textarea>';		
+					echo '<textarea name="'. $name .'" id="'. $id .'"  tabindex="'. $tabindex .'">'. format_to_edit( $val ) .'</textarea>';
 					break;
 
 				case '_function':
@@ -716,10 +716,10 @@ class Scrib {
 					else
 						_e( 'the requested function could not be called' );
 					break;
-	
+
 				case 'text':
 				default:
-					echo '<input type="text" name="'. $name .'" id="'. $id .'" value="'. format_to_edit( $val ) .'"  '. ( $prototype['_elements'][ $key ]['_input']['autocomplete'] == 'off' ? 'autocomplete="off"' : '' ) .' tabindex="'. $tabindex .'" />';		
+					echo '<input type="text" name="'. $name .'" id="'. $id .'" value="'. format_to_edit( $val ) .'"  '. ( $prototype['_elements'][ $key ]['_input']['autocomplete'] == 'off' ? 'autocomplete="off"' : '' ) .' tabindex="'. $tabindex .'" />';
 
 			}
 			echo '</li>';
@@ -761,10 +761,10 @@ class Scrib {
 				$record = $this->meditor_merge_meta( $record, $this->meditor_sanitize_input( $_REQUEST['scrib_meditor'] ));
 
 				add_post_meta( $post_id, 'scrib_meditor_content', $record, TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', $record );
-	
+
 				do_action( 'scrib_meditor_save_record', $post_id, $record );
 			}
-			
+
 /*
 			foreach( $_REQUEST['scrib_meditor'] as $this->meditor_input->form_key => $this->meditor_input->form ){
 				unset( $record[ $this->meditor_input->form_key ] );
@@ -860,7 +860,7 @@ class Scrib {
 		}
 		return( FALSE );
 	}
-	
+
 	public function meditor_sanitize_day( $val ){
 		$val = absint( $val );
 		if( $val > 0 &&  $val < 32 )
@@ -884,7 +884,7 @@ class Scrib {
 		$htmlentity = '\&\#\d\d\;';
 		$lead_htmlentity_pattern = '/^'.$htmlentity.'/';
 		$trail_htmlentity_pattern = '/'.$htmlentity.'$/';
-		$str = preg_replace($lead_htmlentity_pattern, '', preg_replace($trail_htmlentity_pattern, '', $str)); 
+		$str = preg_replace($lead_htmlentity_pattern, '', preg_replace($trail_htmlentity_pattern, '', $str));
 */
 
 		//strip ASCII punctuations
@@ -1018,17 +1018,17 @@ class Scrib {
 				$suggestion = implode( $suggestion, "\n" );
 			}else{
 				global $wpdb;
-	
+
 				$suggestion = implode( array_unique( $wpdb->get_col( "SELECT t.name, ((( 100 - t.len ) + 1 ) * tt.count ) AS hits
-					FROM 
+					FROM
 					(
 						SELECT term_id, name, LENGTH(name) AS len
-						FROM $wpdb->terms 
+						FROM $wpdb->terms
 						WHERE slug LIKE ('" . $s . "%')
 						ORDER BY len ASC
 						LIMIT 100
 					) t
-					JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id 
+					JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id
 					WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "')
 					AND tt.count > 0
 					ORDER BY hits DESC
@@ -1059,15 +1059,15 @@ class Scrib {
 			'readlevel' => 'Reading Level',
 		);
 
-		$this->meditor_register( 'marcish', 
+		$this->meditor_register( 'marcish',
 			array(
 				'_title' => 'Bibliographic and Archive Item Record',
-				'_elements' => array( 
+				'_elements' => array(
 					'title' => array(
 						'_title' => 'Additional Titles',
 						'_description' => 'Alternate titles or additional forms of this title. Think translations, uniform, and series titles (<a href="http://about.scriblio.net/wiki/meditor/marcish/title" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -1098,7 +1098,7 @@ class Scrib {
 						'_title' => 'Attribution',
 						'_description' => 'The statement of responsibility for this work (<a href="http://about.scriblio.net/wiki/meditor/marcish/attribution" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -1113,7 +1113,7 @@ class Scrib {
 						'_title' => 'Creator',
 						'_description' => 'Authors, editors, producers, and others that contributed to the creation of this work (<a href="http://about.scriblio.net/wiki/meditor/marcish/creator" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'name' => array(
 								'_title' => 'Name',
 								'_input' => array(
@@ -1152,7 +1152,7 @@ class Scrib {
 						'_title' => 'Subject',
 						'_description' => 'Words and phrases that descripe the content of the work (<a href="http://about.scriblio.net/wiki/meditor/marcish/subject" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a_type' => array(
 								'_title' => '',
 								'_input' => array(
@@ -1308,7 +1308,7 @@ class Scrib {
 						'_title' => 'Date Coverage',
 						'_description' => 'A calendar representation of the content of the work (<a href="http://about.scriblio.net/wiki/meditor/marcish/subject_date" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'y' => array(
 								'_title' => 'Year',
 								'_input' => array(
@@ -1337,7 +1337,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'exact' => 'Exactly',
 										'approx' => 'Approximately',
 										'before' => 'Before',
@@ -1371,7 +1371,7 @@ class Scrib {
 						'_title' => 'Geographic Coverage',
 						'_description' => 'A geographic coordinate representation of the content of the work (<a href="http://about.scriblio.net/wiki/meditor/marcish/subject_geo" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'point_lat' => array(
 								'_title' => 'Latitude',
 								'_input' => array(
@@ -1425,12 +1425,12 @@ class Scrib {
 						'_title' => 'Call Number',
 						'_description' => 'The LC or Dewey call number and location for this work (<a href="http://about.scriblio.net/wiki/meditor/marcish/callnumbers" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'type' => array(
 								'_title' => 'Type',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'lc' => 'LC',
 										'dewey' => 'Dewey',
 									),
@@ -1475,12 +1475,12 @@ class Scrib {
 						'_title' => 'Textual Content',
 						'_description' => 'A description, transcription, translation, or other long-form textual content related to the work (<a href="http://about.scriblio.net/wiki/meditor/marcish/text" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'type' => array(
 								'_title' => 'Type',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'description' => 'Description',
 										'transcription' => 'Transcription',
 										'translation' => 'Translation',
@@ -1541,7 +1541,7 @@ class Scrib {
 						'_title' => 'Publication Info',
 						'_description' => 'Publication info (<a href="http://about.scriblio.net/wiki/meditor/marcish/published" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'cy' => array(
 								'_title' => 'Year',
 								'_input' => array(
@@ -1570,7 +1570,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'nodate' => 'Undated',
 										'exact' => 'Exactly',
 										'approx' => 'Approximately',
@@ -1612,7 +1612,7 @@ class Scrib {
 								'_title' => 'Copyright',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'uc' => 'Uncertain',
 										'c' => 'Copyrighted',
 										'cc' => 'Creative Commons',
@@ -1651,7 +1651,7 @@ class Scrib {
 						'_title' => 'Physical Description',
 						'_description' => 'Physical description (<a href="http://about.scriblio.net/wiki/meditor/marcish/description_physical" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'dw' => array(
 								'_title' => 'Width',
 								'_input' => array(
@@ -1680,7 +1680,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'inch' => 'Inches',
 										'cm' => 'Centimeters',
 									),
@@ -1700,7 +1700,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'ounce' => 'Ounces',
 										'pound' => 'Pounds',
 										'g' => 'Grams',
@@ -1722,7 +1722,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'pages' => 'Pages',
 										'minutes' => 'Minutes',
 									),
@@ -1760,7 +1760,7 @@ class Scrib {
 						'_title' => 'Linked URL',
 						'_description' => 'Web links (<a href="http://about.scriblio.net/wiki/meditor/marcish/linked_urls" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'name' => array(
 								'_title' => 'Name',
 								'_input' => array(
@@ -1798,7 +1798,7 @@ class Scrib {
 						'_title' => 'Format',
 						'_description' => 'Format (<a href="http://about.scriblio.net/wiki/meditor/marcish/format" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -1891,7 +1891,7 @@ class Scrib {
 						'_title' => 'Standard Numbers',
 						'_description' => 'ISBNs, ISSNs, and other numbers identifying the work (<a href="http://about.scriblio.net/wiki/meditor/marcish/idnumbers" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'type' => array(
 								'_title' => '',
 								'_input' => array(
@@ -1929,7 +1929,7 @@ class Scrib {
 						'_title' => 'Archival Source',
 						'_description' => 'Where did this work come from (for archive records) (<a href="http://about.scriblio.net/wiki/meditor/marcish/source" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 
 							'file' => array(
 								'_title' => 'File Name',
@@ -2009,12 +2009,12 @@ class Scrib {
 						'_title' => 'Related Records',
 						'_description' => 'The relationship of this work to other works (<a href="http://about.scriblio.net/wiki/meditor/marcish/related" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'rel' => array(
 								'_title' => 'Relationship',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'parent' => 'Parent',
 										'child' => 'Child',
 										'next' => 'Next In Series/Next Page',
@@ -2040,7 +2040,7 @@ class Scrib {
 						'_title' => 'Add New Record',
 						'_description' => '<a href="http://about.scriblio.net/wiki/meditor/marcish/addrecord" title="More information at the Scriblio website.">More info</a>.',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -2154,37 +2154,37 @@ class Scrib {
 			$attrib = trim( $r['marcish']['attribution'][0]['a'] );
 			if( strpos( $attrib, ';', 5 ))
 				$attrib = substr( $attrib, 0, strpos( $attrib, ';', 5 ));
-			return( array( 
-				't' => array( 
+			return( array(
+				't' => array(
 					'file' => dirname( __FILE__ ) .'/img/post_icon_default/s.jpg',
 					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=1',
 					'w' => '75',
 					'h' => '100',
-					), 
-				's' => array( 
+					),
+				's' => array(
 					'file' => dirname( __FILE__ ) .'/img/post_icon_default/s.jpg',
 					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=2',
 					'w' => '100',
 					'h' => '132',
-					), 
-				'm' => array( 
+					),
+				'm' => array(
 					'file' => dirname( __FILE__ ) .'/img/post_icon_default/m.jpg',
 					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=3',
 					'w' => '135',
 					'h' => '180',
-					), 
-				'l' => array( 
+					),
+				'l' => array(
 					'file' => dirname( __FILE__ ) .'/img/post_icon_default/l.jpg',
 					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=4',
 					'w' => '240',
 					'h' => '320',
-					), 
-				'b' => array( 
+					),
+				'b' => array(
 					'file' => dirname( __FILE__ ) .'/img/post_icon_default/b.jpg',
 					'url' => 'http://api.scriblio.net/v01a/fakejacket/'. urlencode( $title ) .'?author='. urlencode( $attrib ) .'&size=5',
 					'w' => '500',
 					'h' => '665',
-					), 
+					),
 				)
 			);
 		}
@@ -2196,26 +2196,26 @@ class Scrib {
 	public function marcish_parse_parts( &$r ){
 		$parsed = array();
 		foreach( $r['idnumbers'] as $temp ){
-			switch( $temp['type'] ){ 
+			switch( $temp['type'] ){
 				case 'sourceid' :
 					$parsed['idnumbers']['sourceid'][] = $temp['id'];
-					break; 
+					break;
 				case 'lccn' :
 					$parsed['idnumbers']['lccn'][] = $temp['id'];
-					break; 
+					break;
 				case 'isbn' :
 					$parsed['idnumbers']['isbn'][] = $temp['id'];
-					break; 
+					break;
 				case 'issn' :
 					$parsed['idnumbers']['issn'][] = $temp['id'];
-					break; 
+					break;
 				case 'asin' :
 					$parsed['idnumbers']['asin'][] = $temp['id'];
-					break; 
+					break;
 				case 'olid' :
 					$parsed['idnumbers']['olid'][] = $temp['id'];
-					break; 
-			} 
+					break;
+			}
 		}
 		if ( isset( $parsed['idnumbers']['sourceid'] ))
 			$parsed['idnumbers']['sourceid'] = $this->array_unique_deep( $parsed['idnumbers']['sourceid'] );
@@ -2231,41 +2231,41 @@ class Scrib {
 			$parsed['idnumbers']['olid'] = $this->array_unique_deep( $parsed['idnumbers']['olid'] );
 
 		foreach( $r['text'] as $temp ){
-			switch( $temp['type'] ){ 
+			switch( $temp['type'] ){
 				case 'description' :
 					$parsed['description'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'transcription' :
 					$parsed['transcription'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'translation' :
 					$parsed['translation'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'contents' :
 					$parsed['contents'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'review' :
 					$parsed['review'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'notes' :
 					$parsed['notes'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'firstwords' :
 					$parsed['firstwords'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'lastwords' :
 					$parsed['lastwords'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'dedication' :
 					$parsed['dedication'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'quotes' :
 					$parsed['quotes'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
+					break;
 				case 'sample' :
 					$parsed['sample'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break; 
-			} 
+					break;
+			}
 		}
 
 		$spare_keys = array( 'a', 'b', 'c', 'd', 'e', 'f', 'g' );
@@ -2276,26 +2276,26 @@ class Scrib {
 					switch( $temp[ $spare_key .'_type' ] ){
 						case 'genre' :
 							$parsed['genre'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break; 
+							break;
 						case 'person' :
 							$parsed['person'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break; 
+							break;
 						case 'tag' :
 							$parsed['tag'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break; 
+							break;
 						case 'place' :
 							$parsed['place'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break; 
+							break;
 						case 'time' :
 							$parsed['time'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break; 
+							break;
 						case 'department' :
 							$parsed['department'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break; 
+							break;
 						case 'exhibit' :
 							$parsed['exhibit'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break; 
-					} 
+							break;
+					}
 					$parsed['subjkey'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
 					$subjline[] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
 				}
@@ -2650,35 +2650,8 @@ class Scrib {
 		foreach( $r['text'] as $temp )
 			$result .= $temp['content'] ."\n";
 
-/*
-		if( isset( $parsed['notes'] ))
-			foreach( $parsed['notes'] as $temp )
-				$result .= $temp ."\n";
-
-		if( isset( $parsed['contents'][0] ))
-			$result .= $parsed['contents'][0] ."\n";
-*/
-
 		foreach( $r['idnumbers'] as $temp )
 			$result .= $temp['id'] ."\n";
-
-/*
-		if( isset( $parsed['idnumbers']['isbn'] ))
-			foreach( $parsed['idnumbers']['isbn'] as $temp )
-				$result .= $temp ."\n";
-		if( isset( $parsed['idnumbers']['issn'] ))
-			foreach( $parsed['idnumbers']['issn'] as $temp )
-				$result .= $temp ."\n";
-		if( isset( $parsed['idnumbers']['lccn'] ))
-			foreach( $parsed['idnumbers']['lccn'] as $temp )
-				$result .= $temp ."\n";
-		if( isset( $parsed['idnumbers']['olid'] ))
-			foreach( $parsed['idnumbers']['olid'] as $temp )
-				$result .= $temp ."\n";
-		if( isset( $parsed['idnumbers']['sourceid'] ))
-			foreach( $parsed['idnumbers']['sourceid'] as $temp )
-				$result .= $temp ."\n";
-*/
 
 		return( wp_filter_nohtml_kses( $result ));
 	}
@@ -2713,29 +2686,29 @@ class Scrib {
 		$facets = array();
 		if ( is_array( $r['marcish'] )){
 
-			$facets['partial'] = 
-			$facets['creator'] = 
-			$facets['lang'] = 
-			$facets['cy'] = 
-			$facets['cm'] = 
-			$facets['format'] = 
-			$facets['subject'] = 
-			$facets['genre'] = 
-			$facets['person'] = 
-			$facets['place'] = 
-			$facets['time'] = 
-			$facets['exhibit'] = 
-			$facets['sy'] = 
-			$facets['sm'] = 
-			$facets['sd'] = 
-			$facets['collection'] = 
-			$facets['sourceid'] = 
-			$facets['isbn'] = 
-			$facets['issn'] = 
-			$facets['lccn'] = 
-			$facets['asin'] = 
-			$facets['ean'] = 
-			$facets['olid'] = 
+			$facets['partial'] =
+			$facets['creator'] =
+			$facets['lang'] =
+			$facets['cy'] =
+			$facets['cm'] =
+			$facets['format'] =
+			$facets['subject'] =
+			$facets['genre'] =
+			$facets['person'] =
+			$facets['place'] =
+			$facets['time'] =
+			$facets['exhibit'] =
+			$facets['sy'] =
+			$facets['sm'] =
+			$facets['sd'] =
+			$facets['collection'] =
+			$facets['sourceid'] =
+			$facets['isbn'] =
+			$facets['issn'] =
+			$facets['lccn'] =
+			$facets['asin'] =
+			$facets['ean'] =
+			$facets['olid'] =
 			$facets['oclc'] = array();
 
 
@@ -2746,7 +2719,7 @@ class Scrib {
 				foreach( $r['marcish']['creator'] as $temp )
 					if( !empty( $temp['name'] )){
 						$facets['creator'][] = $temp['name'];
-	
+
 						if( $tempsplit = preg_split( '/[ |,|;|-]/', $temp['name'] ))
 							foreach( $tempsplit as $tempsplittoo )
 								if( !empty( $tempsplittoo ) && !is_numeric( $tempsplittoo ) && ( 2 < strlen( $tempsplittoo )) && ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
@@ -2773,7 +2746,7 @@ class Scrib {
 				$facets['cy'][] = substr( $r['marcish']['published'][0]['cy'], 0, -2 ) .'00s';
 			}
 			if( isset( $r['marcish']['published'][0]['cm'] ))
-				$facets['cm'][] = date( 'F', strtotime( '2008-'. $r['marcish']['published'][0]['cm'] .'-01' )); 
+				$facets['cm'][] = date( 'F', strtotime( '2008-'. $r['marcish']['published'][0]['cm'] .'-01' ));
 
 			if( isset( $r['marcish']['subject_date'][0] )){
 				foreach( $r['marcish']['subject_date'] as $temp ){
@@ -2783,9 +2756,9 @@ class Scrib {
 						$facets['sy'][] = substr( $temp['y'], 0, -2 ) .'00s';
 					}
 					if( isset( $temp['m'] ))
-						$facets['sm'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' )); 
+						$facets['sm'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' ));
 					if( isset( $temp['d'] ))
-						$facets['sd'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' )); 
+						$facets['sd'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' ));
 				}
 			}
 
@@ -2797,9 +2770,9 @@ class Scrib {
 
 					if( $tempsplit = preg_split( '/[ |,|;|-]/', $sv['value'] ))
 						foreach( $tempsplit as $tempsplittoo )
-							if( !empty( $tempsplittoo ) 
-								&& !is_numeric( $tempsplittoo ) 
-								&& ( 2 < strlen( $tempsplittoo )) 
+							if( !empty( $tempsplittoo )
+								&& !is_numeric( $tempsplittoo )
+								&& ( 2 < strlen( $tempsplittoo ))
 								&& ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
 									$facets['partial'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
 				}
@@ -2830,7 +2803,7 @@ class Scrib {
 					case 'oclc' :
 						if( !empty( $temp['id'] ))
 							$facets[ $temp['type'] ][] = $temp['id'];
-						break; 
+						break;
 				}
 			}
 
@@ -2847,7 +2820,7 @@ class Scrib {
 			if( isset( $r['marcish']['related'][0]['record'] ))
 				foreach( $r['marcish']['related'] as $temp )
 					$this->marcish_update_related( $post_id, $temp );
-				
+
 			// Collection
 			if( isset( $r['marcish']['source'][0]['collection'] ))
 				$facets['collection'][] = $r['marcish']['source'][0]['collection'];
@@ -2991,14 +2964,14 @@ class Scrib {
 	}
 
 	public function arc_register( ){
-		$this->meditor_register( 'arc', 
+		$this->meditor_register( 'arc',
 			array(
 				'_title' => 'Archive Item Record',
-				'_elements' => array( 
+				'_elements' => array(
 					'title' => array(
 						'_title' => 'Additional Titles',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3012,7 +2985,7 @@ class Scrib {
 					'creator' => array(
 						'_title' => 'Creator',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'name' => array(
 								'_title' => 'Name',
 								'_input' => array(
@@ -3042,7 +3015,7 @@ class Scrib {
 						'_title' => 'Subject',
 						'_description' => '',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3112,7 +3085,7 @@ class Scrib {
 					'geog' => array(
 						'_title' => 'Geographic Coverage',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3182,7 +3155,7 @@ class Scrib {
 					'date_coverage' => array(
 						'_title' => 'Date Coverage',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'y' => array(
 								'_title' => 'Year',
 								'_input' => array(
@@ -3211,7 +3184,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'exact' => 'Exactly',
 										'approx' => 'Approximately',
 										'before' => 'Before',
@@ -3229,7 +3202,7 @@ class Scrib {
 					'description' => array(
 						'_title' => 'Description',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3265,7 +3238,7 @@ class Scrib {
 								'_title' => '',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'nodate' => 'Undated',
 										'exact' => 'Exactly',
 										'approx' => 'Approximately',
@@ -3291,7 +3264,7 @@ class Scrib {
 								'_title' => 'Copyright',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'uc' => 'Uncertain',
 										'c' => 'Copyrighted',
 										'cc' => 'Creative Commons',
@@ -3314,7 +3287,7 @@ class Scrib {
 					'dimensions' => array(
 						'_title' => 'Dimensions',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'dw' => array(
 								'_title' => 'Width',
 								'_input' => array(
@@ -3343,7 +3316,7 @@ class Scrib {
 								'_title' => 'Units',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'inch' => 'Inches',
 										'cm' => 'Centimeters',
 									),
@@ -3363,7 +3336,7 @@ class Scrib {
 								'_title' => 'Units',
 								'_input' => array(
 									'_type' => 'select',
-									'_values' => array( 
+									'_values' => array(
 										'ounce' => 'Ounces',
 										'pounds' => 'Pounds',
 										'g' => 'Grams',
@@ -3378,7 +3351,7 @@ class Scrib {
 					'format' => array(
 						'_title' => 'Format',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3448,7 +3421,7 @@ class Scrib {
 					'transcript' => array(
 						'_title' => 'Transcription',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3461,7 +3434,7 @@ class Scrib {
 					'translation' => array(
 						'_title' => 'Translation',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3490,7 +3463,7 @@ class Scrib {
 					'source' => array(
 						'_title' => 'Source',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 
 							'file' => array(
 								'_title' => 'File Name',
@@ -3569,7 +3542,7 @@ class Scrib {
 					'rel_parent' => array(
 						'_title' => 'Related Records',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => 'Parent',
 								'_input' => array(
@@ -3583,7 +3556,7 @@ class Scrib {
 					'rel_child' => array(
 						'_title' => '',
 						'_repeatable' => TRUE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => 'Child',
 								'_input' => array(
@@ -3597,7 +3570,7 @@ class Scrib {
 					'rel_next' => array(
 						'_title' => '',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => 'Next Page',
 								'_input' => array(
@@ -3611,7 +3584,7 @@ class Scrib {
 					'rel_previous' => array(
 						'_title' => '',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => 'Previous Page',
 								'_input' => array(
@@ -3625,7 +3598,7 @@ class Scrib {
 					'rel_reverse' => array(
 						'_title' => '',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => 'Reverse Side',
 								'_input' => array(
@@ -3636,11 +3609,11 @@ class Scrib {
 							),
 						),
 					),
-	
+
 					'addrecord' => array(
 						'_title' => 'Add New Record',
 						'_repeatable' => FALSE,
-						'_elements' => array( 
+						'_elements' => array(
 							'a' => array(
 								'_title' => '',
 								'_input' => array(
@@ -3806,7 +3779,7 @@ class Scrib {
 						$contributors[] = $temp;
 					else
 						$creators[] = $temp;
-				
+
 				if( count( $creators )){
 					$result .= '<li class="creator"><h3>'. ( 1 == count( $creators ) ? 'Creator' : 'Creators' ) .'</h3><ul>';
 					foreach( $creators as $temp )
@@ -3968,7 +3941,7 @@ class Scrib {
 				$facets['dy'][] = substr( $r['arc']['description'][0]['cy'], 0, -2 ) .'00s';
 			}
 			if( isset( $r['arc']['description'][0]['cm'] ))
-				$facets['dm'][] = date( 'F', strtotime( '2008-'. $r['arc']['description'][0]['cm'] .'-01' )); 
+				$facets['dm'][] = date( 'F', strtotime( '2008-'. $r['arc']['description'][0]['cm'] .'-01' ));
 
 			foreach( $r['arc']['date_coverage'] as $temp ){
 				if( isset( $temp['y'] )){
@@ -3977,7 +3950,7 @@ class Scrib {
 					$facets['dy'][] = substr( $temp['y'], 0, -2 ) .'00s';
 				}
 				if( isset( $temp['m'] ))
-					$facets['dm'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' )); 
+					$facets['dm'][] = date( 'F', strtotime( '2008-'. $temp['m'] .'-01' ));
 			}
 
 			// creators
@@ -4202,7 +4175,7 @@ TODO: update relationships to other posts when a post is saved.
 		global $wpdb;
 
 		$wpdb->get_results("REPLACE INTO $this->harvest_table
-			( source_id, harvest_date, imported, content, enriched ) 
+			( source_id, harvest_date, imported, content, enriched )
 			VALUES ( '". $wpdb->escape( $bibr['_sourceid'] ) ."', NOW(), 0, '". $wpdb->escape( serialize( $bibr )) ."', ". absint( $enriched ) ." )" );
 
 		wp_cache_set( $bibr['_sourceid'], time() + 2500000, 'scrib_harvested', time() + 2500000 );
@@ -4237,7 +4210,7 @@ TODO: update relationships to other posts when a post is saved.
 			if( 1 < count( $post_ids )){
 				// de-index the duplicate posts
 				// TODO: what if they have comments? What if others have linked to them?
-				$this->import_deindex_post( $post_ids ); 
+				$this->import_deindex_post( $post_ids );
 
 				sleep( 2 ); // give the database a moment to settle
 			}
@@ -4252,7 +4225,7 @@ TODO: update relationships to other posts when a post is saved.
 
 	public function import_deindex_post( $post_ids ){
 		// sets a post's status to draft so that it no longer appears in searches
-		// TODO: need to find a better status to hide it from searches, 
+		// TODO: need to find a better status to hide it from searches,
 		// but not invalidate incoming links or remove comments
 		global $wpdb;
 
@@ -4260,7 +4233,7 @@ TODO: update relationships to other posts when a post is saved.
 			$post_id = absint( $post_id );
 			if( !$post_id )
 				continue;
-	
+
 			// set the post to draft (TODO: use a WP function instead of writing to DB)
 			$wpdb->get_results( "UPDATE $wpdb->posts SET post_status = 'draft' WHERE ID = $post_id" );
 
@@ -4295,18 +4268,18 @@ TODO: update relationships to other posts when a post is saved.
 			$postdata['post_title'] = strlen( get_post_field( 'post_title', $postdata['ID'] )) ? get_post_field( 'post_title', $postdata['ID'] ) : $bibr['_title'];
 
 			if( isset( $bibr['_acqdate'] ))
-				$postdata['post_date'] = 
-				$postdata['post_date_gmt'] = 
-				$postdata['post_modified'] = 
+				$postdata['post_date'] =
+				$postdata['post_date_gmt'] =
+				$postdata['post_modified'] =
 				$postdata['post_modified_gmt'] = strlen( get_post_field( 'post_date', $postdata['ID'] )) ? get_post_field( 'post_date', $postdata['ID'] ) : $bibr['_acqdate'];
 
 		}else{
 			$postdata['post_title'] = $wpdb->escape( str_replace( '\"', '"', $bibr['_title'] ));
-			
+
 			if( isset( $bibr['_acqdate'] ))
-				$postdata['post_date'] = 
-				$postdata['post_date_gmt'] = 
-				$postdata['post_modified'] = 
+				$postdata['post_date'] =
+				$postdata['post_date_gmt'] =
+				$postdata['post_modified'] =
 				$postdata['post_modified_gmt'] = $bibr['_acqdate'];
 
 		}
@@ -4364,12 +4337,12 @@ TODO: update relationships to other posts when a post is saved.
 	}
 
 	public function import_harvest_tobepublished_count() {
-		global $wpdb; 
+		global $wpdb;
 		return( $wpdb->get_var( 'SELECT COUNT(*) FROM '. $this->harvest_table .' WHERE imported = 0' ));
 	}
 
-	public function import_harvest_publish() { 
-		global $wpdb; 
+	public function import_harvest_publish() {
+		global $wpdb;
 
 		$interval = 25;
 
@@ -4434,9 +4407,9 @@ TODO: update relationships to other posts when a post is saved.
 		print_r( $wpdb->queries );
 		echo '</pre>';
 		?><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php
-	} 
+	}
 
-	public function import_harvest_upgradeoldarray( &$r ){ 
+	public function import_harvest_upgradeoldarray( &$r ){
 		$r = array( 'marcish' => $r );
 		$r['_title'] = $r['marcish']['title'][0]['a'];
 		$r['_acqdate'] = $r['marcish']['_acqdate'];
@@ -4444,12 +4417,12 @@ TODO: update relationships to other posts when a post is saved.
 		$r['_sourceid'] = $r['marcish']['_sourceid'];
 		unset( $r['marcish']['_sourceid'] );
 		$r['_idnumbers'] = $r['marcish']['idnumbers'];
-		
+
 		return( $r );
 	}
 
-	public function import_harvest_passive(){ 
-		global $wpdb, $bsuite; 
+	public function import_harvest_passive(){
+		global $wpdb, $bsuite;
 
 		if( !$bsuite->get_lock( 'scrib_harvest_passive' ))
 			return( FALSE );
@@ -4481,7 +4454,7 @@ TODO: update relationships to other posts when a post is saved.
 		}
 
 		wp_defer_term_counting( FALSE ); // now update the term counts that we'd defered earlier
-	} 
+	}
 
 
 
@@ -4508,7 +4481,7 @@ return('');
 			return( '<a href="'. $matches[1] .'" title="'. attribute_escape( strip_tags( get_the_title( $post_id ))) .'">'. $bsuite->icon_get_h( $id, 's' ) .'</a>');
 		}
 	}
-	
+
 	public function shortcode_availability( $arg ){
 		// [scrib_availability sourceid="ll1292675"]
 
@@ -4562,12 +4535,12 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			.focus(function(){
 				if(this.value == "<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>") {
 					this.value = '';
-				} 
+				}
 			})
 			.blur(function(){
 				if(this.value == '') {
 					this.value = "<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>";
-				} 
+				}
 			});
 		});
 	</script>
@@ -4580,7 +4553,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$s = sanitize_title( trim( $_REQUEST['q'] ));
 		if ( strlen( $s ) < 2 )
 			die; // require 2 chars for matching
-		
+
 		if ( isset( $_GET['taxonomy'] )){
 			$taxonomy = explode(',', $_GET['tax'] );
 			$taxonomy = array_filter( array_map( 'sanitize_title', array_map( 'trim', $taxonomy )));
@@ -4594,9 +4567,9 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 /* old, innefficient way:
 			$results = $wpdb->get_results( "SELECT t.name, tt.taxonomy, LENGTH(t.name) AS len
-				FROM $wpdb->term_taxonomy AS tt 
-				INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id 
-				WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "') 
+				FROM $wpdb->term_taxonomy AS tt
+				INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id
+				WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "')
 				AND t.slug LIKE ('" . $s . "%')
 				ORDER BY len ASC, tt.count DESC
 				LIMIT 50;
@@ -4604,15 +4577,15 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 */
 
 			$results = $wpdb->get_results( "SELECT t.name, tt.taxonomy, ( ( 100 - t.len ) * tt.count ) AS hits
-				FROM 
+				FROM
 				(
 					SELECT term_id, name, LENGTH(name) AS len
-					FROM $wpdb->terms 
+					FROM $wpdb->terms
 					WHERE slug LIKE ('" . $s . "%')
 					ORDER BY len ASC
 					LIMIT 100
 				) t
-				JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id 
+				JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id
 				WHERE tt.taxonomy IN('" . implode( "','", $taxonomy ). "')
 				AND tt.count > 0
 				ORDER BY hits DESC
@@ -4652,7 +4625,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 	}
 
 	public function get_search_link( $input ) {
-	
+
 		$tags = array();
 		foreach( $input as $key => $val )
 			$tags[ $key ] = implode( '|', $val );
@@ -4670,7 +4643,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		return trim($taglink, '?');
 	}
-	
+
 	public function get_tag_link( $tag ) {
 		global $wp_rewrite;
 
@@ -4689,7 +4662,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		return $taglink;
 */
 	}
-	
+
 	public function the_taxonomies_for_bsuite_suggestive( $taxonomies ) {
 		if( $this->taxonomies_for_related )
 			return( $this->taxonomies_for_related );
@@ -4713,13 +4686,13 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			return false;
 		return $tags;
 	}
-	
+
 	public function get_the_tag_list( $facets = FALSE, $before = '', $sep = '', $after = '' ) {
 		$tags = $this->get_the_tags();
-	
+
 		if ( empty( $tags ) )
 			return false;
-			
+
 		if ( $facets === FALSE )
 			$facets = $this->taxonomies;
 
@@ -4736,20 +4709,20 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		if(empty($tag_links))
 			return(FALSE);
-		
+
 		$tag_links = join( $sep, $tag_links );
 //		$tag_links = apply_filters( 'the_tags', $tag_links );
 		$tag_list .= $tag_links;
-	
+
 		$tag_list .= $after;
-	
+
 		return $tag_list;
 	}
-	
+
 	public function the_tags( $facets = FALSE, $before = 'Tags: ', $sep = ', ', $after = '' ) {
 		echo $this->get_the_tag_list($facets, $before, $sep, $after);
 	}
-	
+
 
 
 
@@ -4772,7 +4745,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		//echo apply_filters( 'wp_tag_cloud', $return, $args );
 		return $return;
 	}
-	
+
 	public function generate_tag_cloud( &$tags, &$args = '' ) {
 		global $wp_rewrite;
 		$defaults = array(
@@ -4784,7 +4757,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		if(!is_array($facets))
 			$facets = explode(',', $facets);
-			
+
 		if ( !$tags )
 			return;
 		$counts = $tag_links = $selected = array();
@@ -4803,7 +4776,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 			$tag_ids[$tag->name] = $tag->term_id;
 		}
-	
+
 		if ( !$counts )
 			return;
 
@@ -4819,21 +4792,21 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		if ( $font_spread <= 0 )
 			$font_spread = 1;
 		$font_step = $font_spread / $spread;
-	
+
 		// SQL cannot save you; this is a second (potentially different) sort on a subset of data.
 		if ( 'name' == $orderby )
 			uksort($counts, 'strnatcasecmp');
 		else
 			asort($counts);
-	
+
 		if ( 'DESC' == $order )
 			$counts = array_reverse( $counts, true );
-		
-	
+
+
 		$a = array();
-	
+
 		$rel = ( is_object($wp_rewrite) && $wp_rewrite->using_permalinks() ) ? ' rel="tag"' : '';
-	
+
 		foreach ( $counts as $tag => $count ) {
 			$tag_id = $tag_ids[$tag];
 			$tag_link = clean_url($tag_links[$tag]);
@@ -4844,7 +4817,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				( $smallest + ( ( $count - $min_count ) * $font_step ) )
 				. "$unit;'>$tag</a>" ;
 		}
-	
+
 		switch ( $format ) :
 		case 'array' :
 			$return =& $a;
@@ -4891,16 +4864,16 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				'output' => 'php',
 				'query' => implode( ' ', $this->search_terms['s'] )
 				));
-			
+
 			// Get the curl session object
 			$session = curl_init($request);
-			
+
 			// Set the POST options.
 			curl_setopt($session, CURLOPT_POST, true);
 			curl_setopt($session, CURLOPT_POSTFIELDS, $postargs);
 			curl_setopt($session, CURLOPT_HEADER, FALSE);
 			curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
-			
+
 			// Do the POST and then close the session
 			$cache = array();
 			$cache = unserialize( curl_exec( $session ));
@@ -5035,15 +5008,15 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$default_title = $options['default-title'];
 		$default_text = str_replace( '[scrib_hit_count]', $this->shortcode_hitcount(), apply_filters( 'widget_text', $options['default-text'] ));
 
-		echo $before_widget; 
-		if( $this->is_browse && empty( $this->search_terms )) { 
+		echo $before_widget;
+		if( $this->is_browse && empty( $this->search_terms )) {
 			if ( !empty( $default_title ) )
 				echo $before_title . $default_title . $after_title;
-			if ( !empty( $default_text ) ) 
+			if ( !empty( $default_text ) )
 				echo '<div class="textwidget scrib_search_edit">' . $default_text . '</div>';
 		}else if( $this->is_browse ) {
 			if ( !empty( $browse_title ) )
-				echo $before_title . $browse_title . $after_title; 
+				echo $before_title . $browse_title . $after_title;
 			if ( !empty( $browse_text_top ) )
 				echo '<div class="textwidget scrib_search_edit">' . $browse_text_top . '</div>';
 			$this->editsearch();
@@ -5051,19 +5024,19 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				echo '<div class="textwidget scrib_search_edit">' . $browse_text_bottom . '</div>';
 		}else{
 			if ( !empty( $search_title ) )
-				echo $before_title . $search_title . $after_title; 
+				echo $before_title . $search_title . $after_title;
 			if ( !empty( $search_text_top ) )
 				echo '<div class="textwidget scrib_search_edit">' . $search_text_top . '</div>';
 			$this->editsearch();
 			if ( !empty( $search_text_bottom ) )
 				echo '<div class="textwidget scrib_search_edit">' . $search_text_bottom . '</div>';
-		}			
+		}
 		echo $after_widget;
 	}
-	
+
 	public function widget_editsearch_control() {
 		$options = $newoptions = get_option('widget_scrib_searchedit');
-	
+
 		if ( $_POST['widget_scrib_searchedit-submit'] ) {
 			$newoptions['search-title'] = strip_tags(stripslashes($_POST['widget_scrib_searchedit-search-title']));
 			$newoptions['search-text-top'] = stripslashes($_POST["widget_scrib_searchedit-search-text-top"]);
@@ -5086,12 +5059,12 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				$newoptions['default-text'] = stripslashes(wp_filter_post_kses($newoptions['default-text']));
 			}
 		}
-	
+
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
 			update_option('widget_scrib_searchedit', $options);
 		}
-	
+
 		$search_title = attribute_escape( $options['search-title'] );
 		$search_text_top = format_to_edit($options['search-text-top']);
 		$search_text_bottom = format_to_edit($options['search-text-bottom']);
@@ -5106,12 +5079,12 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		<p><label for="widget_scrib_searchedit-search-title">
 		<?php _e('Title:') ?> <input type="text" style="width:300px" id="widget_scrib_searchedit-search-title" name="widget_scrib_searchedit-search-title" value="<?php echo $search_title ?>" /></label>
 		</p>
-		
+
 		<p><label for="widget_scrib_searchedit-search-text-top">
 		<?php _e('Text above:') ?>
 		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-search-text-top" name="widget_scrib_searchedit-search-text-top"><?php echo $search_text_top; ?></textarea>
 		</label></p>
-		
+
 		<p><label for="widget_scrib_searchedit-search-text-bottom">
 		<?php _e('Text below:') ?>
 		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-search-text-bottom" name="widget_scrib_searchedit-search-text-bottom"><?php echo $search_text_bottom; ?></textarea>
@@ -5122,12 +5095,12 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		<p><label for="widget_scrib_searchedit-browse-title">
 		<?php _e('Title:') ?> <input type="text" style="width:300px" id="widget_scrib_searchedit-browse-title" name="widget_scrib_searchedit-browse-title" value="<?php echo $browse_title ?>" /></label>
 		</p>
-		
+
 		<p><label for="widget_scrib_searchedit-browse-text-top">
 		<?php _e('Text above:') ?>
 		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-browse-text-top" name="widget_scrib_searchedit-browse-text-top"><?php echo $browse_text_top; ?></textarea>
 		</label></p>
-		
+
 		<p><label for="widget_scrib_searchedit-browse-text-bottom">
 		<?php _e('Text below:') ?>
 		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-browse-text-bottom" name="widget_scrib_searchedit-browse-text-bottom"><?php echo $browse_text_bottom; ?></textarea>
@@ -5138,12 +5111,12 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		<p><label for="widget_scrib_searchedit-default-title">
 		<?php _e('Title:') ?> <input type="text" style="width:300px" id="widget_scrib_searchedit-default-title" name="widget_scrib_searchedit-default-title" value="<?php echo $default_title ?>" /></label>
 		</p>
-		
+
 		<p><label for="widget_scrib_searchedit-default-text">
 		<?php _e('Text:') ?>
 		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-default-text" name="widget_scrib_searchedit-default-text"><?php echo $default_text; ?></textarea>
 		</label></p>
-		
+
 		<input type="hidden" name="widget_scrib_searchedit-submit" id="widget_scrib_searchedit-submit" value="1" />
 	<?php
 	}
@@ -5160,13 +5133,13 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$search_before = '';
 			$search_after = '';
 			$search_options = array(
-				'smallest' => .9998, 
-				'largest' => .9999, 
-				'unit' => 'em', 
+				'smallest' => .9998,
+				'largest' => .9999,
+				'unit' => 'em',
 				'number' => $options[$number]['count'],
-				'format' => 'list', 
-				'orderby' => 'count', 
-				'order' => 'DESC', 
+				'format' => 'list',
+				'orderby' => 'count',
+				'order' => 'DESC',
 				'facets' => $options[$number]['facets']);
 		}else{
 			$single_before = '<div class="wp-tag-cloud">';
@@ -5176,13 +5149,13 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$search_before = '<div class="wp-tag-cloud">';
 			$search_after = '</div>';
 			$search_options = array(
-				'smallest' => 1, 
-				'largest' => 2.15, 
-				'unit' => 'em', 
+				'smallest' => 1,
+				'largest' => 2.15,
+				'unit' => 'em',
 				'number' => $options[$number]['count'],
-				'format' => 'flat', 
-				'orderby' => 'name', 
-				'order' => 'ASC', 
+				'format' => 'flat',
+				'orderby' => 'name',
+				'order' => 'ASC',
 				'facets' => $options[$number]['facets']);
 		}
 
@@ -5201,7 +5174,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			<?php echo $after_widget; ?>
 	<?php
 	}
-	
+
 	public function widget_facets_control($number) {
 		$options = $newoptions = get_option('widget_scrib_facets');
 		if ( !is_array($options) )
@@ -5225,7 +5198,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$show_singular = $options[$number]['show_singular'] ? 'checked="checked"' : '';
 		$format = attribute_escape($options[$number]['format']);
 	?>
-				
+
 				<p><label for="widget_scrib_facets-title-<?php echo $number; ?>"><?php _e('Title:'); ?> <input style="width: 250px;" id="widget_scrib_facets-title-<?php echo $number; ?>" name="widget_scrib_facets-title-<?php echo $number; ?>" type="text" value="<?php echo $title; ?>" /></label></p>
 				<p><label for="widget_scrib_facets-facets-<?php echo $number; ?>"><?php _e('Facets:'); ?> <input style="width: 250px;" id="widget_scrib_facets-facets-<?php echo $number; ?>" name="widget_scrib_facets-facets-<?php echo $number; ?>" type="text" value="<?php echo $facets; ?>" /></label></p>
 				<p><label for="widget_scrib_facets-count-<?php echo $number; ?>"><?php _e('Number of entries to show:'); ?> <input style="width: 25px; text-align: center;" id="widget_scrib_facets-count-<?php echo $number; ?>" name="widget_scrib_facets-count-<?php echo $number; ?>" type="text" value="<?php echo $count; ?>" /></label></p>
@@ -5239,7 +5212,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				<input type="hidden" id="widget_scrib_facets-submit-<?php echo "$number"; ?>" name="widget_scrib_facets-submit-<?php echo "$number"; ?>" value="1" />
 	<?php
 	}
-	
+
 	public function widget_facets_setup() {
 		$options = $newoptions = get_option('widget_scrib_facets');
 		if ( isset($_POST['widget_scrib_facets-number-submit']) ) {
@@ -5254,7 +5227,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$this->widget_facets_register($options['number']);
 		}
 	}
-	
+
 	public function widget_facets_page() {
 		$options = $newoptions = get_option('widget_scrib_facets');
 	?>
@@ -5270,7 +5243,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		</div>
 	<?php
 	}
-	
+
 	public function widget_facets_register() {
 		$options = get_option('widget_scrib_facets');
 		$number = $options['number'];
@@ -5287,7 +5260,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		add_action('sidebar_admin_setup', array(&$this, 'widget_facets_setup'));
 		add_action('sidebar_admin_page', array(&$this, 'widget_facets_page'));
 	}
-	
+
 	public function widgets_register(){
 		$class['classname'] = 'widget_scrib_searchedit';
 		wp_register_sidebar_widget('widget_scrib_searchedit', __('Scrib Search Editor'), array(&$this, 'widget_editsearch'), $class);
@@ -5315,7 +5288,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 	public function make_utf8( $text ){
 		if( function_exists( 'mb_convert_encoding' ))
 			return( mb_convert_encoding( $text, 'UTF-8', 'LATIN1, ASCII, ISO-8859-1, UTF-8'));
-	
+
 		return( $text );
 	}
 

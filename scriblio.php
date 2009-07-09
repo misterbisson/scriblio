@@ -2272,7 +2272,7 @@ class Scrib {
 		foreach( $r['subject'] as $temp ){
 			$subjline = array();
 			foreach( $spare_keys as $spare_key ){
-				if( isset(  $temp[ $spare_key ] )){
+				if( isset(  $temp[ $spare_key ] ) && ( !empty(  $temp[ $spare_key ] ))){
 					switch( $temp[ $spare_key .'_type' ] ){
 						case 'genre' :
 							$parsed['genre'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
@@ -2280,11 +2280,17 @@ class Scrib {
 						case 'person' :
 							$parsed['person'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
 							break; 
+						case 'tag' :
+							$parsed['tag'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+							break; 
 						case 'place' :
 							$parsed['place'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
 							break; 
 						case 'time' :
 							$parsed['time'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+							break; 
+						case 'department' :
+							$parsed['department'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
 							break; 
 						case 'exhibit' :
 							$parsed['exhibit'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
@@ -2640,13 +2646,23 @@ class Scrib {
 			}
 		}
 
+
+		foreach( $r['text'] as $temp )
+			$result .= $temp['content'] ."\n";
+
+/*
 		if( isset( $parsed['notes'] ))
 			foreach( $parsed['notes'] as $temp )
 				$result .= $temp ."\n";
 
 		if( isset( $parsed['contents'][0] ))
 			$result .= $parsed['contents'][0] ."\n";
+*/
 
+		foreach( $r['idnumbers'] as $temp )
+			$result .= $temp['id'] ."\n";
+
+/*
 		if( isset( $parsed['idnumbers']['isbn'] ))
 			foreach( $parsed['idnumbers']['isbn'] as $temp )
 				$result .= $temp ."\n";
@@ -2662,8 +2678,9 @@ class Scrib {
 		if( isset( $parsed['idnumbers']['sourceid'] ))
 			foreach( $parsed['idnumbers']['sourceid'] as $temp )
 				$result .= $temp ."\n";
+*/
 
-		return( strip_tags( $result ));
+		return( wp_filter_nohtml_kses( $result ));
 	}
 
 	public function marcish_the_author_filter( $content ){

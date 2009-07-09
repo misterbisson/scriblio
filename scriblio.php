@@ -135,14 +135,13 @@ class Scrib {
 					's' => 'Keyword',
 					'category' => 'Category',
 
+					'partial' => 'Partial Term',
 					'creator' => 'Author',
-					'creatorkey' => 'Author Keyword',
 					'lang' => 'Language',
 					'cy' => 'Year Published',
 					'cm' => 'Month Published',
 					'format' => 'Format',
 					'subject' => 'Subject',
-					'subjkey' => 'Subject Keyword',
 					'genre' => 'Genre',
 					'person' => 'Person',
 					'place' => 'Place',
@@ -163,7 +162,7 @@ class Scrib {
 
 				),
 				'taxonomies_for_related' => array( 'creator', 'subject', 'genre', 'person', 'place', 'time', 'exhibit' ),
-				'taxonomies_for_suggest' => array( 'creator', 'creatorkey', 'subject', 'subjkey', 'genre', 'person', 'place', 'time', 'exhibit', 'title' )
+				'taxonomies_for_suggest' => array( 'partial', 'creator', 'subject', 'genre', 'person', 'place', 'time', 'exhibit', 'title' )
 				));
 
 		$options = get_option('scrib');
@@ -1053,6 +1052,7 @@ class Scrib {
 			'person' => 'Person/Character',
 			'place' => 'Place',
 			'time' => 'Time',
+			'department' => 'Department',
 			'tag' => 'Tag',
 			'exhibit' => 'Exhibit',
 			'award' => 'Award',
@@ -1372,13 +1372,21 @@ class Scrib {
 						'_description' => 'A geographic coordinate representation of the content of the work (<a href="http://about.scriblio.net/wiki/meditor/marcish/subject_geo" title="More information at the Scriblio website.">more info</a>).',
 						'_repeatable' => TRUE,
 						'_elements' => array( 
-							'point' => array(
-								'_title' => 'Point',
+							'point_lat' => array(
+								'_title' => 'Latitude',
 								'_input' => array(
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
-								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+								'_sanitize' => 'wp_filter_nohtml_kses',
+							),
+							'point_lon' => array(
+								'_title' => 'Longitude',
+								'_input' => array(
+									'_type' => 'text',
+									'_autocomplete' => 'off',
+								),
+								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'bounds' => array(
 								'_title' => 'Bounds',
@@ -1386,7 +1394,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
-								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'name' => array(
 								'_title' => 'Name',
@@ -1394,7 +1402,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
-								'_sanitize' => array( $this, 'wp_filter_nohtml_kses' ),
+								'_sanitize' => 'wp_filter_nohtml_kses',
 							),
 							'suppress' => array(
 								'_title' => 'Suppress',
@@ -2012,6 +2020,7 @@ class Scrib {
 										'next' => 'Next In Series/Next Page',
 										'previous' => 'Previous In Series/Previous Page',
 										'reverse' => 'Reverse Side',
+										'duplicate' => 'Duplicate',
 									),
 									'_default' => 'exact',
 								),
@@ -2055,15 +2064,14 @@ class Scrib {
 
 		// taxonomies for all default forms
 		$args = array('hierarchical' => false, 'update_count_callback' => '_update_post_term_count', 'rewrite' => false, 'query_var' => false);
+		register_taxonomy( 'partial', 'post', $args ); // partial term
 		register_taxonomy( 'creator', 'post', $args ); // creator/author
-		register_taxonomy( 'creatorkey', 'post', $args ); // creator/author keyword
 		register_taxonomy( 'title', 'post', $args );
 		register_taxonomy( 'lang', 'post', $args ); // language
 		register_taxonomy( 'cy', 'post', $args ); // created/published year
 		register_taxonomy( 'cm', 'post', $args ); // created/published month
 		register_taxonomy( 'format', 'post', $args );
 		register_taxonomy( 'subject', 'post', $args );
-		register_taxonomy( 'subjkey', 'post', $args );
 		register_taxonomy( 'genre', 'post', $args );
 		register_taxonomy( 'person', 'post', $args );
 		register_taxonomy( 'place', 'post', $args );
@@ -2688,14 +2696,13 @@ class Scrib {
 		$facets = array();
 		if ( is_array( $r['marcish'] )){
 
+			$facets['partial'] = 
 			$facets['creator'] = 
-			$facets['creatorkey'] = 
 			$facets['lang'] = 
 			$facets['cy'] = 
 			$facets['cm'] = 
 			$facets['format'] = 
 			$facets['subject'] = 
-			$facets['subjkey'] = 
 			$facets['genre'] = 
 			$facets['person'] = 
 			$facets['place'] = 
@@ -2726,7 +2733,7 @@ class Scrib {
 						if( $tempsplit = preg_split( '/[ |,|;|-]/', $temp['name'] ))
 							foreach( $tempsplit as $tempsplittoo )
 								if( !empty( $tempsplittoo ) && !is_numeric( $tempsplittoo ) && ( 2 < strlen( $tempsplittoo )) && ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
-									$facets['creatorkey'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
+									$facets['partial'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
 					}
 			}
 
@@ -2742,7 +2749,7 @@ class Scrib {
 			if( isset( $r['marcish']['published'][0]['lang'] ))
 				$facets['lang'][] = $r['marcish']['published'][0]['lang'];
 
-			// dates
+			// Dates
 			if( isset( $r['marcish']['published'][0]['cy'] )){
 				$facets['cy'][] = $r['marcish']['published'][0]['cy'];
 				$facets['cy'][] = substr( $r['marcish']['published'][0]['cy'], 0, -1 ) .'0s';
@@ -2765,11 +2772,11 @@ class Scrib {
 				}
 			}
 
-			// subjects
+			// Subjects
 			if( isset( $parsed['subjkey'][0] )){
 				foreach( $parsed['subjkey'] as $sk => $sv ){
 					$facets[ $sv['type'] ][] = $sv['value'];
-					$facets['subjkey'][] = $sv['value'];
+					$facets['partial'][] = $sv['value'];
 
 					if( $tempsplit = preg_split( '/[ |,|;|-]/', $sv['value'] ))
 						foreach( $tempsplit as $tempsplittoo )
@@ -2777,11 +2784,11 @@ class Scrib {
 								&& !is_numeric( $tempsplittoo ) 
 								&& ( 2 < strlen( $tempsplittoo )) 
 								&& ( !in_array( strtolower( $tempsplittoo ), $stopwords )))
-									$facets['subjkey'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
+									$facets['partial'][] = $this->meditor_sanitize_punctuation( $tempsplittoo );
 				}
 			}
 
-			// standard numbers
+			// Standard Numbers
 			if ( isset( $parsed['idnumbers']['sourceid'] ))
 				$facets['sourceid'] = $parsed['idnumbers']['sourceid'];
 			if ( isset( $parsed['idnumbers']['lccn'] ))
@@ -2810,7 +2817,7 @@ class Scrib {
 				}
 			}
 
-			// format
+			// Format
 			if( isset( $r['marcish']['format'][0] ))
 				foreach( $r['marcish']['format'] as $temp ){
 					unset( $temp['src'] );
@@ -2819,10 +2826,14 @@ class Scrib {
 							$facets['format'][] = $temptoo;
 				}
 
+			// Related records
 			if( isset( $r['marcish']['related'][0]['record'] ))
 				foreach( $r['marcish']['related'] as $temp )
 					$this->marcish_update_related( $post_id, $temp );
 				
+			// Collection
+			if( isset( $r['marcish']['source'][0]['collection'] ))
+				$facets['collection'][] = $r['marcish']['source'][0]['collection'];
 
 			wp_set_object_terms( $post_id, (int) $this->options['catalog_category_id'], 'category', FALSE );
 		}
@@ -2830,12 +2841,15 @@ class Scrib {
 		if ( count( $facets )){
 			foreach( $facets as $taxonomy => $tags ){
 
+				if( 'tag' == $taxonomy )
+					$taxonomy = 'post_tag';
+
 				if( 'post_tag' == $taxonomy ){
-					wp_set_post_tags($post_id, $tags, TRUE);
+					wp_set_post_tags( $post_id, $tags, TRUE );
 					continue;
 				}
-	
-				wp_set_object_terms($post_id, array_unique( array_filter( $tags )), $taxonomy, FALSE);
+
+				wp_set_object_terms( $post_id, array_unique( array_filter( $tags )), $taxonomy, FALSE );
 			}
 		}
 	}
@@ -4303,12 +4317,21 @@ TODO: update relationships to other posts when a post is saved.
 		if( empty( $postdata['post_title'] ))
 			return( FALSE );
 
+//echo "<h2>Pre</h2>";
+//print_r( $bibr );
+
 		// sanitize the input record
 		$bibr = $this->meditor_sanitize_input( $bibr );
+
+//echo "<h2>Sanitized</h2>";
+//print_r( $bibr );
 
 		// merge it with the old record
 		if( is_array( $oldrecord ))
 			$bibr = $this->meditor_merge_meta( $oldrecord, $bibr, $nsourceid );
+
+//echo "<h2>Merged</h2>";
+//print_r( $bibr );
 
 		$post_id = wp_insert_post( $postdata ); // insert the post
 		if($post_id){
@@ -4316,7 +4339,7 @@ TODO: update relationships to other posts when a post is saved.
 			do_action( 'scrib_meditor_save_record', $post_id, $bibr );
 
 			if( isset( $the_icon ))
-				add_post_meta( $post_id, 'bsuite_post_icon', $the_icon, TRUE ) or update_post_meta( $post_id, 'bsuite_post_icon', $the_icon );
+				$bsuite->icon_resize( $the_icon, $post_id );
 
 			return( $post_id );
 		}
@@ -4360,7 +4383,7 @@ TODO: update relationships to other posts when a post is saved.
 				$post_id = $this->import_insert_post( $r );
 
 				if( $post_id ){
-					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1 WHERE source_id = "'. $post['source_id'] .'"' );
+					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1, content = "" WHERE source_id = "'. $post['source_id'] .'"' );
 					echo '<li><a href="'. get_permalink( $post_id ) .'" target="_blank">'. get_the_title( $post_id ) .'</a> from '. $post['source_id'] .'</li>';
 					flush();
 				}else{
@@ -4430,7 +4453,7 @@ TODO: update relationships to other posts when a post is saved.
 				$post_id = $this->import_insert_post( $r );
 
 				if( $post_id ){
-					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1 WHERE source_id = "'. $post['source_id'] .'"' );
+					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1, content = "" WHERE source_id = "'. $post['source_id'] .'"' );
 				}else{
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = -1 WHERE source_id = "'. $post['source_id'] .'"' );
 				}

@@ -2395,8 +2395,9 @@ class Scrib {
 			$result .= '<li class="availability"><h3>Availability</h3><ul>'. apply_filters( 'scrib_availability_excerpt', '', $id, $parsed['idnumbers']) .'</ul></li>';
 
 		$result .= '</ul>';
+		$result = convert_chars( wptexturize( $result ));
 
-		return($result);
+		return $result ;
 	}
 
 	public function marcish_the_excerpt_rss( $content ){
@@ -2460,8 +2461,9 @@ class Scrib {
 		}
 
 		$result .= '</ul>';
+		$result = convert_chars( wptexturize( $result ));
 
-		return($result);
+		return $result ;
 	}
 
 	public function marcish_the_content( $content ){
@@ -2614,8 +2616,9 @@ class Scrib {
 			$result .= '<li class="related_similar"><h3>Similar Items</h3><ul>'. $temp .'</ul></li>';
 
 		$result .= '</ul>';
+		$result = convert_chars( wptexturize( $result ));
 
-		return($result);
+		return $result ;
 	}
 
 	public function marcish_parse_words( &$r ){
@@ -4716,6 +4719,8 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		$tag_list .= $after;
 
+		$tag_list = convert_chars( wptexturize( $tag_list ));
+
 		return $tag_list;
 	}
 
@@ -4824,7 +4829,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			break;
 		case 'list' :
 			$return = "<ul class='wp-tag-cloud'>\n\t<li>";
-			$return .= join("</li>\n\t<li>", $a);
+			$return .= convert_chars( wptexturize( join( "</li>\n\t<li>", $a )));
 			$return .= "</li>\n</ul>\n";
 			break;
 		default :

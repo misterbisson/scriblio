@@ -409,16 +409,10 @@ class Scrib {
 			}
 		}
 
+		// set the search terms array
 		$this->search_terms = array_filter( $terms );
 
-		if( count( $this->search_terms )){
-			if( !count( $temp ))
-				$this->is_browse = TRUE;
-
-			$this->add_search_filters();
-			return( $the_wp_query );
-		}
-
+		// check if this is a browse page
 		if( isset( $the_wp_query->query_vars['pagename'] ) && $the_wp_query->query_vars['pagename'] == $this->options['browse_name'] ){
 			$the_wp_query->query_vars['pagename'] = '';
 			$the_wp_query->query_vars['page_id'] = 0;
@@ -441,6 +435,15 @@ class Scrib {
 				$this->search_terms = array();
 				return( $the_wp_query );
 			}
+		}
+
+		// it's not a browse page, but the query contains Scrib search terms
+		if( count( $this->search_terms )){
+			if( !count( $temp ))
+				$this->is_browse = TRUE;
+
+			$this->add_search_filters();
+			return( $the_wp_query );
 		}
 
 		return( $the_wp_query );

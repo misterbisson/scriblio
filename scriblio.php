@@ -411,7 +411,7 @@ class Scrib {
 
 		$this->search_terms = array_filter( $terms );
 
-		if( $the_wp_query->is_search ){
+		if( count( $this->search_terms )){
 			if( !count( $temp ))
 				$this->is_browse = TRUE;
 
@@ -2217,12 +2217,13 @@ class Scrib {
 				$parsed['subject'][] = $subjline;
 		}
 
-		foreach( $r['related'] as $temp )
-			$parsed['related'][ $temp['rel'] ][] = $temp['record'];
-
 		// unique the whole batch so far
 		foreach( $parsed as $k => $v )
 			$parsed[ $k ] = $this->array_unique_deep( $v );
+
+		// get the related records
+		foreach( $r['related'] as $temp )
+			$parsed['related'][ $temp['rel'] ][] = $temp['record'];
 
 		// get the standard numbers
 		foreach( $r['idnumbers'] as $temp )
@@ -2254,7 +2255,10 @@ class Scrib {
 	public function marcish_the_excerpt( $content ){
 		global $id;
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
-			return( $this->marcish_parse_excerpt( $r['marcish'] ));
+			if( is_feed() )
+				return( $this->marcish_parse_excerpt_rss( $r['marcish'] ));
+			else
+				return( $this->marcish_parse_excerpt( $r['marcish'] ));
 
 		return( $content );
 	}
@@ -2265,7 +2269,7 @@ class Scrib {
 		$parsed = $this->marcish_parse_parts( $r );
 		$result = '<ul class="marcish summaryrecord">';
 
-		$result .= '<li class="image"><a href="'. get_permalink( $id ) .'" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $id )) .'">'. $bsuite->icon_get_h( $id, 's' ) .'</a></li>';
+		$result .= '<li class="image"><a href="'. get_permalink( $id ) .'" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $id )) .'">'. $bsuite->icon_get_h( $id, 's', TRUE ) .'</a></li>';
 
 		if( isset( $r['attribution'][0]['a'] ))
 			$result .= '<li class="attribution"><h3>Attribution</h3>'. $r['attribution'][0]['a'] .'</li>';
@@ -2389,7 +2393,10 @@ class Scrib {
 	public function marcish_the_content( $content ){
 		global $id;
 		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
-			return( $this->marcish_parse_content( $r['marcish'] ));
+			if( is_feed() )
+				return( $this->marcish_parse_excerpt_rss( $r['marcish'] ));
+			else
+				return( $this->marcish_parse_content( $r['marcish'] ));
 
 		return( $content );
 	}

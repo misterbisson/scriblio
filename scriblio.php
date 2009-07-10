@@ -151,6 +151,8 @@ class Scrib {
 					'sd' => 'Subject Day',
 					'collection' => 'Collection',
 					'exhibit' => 'Exhibit',
+					'award' => 'Award',
+					'readinglevel' => 'Reading Level',
 					'sourceid' => 'Source ID',
 					'isbn' => 'ISBN',
 					'issn' => 'ISSN',
@@ -1057,7 +1059,7 @@ class Scrib {
 			'tag' => 'Tag',
 			'exhibit' => 'Exhibit',
 			'award' => 'Award',
-			'readlevel' => 'Reading Level',
+			'readinglevel' => 'Reading Level',
 		);
 
 		$this->meditor_register( 'marcish',
@@ -2078,6 +2080,8 @@ class Scrib {
 		register_taxonomy( 'place', 'post', $args );
 		register_taxonomy( 'time', 'post', $args );
 		register_taxonomy( 'exhibit', 'post', $args );
+		register_taxonomy( 'award', 'post', $args );
+		register_taxonomy( 'readinglevel', 'post', $args );
 		register_taxonomy( 'sy', 'post', $args ); // subject year
 		register_taxonomy( 'sm', 'post', $args ); // subject month
 		register_taxonomy( 'sd', 'post', $args ); // subject day
@@ -2196,107 +2200,15 @@ class Scrib {
 
 	public function marcish_parse_parts( &$r ){
 		$parsed = array();
-		foreach( $r['idnumbers'] as $temp ){
-			switch( $temp['type'] ){
-				case 'sourceid' :
-					$parsed['idnumbers']['sourceid'][] = $temp['id'];
-					break;
-				case 'lccn' :
-					$parsed['idnumbers']['lccn'][] = $temp['id'];
-					break;
-				case 'isbn' :
-					$parsed['idnumbers']['isbn'][] = $temp['id'];
-					break;
-				case 'issn' :
-					$parsed['idnumbers']['issn'][] = $temp['id'];
-					break;
-				case 'asin' :
-					$parsed['idnumbers']['asin'][] = $temp['id'];
-					break;
-				case 'olid' :
-					$parsed['idnumbers']['olid'][] = $temp['id'];
-					break;
-			}
-		}
-		if ( isset( $parsed['idnumbers']['sourceid'] ))
-			$parsed['idnumbers']['sourceid'] = $this->array_unique_deep( $parsed['idnumbers']['sourceid'] );
-		if ( isset( $parsed['idnumbers']['lccn'] ))
-			$parsed['idnumbers']['lccn'] = $this->array_unique_deep( $parsed['idnumbers']['lccn'] );
-		if ( isset( $parsed['idnumbers']['isbn'] ))
-			$parsed['idnumbers']['isbn'] = $this->array_unique_deep( $parsed['idnumbers']['isbn'] );
-		if ( isset( $parsed['idnumbers']['issn'] ))
-			$parsed['idnumbers']['issn'] = $this->array_unique_deep( $parsed['idnumbers']['issn'] );
-		if ( isset( $parsed['idnumbers']['asin'] ))
-			$parsed['idnumbers']['asin'] = $this->array_unique_deep( $parsed['idnumbers']['asin'] );
-		if ( isset( $parsed['idnumbers']['olid'] ))
-			$parsed['idnumbers']['olid'] = $this->array_unique_deep( $parsed['idnumbers']['olid'] );
 
-		foreach( $r['text'] as $temp ){
-			switch( $temp['type'] ){
-				case 'description' :
-					$parsed['description'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'transcription' :
-					$parsed['transcription'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'translation' :
-					$parsed['translation'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'contents' :
-					$parsed['contents'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'review' :
-					$parsed['review'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'notes' :
-					$parsed['notes'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'firstwords' :
-					$parsed['firstwords'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'lastwords' :
-					$parsed['lastwords'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'dedication' :
-					$parsed['dedication'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'quotes' :
-					$parsed['quotes'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-				case 'sample' :
-					$parsed['sample'][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
-					break;
-			}
-		}
-
+		// do up the subjects
 		$spare_keys = array( 'a', 'b', 'c', 'd', 'e', 'f', 'g' );
 		foreach( $r['subject'] as $temp ){
 			$subjline = array();
 			foreach( $spare_keys as $spare_key ){
 				if( isset(  $temp[ $spare_key ] ) && ( !empty(  $temp[ $spare_key ] ))){
-					switch( $temp[ $spare_key .'_type' ] ){
-						case 'genre' :
-							$parsed['genre'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break;
-						case 'person' :
-							$parsed['person'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break;
-						case 'tag' :
-							$parsed['tag'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break;
-						case 'place' :
-							$parsed['place'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break;
-						case 'time' :
-							$parsed['time'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break;
-						case 'department' :
-							$parsed['department'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break;
-						case 'exhibit' :
-							$parsed['exhibit'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-							break;
-					}
+					$parsed[ $temp[ $temp[ $spare_key .'_type' ] ] ][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+
 					$parsed['subjkey'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
 					$subjline[] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
 				}
@@ -2304,18 +2216,22 @@ class Scrib {
 			if( count( $subjline ))
 				$parsed['subject'][] = $subjline;
 		}
-		if ( isset( $parsed['subject'] ))
-			$parsed['subject'] = $this->array_unique_deep( $parsed['subject'] );
-		if ( isset( $parsed['genre'] ))
-			$parsed['genre'] = $this->array_unique_deep( $parsed['genre'] );
-		if ( isset( $parsed['person'] ))
-			$parsed['person'] = $this->array_unique_deep( $parsed['person'] );
-		if ( isset( $parsed['place'] ))
-			$parsed['place'] = $this->array_unique_deep( $parsed['place'] );
-		if ( isset( $parsed['time'] ))
-			$parsed['time'] = $this->array_unique_deep( $parsed['time'] );
-		if ( isset( $parsed['exhibit'] ))
-			$parsed['exhibit'] = $this->array_unique_deep( $parsed['exhibit'] );
+
+		// unique the whole batch
+		foreach( $parsed as $k => $v )
+			$parsed[ $k ] = $this->array_unique_deep( $v );
+
+		// get the standard numbers
+		foreach( $r['idnumbers'] as $temp )
+			$parsed['idnumbers'][ $temp['type'] ][] = $temp['id'];
+
+		// unique those numbers
+		foreach( $parsed['idnumbers'] as $k => $v )
+			$parsed['idnumbers'][ $k ] = $this->array_unique_deep( $v );
+
+		// get the various text fields
+		foreach( $r['text'] as $temp )
+			$parsed[ $temp['type'] ][] = wpautop( convert_chars( wptexturize( $temp['content'] )));
 
 		return( $parsed );
 	}
@@ -2344,7 +2260,7 @@ class Scrib {
 		global $id, $bsuite;
 
 		$parsed = $this->marcish_parse_parts( $r );
-		$result = '<ul class="summaryrecord">';
+		$result = '<ul class="marcish summaryrecord">';
 
 		$result .= '<li class="image"><a href="'. get_permalink( $id ) .'" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $id )) .'">'. $bsuite->icon_get_h( $id, 's' ) .'</a></li>';
 
@@ -2413,7 +2329,7 @@ class Scrib {
 		global $id, $bsuite;
 
 		$parsed = $this->marcish_parse_parts( $r );
-		$result = '<ul class="summaryrecord">';
+		$result = '<ul class="marcish summaryrecord">';
 
 		$result .= '<li class="image"><a href="'. get_permalink( $id ) .'" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $id )) .'">'. $bsuite->icon_get_h( $id, 's' ) .'</a></li>';
 
@@ -2479,7 +2395,7 @@ class Scrib {
 		global $id, $bsuite;
 		$parsed = $this->marcish_parse_parts( $r );
 
-		$result = '<ul class="fullrecord">';
+		$result = '<ul class="marcish fullrecord">';
 
 		$result .= '<li class="image">'. $bsuite->icon_get_h( $id, 's' ) .'</li>';
 
@@ -2702,6 +2618,8 @@ class Scrib {
 			$facets['place'] =
 			$facets['time'] =
 			$facets['exhibit'] =
+			$facets['award'] =
+			$facets['readinglevel'] =
 			$facets['sy'] =
 			$facets['sm'] =
 			$facets['sd'] =

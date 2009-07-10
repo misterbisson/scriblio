@@ -2217,7 +2217,10 @@ class Scrib {
 				$parsed['subject'][] = $subjline;
 		}
 
-		// unique the whole batch
+		foreach( $r['related'] as $temp )
+			$parsed['related'][ $temp['type'] ][] = $temp['record'];
+
+		// unique the whole batch so far
 		foreach( $parsed as $k => $v )
 			$parsed[ $k ] = $this->array_unique_deep( $v );
 

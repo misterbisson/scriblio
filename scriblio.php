@@ -2218,7 +2218,7 @@ class Scrib {
 		}
 
 		foreach( $r['related'] as $temp )
-			$parsed['related'][ $temp['type'] ][] = $temp['record'];
+			$parsed['related'][ $temp['rel'] ][] = $temp['record'];
 
 		// unique the whole batch so far
 		foreach( $parsed as $k => $v )

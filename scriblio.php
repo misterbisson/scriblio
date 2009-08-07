@@ -4116,7 +4116,7 @@ TODO: update relationships to other posts when a post is saved.
 		wp_cache_set( $bibr['_sourceid'], time() + 2500000, 'scrib_harvested', time() + 2500000 );
 	}
 
-	public function import_post_exists( &$idnumbers ) {
+	public function import_post_exists( $idnumbers ) {
 		global $wpdb;
 
 		$post_id = FALSE;
@@ -4263,8 +4263,12 @@ TODO: update relationships to other posts when a post is saved.
 			add_post_meta( $post_id, 'scrib_meditor_content', $bibr, TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', $bibr );
 			do_action( 'scrib_meditor_save_record', $post_id, $bibr );
 
-			if( isset( $the_icon ))
-				$bsuite->icon_resize( $the_icon, $post_id );
+			if( isset( $the_icon )){
+				if( is_array( $the_icon ))
+					add_post_meta( $post_id, 'bsuite_post_icon', $the_icon, TRUE ) or update_post_meta( $post_id, 'bsuite_post_icon', $the_icon );
+				else if( is_string( $the_icon ))
+					$bsuite->icon_resize( $the_icon, $post_id );
+			}
 
 			return( $post_id );
 		}
@@ -4306,7 +4310,6 @@ TODO: update relationships to other posts when a post is saved.
 					$r = $this->import_harvest_upgradeoldarray( $r );
 
 				$post_id = $this->import_insert_post( $r );
-
 				if( $post_id ){
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1, content = "" WHERE source_id = "'. $post['source_id'] .'"' );
 					echo '<li><a href="'. get_permalink( $post_id ) .'" target="_blank">'. get_the_title( $post_id ) .'</a> from '. $post['source_id'] .'</li>';
@@ -5225,6 +5228,10 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			return( mb_convert_encoding( $text, 'UTF-8', 'LATIN1, ASCII, ISO-8859-1, UTF-8'));
 
 		return( $text );
+	}
+
+	public function strip_cdata( $input ){
+		return trim( preg_replace( '/<!\[CDATA\[(.+?)\]\]>/is', '\1', (string) $input ));
 	}
 
 }

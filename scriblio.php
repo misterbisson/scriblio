@@ -682,7 +682,7 @@ class Scrib {
 				$this->meditor_form_sub( $handle, $prototype['_elements'][ $key ], $row, $key, $ordinal );
 			echo '</ul></li>';
 		}
-		echo '</ul>';
+		echo '</ul><p class="scrib_meditor_end" />';
 
 		do_action( 'scrib_meditor_form_'. $handle );
 	}

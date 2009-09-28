@@ -6,10 +6,6 @@
 	border: 2px solid red;
 }
 
-#scrib_meditor_div div.inside {
-	padding-bottom: 25px;
-}
-
 ul#scrib_meditor {
 	padding: 0;
 	margin: 0;
@@ -456,3 +452,9 @@ ul#scrib_meditor {
 	margin-top:-30px;
 }
 */
+
+.scrib_meditor_end
+{
+	height: 1px;
+	clear: left;
+}

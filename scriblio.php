@@ -79,7 +79,6 @@ class Scrib {
 		add_action('save_post', array(&$this, 'meditor_save_post'), 2, 2);
 		add_filter('pre_post_title', array(&$this, 'meditor_pre_save_filters'));
 		add_filter('pre_post_excerpt', array(&$this, 'meditor_pre_save_filters'));
-		add_filter('pre_post_content', array(&$this, 'meditor_pre_save_filters'));
 
 		$this->marcish_register();
 		$this->arc_register();
@@ -1781,7 +1780,7 @@ class Scrib {
 									'_type' => 'text',
 									'_autocomplete' => 'off',
 								),
-								'_sanitize' => 'wp_filter_nohtml_kses',
+								'_sanitize' => 'sanitize_url',
 							),
 							'suppress' => array(
 								'_title' => 'Suppress',
@@ -4199,6 +4198,8 @@ TODO: update relationships to other posts when a post is saved.
 			$postdata['ID'] = $this->import_post_exists( $bibr['_idnumbers'] );
 
 			$oldrecord = get_post_meta( $postdata['ID'], 'scrib_meditor_content', true );
+
+			$postdata['post_content'] = strlen( get_post_field( 'post_content', $postdata['ID'] )) ? get_post_field( 'post_content', $postdata['ID'] ) : $bibr['_body'];
 
 			$postdata['post_title'] = strlen( get_post_field( 'post_title', $postdata['ID'] )) ? get_post_field( 'post_title', $postdata['ID'] ) : $bibr['_title'];
 

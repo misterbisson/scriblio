@@ -4190,7 +4190,7 @@ TODO: update relationships to other posts when a post is saved.
 		remove_filter( 'content_save_pre', array( &$bsuite, 'innerindex_nametags' )); // don't build an inner index for catalog records
 		remove_filter( 'publish_post', '_publish_post_hook', 5, 1 ); // avoids pinging links in catalog records
 		remove_filter( 'save_post', '_save_post_hook', 5, 2 ); // don't bother
-		kses_remove_filters(); // don't kses filter catalog records
+//		kses_remove_filters(); // don't kses filter catalog records
 		define( 'WP_IMPORTING', TRUE ); // may improve performance by preventing exection of some unknown hooks
 
 		$postdata = array();
@@ -4199,9 +4199,12 @@ TODO: update relationships to other posts when a post is saved.
 
 			$oldrecord = get_post_meta( $postdata['ID'], 'scrib_meditor_content', true );
 
-			$postdata['post_content'] = strlen( get_post_field( 'post_content', $postdata['ID'] )) ? get_post_field( 'post_content', $postdata['ID'] ) : $bibr['_body'];
 
-			$postdata['post_title'] = strlen( get_post_field( 'post_title', $postdata['ID'] )) ? get_post_field( 'post_title', $postdata['ID'] ) : $bibr['_title'];
+//TODO: setting post title and content at this point works, but it ignores the opportunity to merge data from the existing record.
+
+			$postdata['post_title'] = apply_filters( 'scrib_meditor_pre_title', strlen( get_post_field( 'post_title', $postdata['ID'] )) ? get_post_field( 'post_title', $postdata['ID'] ) : $bibr['_title'], $bibr );
+
+			$postdata['post_content'] = apply_filters( 'scrib_meditor_pre_content', strlen( get_post_field( 'post_content', $postdata['ID'] )) ? get_post_field( 'post_content', $postdata['ID'] ) : $bibr['_body'], $bibr );
 
 			if( isset( $bibr['_acqdate'] ))
 				$postdata['post_date'] =
@@ -4210,7 +4213,10 @@ TODO: update relationships to other posts when a post is saved.
 				$postdata['post_modified_gmt'] = strlen( get_post_field( 'post_date', $postdata['ID'] )) ? get_post_field( 'post_date', $postdata['ID'] ) : $bibr['_acqdate'];
 
 		}else{
-			$postdata['post_title'] = $wpdb->escape( str_replace( '\"', '"', $bibr['_title'] ));
+
+			$postdata['post_title'] = apply_filters( 'scrib_meditor_pre_title', $bibr['_title'], $bibr );
+
+			$postdata['post_content'] = apply_filters( 'scrib_meditor_pre_content', $bibr['_body'], $bibr );
 
 			if( isset( $bibr['_acqdate'] ))
 				$postdata['post_date'] =
@@ -4237,7 +4243,6 @@ TODO: update relationships to other posts when a post is saved.
 		unset( $bibr['_sourceid'] );
 		unset( $bibr['_icon'] );
 
-		$postdata['post_content'] = $this->marcish_parse_words( $bibr );
 		$postdata['post_excerpt'] = '';
 
 		if( empty( $postdata['post_title'] ))
@@ -4268,7 +4273,7 @@ TODO: update relationships to other posts when a post is saved.
 				if( is_array( $the_icon ))
 					add_post_meta( $post_id, 'bsuite_post_icon', $the_icon, TRUE ) or update_post_meta( $post_id, 'bsuite_post_icon', $the_icon );
 				else if( is_string( $the_icon ))
-					$bsuite->icon_resize( $the_icon, $post_id );
+					$bsuite->icon_resize( $the_icon, $post_id, TRUE );
 			}
 
 			return( $post_id );

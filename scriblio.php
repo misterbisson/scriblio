@@ -2205,18 +2205,52 @@ class Scrib {
 
 		// do up the subjects
 		$spare_keys = array( 'a', 'b', 'c', 'd', 'e', 'f', 'g' );
+		$type_counts = array();
 		foreach( $r['subject'] as $temp ){
 			$subjline = array();
 			foreach( $spare_keys as $spare_key ){
-				if( isset(  $temp[ $spare_key ] ) && ( !empty(  $temp[ $spare_key ] ))){
-					$parsed[ $temp[ $temp[ $spare_key .'_type' ] ] ][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+				if( !empty(  $temp[ $spare_key ] ))
+				{
+					if( 'subject' <> $temp[ $spare_key .'_type' ] )
+						$parsed[ $temp[ $spare_key .'_type' ] ][] = array( 
+							'type' => $temp[ $spare_key .'_type' ], 
+							'value' => $temp[ $spare_key ], 
+							'dictionary' => $temp[ 'dictionary' ], 
+							'src' => $temp[ 'src' ], 
+						);
 
-					$parsed['subjkey'][] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
-					$subjline[] = array( 'type' => $temp[ $spare_key .'_type' ], 'value' => $temp[ $spare_key ] );
+					switch( $temp[ $spare_key .'_type' ] )
+					{
+						case 'subject';
+						case 'genre';
+						case 'person';
+						case 'place';
+						case 'time';
+						case 'department';
+						case 'tag';
+							$parsed['subjkey'][] = array( 
+								'type' => $temp[ $spare_key .'_type' ], 
+								'value' => $temp[ $spare_key ],
+								'dictionary' => $temp[ 'dictionary' ], 
+								'src' => $temp[ 'src' ], 
+							);
+							$subjline[] = array( 
+								'type' => $temp[ $spare_key .'_type' ], 
+								'value' => $temp[ $spare_key ],
+								'dictionary' => $temp[ 'dictionary' ], 
+								'src' => $temp[ 'src' ], 
+							);
+
+							$type_counts[ $temp[ $spare_key .'_type' ] ] ++;
+
+							break;
+					}
 				}
 			}
-			if( count( $subjline ))
+			if( count( $subjline ) && ( 0 < $type_counts['subject'] || 1 < count( $type_counts )))
 				$parsed['subject'][] = $subjline;
+
+			$type_counts = array();
 		}
 
 		// unique the whole batch so far
@@ -2306,8 +2340,15 @@ class Scrib {
 		if( isset( $parsed['subjkey'][0] )){
 			$tags = array();
 			foreach( $parsed['subjkey'] as $temp )
-				$tags[] = '<a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a>';
-
+			{
+				switch( $temp['type'] )
+				{
+					case 'subject':
+					case 'genre':
+						$tags[] = '<a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a>';
+						break;
+				}
+			}
 
 			// authors or, er, creators
 			if( isset( $r['creator'][0]['name'] ))
@@ -2468,9 +2509,17 @@ class Scrib {
 			$result .= '</ul></li>';
 		}
 
+//print_r( $parsed );
+
 		if( isset( $parsed['genre'] )){
 			$result .= '<li class="genre"><h3>Genre</h3><ul>';
 			foreach( $parsed['genre'] as $temp )
+				$result .= '<li><a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a></li>';
+			$result .= '</ul></li>';
+		}
+		if( isset( $parsed['person'] )){
+			$result .= '<li class="person"><h3>People and Characters</h3><ul>';
+			foreach( $parsed['person'] as $temp )
 				$result .= '<li><a href="'. $this->get_tag_link( array( 'taxonomy' => $temp['type'], 'slug' => urlencode( $temp['value'] ))).'" rel="tag">' . $temp['value'] . '</a></li>';
 			$result .= '</ul></li>';
 		}

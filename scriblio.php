@@ -56,7 +56,7 @@ class Scrib {
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
 		add_action('init', array(&$this, 'init'));
 
-		add_action('parse_query', array(&$this, 'parse_query'), 10);
+		add_action( 'parse_query', array(&$this, 'parse_query'), 10);
 		add_action( 'pre_get_posts', array( &$this, 'pre_get_posts' ), 7 );
 		add_filter( 'posts_orderby', array( &$this, 'posts_orderby' ), 7 );
 
@@ -79,6 +79,7 @@ class Scrib {
 		add_action('save_post', array(&$this, 'meditor_save_post'), 2, 2);
 		add_filter('pre_post_title', array(&$this, 'meditor_pre_save_filters'));
 		add_filter('pre_post_excerpt', array(&$this, 'meditor_pre_save_filters'));
+		add_filter('pre_post_content', array(&$this, 'meditor_pre_save_filters'));
 
 		$this->marcish_register();
 		$this->arc_register();
@@ -473,7 +474,7 @@ class Scrib {
 
 			$this->posts_fields[] = ", scrib_b.score ";
 			$this->posts_join[] = " INNER JOIN (
-				SELECT post_id, ( MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."') * MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."' IN BOOLEAN MODE)) AS score
+				SELECT post_id, ( MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."') * MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."' IN BOOLEAN MODE) * MATCH ( title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."' IN BOOLEAN MODE)) AS score
 				FROM $bsuite->search_table
 				WHERE (MATCH ( content, title ) AGAINST ('". $wpdb->escape(implode($this->search_terms['s'], ' ')) ."'$boolean))
 				ORDER BY score DESC
@@ -798,6 +799,10 @@ class Scrib {
 	}
 
 	public function meditor_merge_meta( $orig = array(), $new = array(), $nsourceid = FALSE ){
+
+		$orig = apply_filters( 'scrib_meditor_premerge_old', $orig , $nsourceid );
+		$new = apply_filters( 'scrib_meditor_premerge_new', $new , $nsourceid );
+
 		if( $forms = array_intersect( array_keys( $orig ), array_keys( $new ))){
 			$return = array();
 			foreach( $forms as $form ){
@@ -851,7 +856,8 @@ class Scrib {
 						}
 					}
 		}
-		return( $record );
+
+		return apply_filters( 'scrib_meditor_sanitize_record', $record );
 	}
 
 	public function meditor_sanitize_month( $val ){

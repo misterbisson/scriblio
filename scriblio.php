@@ -4177,7 +4177,7 @@ TODO: update relationships to other posts when a post is saved.
 		$post_ids = $tt_ids = array();
 
 		foreach( $idnumbers as $idnum )
-			$tt_ids[] = get_term( is_term( $idnum['id'] ), $idnum['type'] );
+			$tt_ids[] = get_term( (int) is_term( (string) $idnum['id'] ), $idnum['type'] );
 
 		if( count( $tt_ids )){
 			foreach( $tt_ids as $k => $tt_id )
@@ -4201,7 +4201,7 @@ TODO: update relationships to other posts when a post is saved.
 				// TODO: what if they have comments? What if others have linked to them?
 				$this->import_deindex_post( $post_ids );
 
-				sleep( 2 ); // give the database a moment to settle
+//				usleep( 250000 ); // give the database a moment to settle
 			}
 
 			foreach( $post_ids as $post_id )

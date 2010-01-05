@@ -81,8 +81,8 @@ class Scrib {
 		add_filter('pre_post_excerpt', array(&$this, 'meditor_pre_save_filters'));
 		add_filter('pre_post_content', array(&$this, 'meditor_pre_save_filters'));
 
-		$this->marcish_register();
-		$this->arc_register();
+//		$this->marcish_register();
+//		$this->arc_register();
 
 		add_action('wp_footer', array(&$this, 'wp_footer_js'));
 
@@ -586,6 +586,8 @@ class Scrib {
 			INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
 			GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 1500";
 
+//echo $facets_query;
+
 		$cachekey = md5( $facets_query );
 		if( !$this->the_matching_facets = wp_cache_get( $cachekey , 'scrib_facets' )){
 			$this->the_matching_facets = $wpdb->get_results( $facets_query );
@@ -968,7 +970,7 @@ class Scrib {
 				die( wp_redirect( admin_url( 'post-new.php' ) .'?'. http_build_query( $_GET ) ));
 		}
 
-		add_submenu_page('post-new.php', 'Add New Bibliographic/Archive Record', 'New Catalog Record', 'edit_posts',  'post-new.php?scrib_meditor_form=marcish' );
+//		add_submenu_page('post-new.php', 'Add New Bibliographic/Archive Record', 'New Catalog Record', 'edit_posts',  'post-new.php?scrib_meditor_form=marcish' );
 	}
 
 	public function meditor_register( $handle , $prototype ){
@@ -5125,6 +5127,14 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$options = get_option('widget_scrib_facets');
 
 		if('list' == $options[$number]['format']){
+			$orderby = 'count';
+			if( in_array( $options[$number]['orderby'], array( 'count', 'name' )))
+				$orderby = $options[$number]['orderby'];
+	
+			$order = 'DESC';
+			if( in_array( $options[$number]['order'], array( 'ASC', 'DESC' )))
+				$order = $options[$number]['order'];
+
 			$single_before = '<ul class="wp-tag-cloud"><li>';
 			$single_between = '</li><li>';
 			$single_after = '</li></ul>';
@@ -5137,10 +5147,18 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				'unit' => 'em',
 				'number' => $options[$number]['count'],
 				'format' => 'list',
-				'orderby' => 'count',
-				'order' => 'DESC',
+				'orderby' => $orderby,
+				'order' => $order,
 				'facets' => $options[$number]['facets']);
 		}else{
+			$orderby = 'name';
+			if( in_array( $options[$number]['orderby'], array( 'count', 'name' )))
+				$orderby = $options[$number]['orderby'];
+	
+			$order = 'ASC';
+			if( in_array( $options[$number]['order'], array( 'ASC', 'DESC' )))
+				$order = $options[$number]['order'];
+
 			$single_before = '<div class="wp-tag-cloud">';
 			$single_between = ', ';
 			$single_after = '</div>';
@@ -5153,8 +5171,8 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				'unit' => 'em',
 				'number' => $options[$number]['count'],
 				'format' => 'flat',
-				'orderby' => 'name',
-				'order' => 'ASC',
+				'orderby' => $orderby,
+				'order' => $order,
 				'facets' => $options[$number]['facets']);
 		}
 
@@ -5185,6 +5203,8 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$newoptions[$number]['show_search'] = stripslashes($_POST["widget_scrib_facets-showsearch-$number"]);
 			$newoptions[$number]['show_singular'] = stripslashes($_POST["widget_scrib_facets-showsingular-$number"]);
 			$newoptions[$number]['format'] = stripslashes($_POST["widget_scrib_facets-format-$number"]);
+			$newoptions[$number]['orderby'] = stripslashes($_POST["widget_scrib_facets-orderby-$number"]);
+			$newoptions[$number]['order'] = stripslashes($_POST["widget_scrib_facets-order-$number"]);
 		}
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
@@ -5208,6 +5228,19 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 						<option value="list"<?php selected( $options[$number]['format'], 'list' ); ?>><?php _e('List'); ?></option>
 						<option value="cloud"<?php selected( $options[$number]['format'], 'cloud' ); ?>><?php _e('Cloud'); ?></option>
 					</select></label></p>
+
+				<p><label for="widget_scrib_facets-orderby-<?php echo $number; ?>"><?php _e( 'Order By:' ); ?>
+					<select name="widget_scrib_facets-orderby-<?php echo $number; ?>" id="widget_scrib_facets-orderby-<?php echo $number; ?>">
+						<option value="count"<?php selected( $options[$number]['orderby'], 'count' ); ?>><?php _e('Count'); ?></option>
+						<option value="name"<?php selected( $options[$number]['orderby'], 'name' ); ?>><?php _e('Name'); ?></option>
+					</select></label></p>
+
+				<p><label for="widget_scrib_facets-order-<?php echo $number; ?>"><?php _e( 'Order:' ); ?>
+					<select name="widget_scrib_facets-order-<?php echo $number; ?>" id="widget_scrib_facets-order-<?php echo $number; ?>">
+						<option value="ASC"<?php selected( $options[$number]['order'], 'ASC' ); ?>><?php _e('Ascending A-Z & 0-9'); ?></option>
+						<option value="DESC"<?php selected( $options[$number]['order'], 'DESC' ); ?>><?php _e('Descening Z-A & 9-0'); ?></option>
+					</select></label></p>
+
 				<input type="hidden" id="widget_scrib_facets-submit-<?php echo "$number"; ?>" name="widget_scrib_facets-submit-<?php echo "$number"; ?>" value="1" />
 	<?php
 	}

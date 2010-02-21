@@ -3,12 +3,12 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.7-r3
+Version: 2.9a1
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
 
-/*  Copyright 2005-9  Casey Bisson & Plymouth State University
+/*  Copyright 2005-2010  Casey Bisson & Plymouth State University
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,15 @@ Author URI: http://maisonbisson.com/blog/
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
+/*
+
+TODO
+
+replace $this->taxonomies
+remove references to marcish
+
 */
 
 error_reporting(E_ERROR);
@@ -81,8 +90,8 @@ class Scrib {
 		add_filter('pre_post_excerpt', array(&$this, 'meditor_pre_save_filters'));
 		add_filter('pre_post_content', array(&$this, 'meditor_pre_save_filters'));
 
-//		$this->marcish_register();
-//		$this->arc_register();
+		$this->marcish_register();
+		$this->arc_register();
 
 		add_action('wp_footer', array(&$this, 'wp_footer_js'));
 
@@ -200,69 +209,6 @@ class Scrib {
 			$options['catalog_author_id'] = (int) $user_id;
 			update_option('scrib', $options);
 		}
-
-		// setup widget defaults, if they don't exisit
-		if(!get_option('widget_scrib_searchedit'))
-			update_option('widget_scrib_searchedit', array(
-				'search-title' => 'Searching Our Collection',
-				'search-text-top' => 'Your search found [scrib_hit_count] items with all of the following terms:',
-				'search-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by keyword relevance.',
-
-				'browse-title' => 'Browsing Our Collection',
-				'browse-text-top' => 'We have [scrib_hit_count] items with all of the following terms:',
-				'browse-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by the date added to the collection.',
-
-				'default-title' => 'Browsing Our Collection',
-				'default-text' => 'We have [scrib_hit_count] books, CDs, DVDs, and other materials in our collection. You can click through the pages to see every last one of them, or click the links on the right to narrow it down.'
-				));
-
-		if(!get_option('widget_scrib_facets'))
-			update_option('widget_scrib_facets', array(
-				'number' => 9,
-				1 => array(
-					'title' => 'Subject',
-					'facets' => 'subject,person',
-					'count' => '21',
-					'show_search' => 'on',
-					'show_singular' => 'on',
-					'format' => 'cloud'),
-				2 => array(
-					'title' => 'Place & Time',
-					'facets' => 'place,time',
-					'count' => '11',
-					'show_search' => 'on',
-					'show_singular' => 'on',
-					'format' => 'cloud'),
-				3 => array(
-					'title' => 'Format & Genre',
-					'facets' => 'format,genre',
-					'count' => '9',
-					'show_search' => 'on',
-					'show_singular' => 'on',
-					'format' => 'cloud'),
-				4 => array(
-					'title' => 'Author',
-					'facets' => 'creator',
-					'count' => '7',
-					'show_search' => 'on',
-					'show_singular' => 'on',
-					'format' => 'cloud'),
-				5 => array(
-					'title' => 'Publication Year',
-					'facets' => 'cy',
-					'count' => '13',
-					'show_search' => 'on',
-					'show_singular' => 'on',
-					'format' => 'cloud'),
-				6 => array(
-					'title' => 'Language',
-					'facets' => 'lang',
-					'count' => '7',
-					'show_search' => 'on',
-					'show_singular' => 'on',
-					'format' => 'cloud'),
-				));
-
 
 		// create tables
 		$charset_collate = '';
@@ -4307,6 +4253,7 @@ TODO: update relationships to other posts when a post is saved.
 
 //echo "<h2>Pre</h2>";
 //print_r( $bibr );
+//die;
 
 		// sanitize the input record
 		$bibr = $this->meditor_sanitize_input( $bibr );
@@ -4369,9 +4316,6 @@ TODO: update relationships to other posts when a post is saved.
 				if( !count( $r ))
 					continue;
 
-				if( !array_intersect_key( $r, $this->meditor_forms ))
-					$r = $this->import_harvest_upgradeoldarray( $r );
-
 				$post_id = $this->import_insert_post( $r );
 				if( $post_id ){
 					$wpdb->get_var( 'UPDATE '. $this->harvest_table .' SET imported = 1, content = "" WHERE source_id = "'. $post['source_id'] .'"' );
@@ -4410,18 +4354,6 @@ TODO: update relationships to other posts when a post is saved.
 		?><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php
 	}
 
-	public function import_harvest_upgradeoldarray( &$r ){
-		$r = array( 'marcish' => $r );
-		$r['_title'] = $r['marcish']['title'][0]['a'];
-		$r['_acqdate'] = $r['marcish']['_acqdate'];
-		unset( $r['marcish']['_acqdate'] );
-		$r['_sourceid'] = $r['marcish']['_sourceid'];
-		unset( $r['marcish']['_sourceid'] );
-		$r['_idnumbers'] = $r['marcish']['idnumbers'];
-
-		return( $r );
-	}
-
 	public function import_harvest_passive(){
 		global $wpdb, $bsuite;
 
@@ -4437,9 +4369,6 @@ TODO: update relationships to other posts when a post is saved.
 				$r = unserialize( $post['content'] );
 				if( !is_array( $r ))
 					continue;
-
-				if( !array_intersect_key( $r, $this->meditor_forms ))
-					$r = $this->import_harvest_upgradeoldarray( $r );
 
 				$post_id = $this->import_insert_post( $r );
 
@@ -4990,317 +4919,6 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 	}
 	// end sharelinks related functions
 
-	public function widget_editsearch($args) {
-		if(!is_search())
-			return;
-
-		global $wp_query;
-		extract($args);
-		$options = get_option('widget_scrib_searchedit');
-
-		$search_title = $options['search-title'];
-		$search_text_top = str_replace( '[scrib_hit_count]', $this->shortcode_hitcount(), apply_filters( 'widget_text', $options['search-text-top'] ));
-		$search_text_bottom = str_replace( '[scrib_hit_count]', $this->shortcode_hitcount(), apply_filters( 'widget_text', $options['search-text-bottom'] ));
-
-		$browse_title = $options['browse-title'];
-		$browse_text_top = str_replace( '[scrib_hit_count]', $this->shortcode_hitcount(), apply_filters( 'widget_text', $options['browse-text-top'] ));
-		$browse_text_bottom = str_replace( '[scrib_hit_count]', $this->shortcode_hitcount(), apply_filters( 'widget_text', $options['browse-text-bottom'] ));
-
-		$default_title = $options['default-title'];
-		$default_text = str_replace( '[scrib_hit_count]', $this->shortcode_hitcount(), apply_filters( 'widget_text', $options['default-text'] ));
-
-		echo $before_widget;
-		if( $this->is_browse && empty( $this->search_terms )) {
-			if ( !empty( $default_title ) )
-				echo $before_title . $default_title . $after_title;
-			if ( !empty( $default_text ) )
-				echo '<div class="textwidget scrib_search_edit">' . $default_text . '</div>';
-		}else if( $this->is_browse ) {
-			if ( !empty( $browse_title ) )
-				echo $before_title . $browse_title . $after_title;
-			if ( !empty( $browse_text_top ) )
-				echo '<div class="textwidget scrib_search_edit">' . $browse_text_top . '</div>';
-			$this->editsearch();
-			if ( !empty( $browse_text_bottom ) )
-				echo '<div class="textwidget scrib_search_edit">' . $browse_text_bottom . '</div>';
-		}else{
-			if ( !empty( $search_title ) )
-				echo $before_title . $search_title . $after_title;
-			if ( !empty( $search_text_top ) )
-				echo '<div class="textwidget scrib_search_edit">' . $search_text_top . '</div>';
-			$this->editsearch();
-			if ( !empty( $search_text_bottom ) )
-				echo '<div class="textwidget scrib_search_edit">' . $search_text_bottom . '</div>';
-		}
-		echo $after_widget;
-	}
-
-	public function widget_editsearch_control() {
-		$options = $newoptions = get_option('widget_scrib_searchedit');
-
-		if ( $_POST['widget_scrib_searchedit-submit'] ) {
-			$newoptions['search-title'] = strip_tags(stripslashes($_POST['widget_scrib_searchedit-search-title']));
-			$newoptions['search-text-top'] = stripslashes($_POST["widget_scrib_searchedit-search-text-top"]);
-			$newoptions['search-text-bottom'] = stripslashes($_POST["widget_scrib_searchedit-search-text-bottom"]);
-
-			$newoptions['browse-title'] = strip_tags(stripslashes($_POST['widget_scrib_searchedit-browse-title']));
-			$newoptions['browse-text-top'] = stripslashes($_POST["widget_scrib_searchedit-browse-text-top"]);
-			$newoptions['browse-text-bottom'] = stripslashes($_POST["widget_scrib_searchedit-browse-text-bottom"]);
-
-			$newoptions['default-title'] = strip_tags(stripslashes($_POST['widget_scrib_searchedit-default-title']));
-			$newoptions['default-text'] = stripslashes($_POST["widget_scrib_searchedit-default-text"]);
-
-			if ( !current_user_can('unfiltered_html') ){
-				$newoptions['search-text-top'] = stripslashes(wp_filter_post_kses($newoptions['search-text-top']));
-				$newoptions['search-text-bottom'] = stripslashes(wp_filter_post_kses($newoptions['search-text-bottom']));
-
-				$newoptions['browse-text-top'] = stripslashes(wp_filter_post_kses($newoptions['browse-text-top']));
-				$newoptions['browse-text-bottom'] = stripslashes(wp_filter_post_kses($newoptions['browse-text-bottom']));
-
-				$newoptions['default-text'] = stripslashes(wp_filter_post_kses($newoptions['default-text']));
-			}
-		}
-
-		if ( $options != $newoptions ) {
-			$options = $newoptions;
-			update_option('widget_scrib_searchedit', $options);
-		}
-
-		$search_title = attribute_escape( $options['search-title'] );
-		$search_text_top = format_to_edit($options['search-text-top']);
-		$search_text_bottom = format_to_edit($options['search-text-bottom']);
-		$browse_title = attribute_escape( $options['browse-title'] );
-		$browse_text_top = format_to_edit($options['browse-text-top']);
-		$browse_text_bottom = format_to_edit($options['browse-text-bottom']);
-		$default_title = attribute_escape( $options['default-title'] );
-		$default_text = format_to_edit($options['default-text']);
-	?>
-		<h4>Search display:</h4>
-
-		<p><label for="widget_scrib_searchedit-search-title">
-		<?php _e('Title:') ?> <input type="text" style="width:300px" id="widget_scrib_searchedit-search-title" name="widget_scrib_searchedit-search-title" value="<?php echo $search_title ?>" /></label>
-		</p>
-
-		<p><label for="widget_scrib_searchedit-search-text-top">
-		<?php _e('Text above:') ?>
-		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-search-text-top" name="widget_scrib_searchedit-search-text-top"><?php echo $search_text_top; ?></textarea>
-		</label></p>
-
-		<p><label for="widget_scrib_searchedit-search-text-bottom">
-		<?php _e('Text below:') ?>
-		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-search-text-bottom" name="widget_scrib_searchedit-search-text-bottom"><?php echo $search_text_bottom; ?></textarea>
-		</label></p>
-
-		<h4>Browse display (no keywords):</h4>
-
-		<p><label for="widget_scrib_searchedit-browse-title">
-		<?php _e('Title:') ?> <input type="text" style="width:300px" id="widget_scrib_searchedit-browse-title" name="widget_scrib_searchedit-browse-title" value="<?php echo $browse_title ?>" /></label>
-		</p>
-
-		<p><label for="widget_scrib_searchedit-browse-text-top">
-		<?php _e('Text above:') ?>
-		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-browse-text-top" name="widget_scrib_searchedit-browse-text-top"><?php echo $browse_text_top; ?></textarea>
-		</label></p>
-
-		<p><label for="widget_scrib_searchedit-browse-text-bottom">
-		<?php _e('Text below:') ?>
-		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-browse-text-bottom" name="widget_scrib_searchedit-browse-text-bottom"><?php echo $browse_text_bottom; ?></textarea>
-		</label></p>
-
-		<h4>Default display (no terms):</h4>
-
-		<p><label for="widget_scrib_searchedit-default-title">
-		<?php _e('Title:') ?> <input type="text" style="width:300px" id="widget_scrib_searchedit-default-title" name="widget_scrib_searchedit-default-title" value="<?php echo $default_title ?>" /></label>
-		</p>
-
-		<p><label for="widget_scrib_searchedit-default-text">
-		<?php _e('Text:') ?>
-		<textarea style="width: 450px; height: 35px;" id="widget_scrib_searchedit-default-text" name="widget_scrib_searchedit-default-text"><?php echo $default_text; ?></textarea>
-		</label></p>
-
-		<input type="hidden" name="widget_scrib_searchedit-submit" id="widget_scrib_searchedit-submit" value="1" />
-	<?php
-	}
-
-	public function widget_facets($args, $number = 1) {
-		extract($args);
-		$options = get_option('widget_scrib_facets');
-
-		if('list' == $options[$number]['format']){
-			$orderby = 'count';
-			if( in_array( $options[$number]['orderby'], array( 'count', 'name' )))
-				$orderby = $options[$number]['orderby'];
-	
-			$order = 'DESC';
-			if( in_array( $options[$number]['order'], array( 'ASC', 'DESC' )))
-				$order = $options[$number]['order'];
-
-			$single_before = '<ul class="wp-tag-cloud"><li>';
-			$single_between = '</li><li>';
-			$single_after = '</li></ul>';
-
-			$search_before = '';
-			$search_after = '';
-			$search_options = array(
-				'smallest' => .9998,
-				'largest' => .9999,
-				'unit' => 'em',
-				'number' => $options[$number]['count'],
-				'format' => 'list',
-				'orderby' => $orderby,
-				'order' => $order,
-				'facets' => $options[$number]['facets']);
-		}else{
-			$orderby = 'name';
-			if( in_array( $options[$number]['orderby'], array( 'count', 'name' )))
-				$orderby = $options[$number]['orderby'];
-	
-			$order = 'ASC';
-			if( in_array( $options[$number]['order'], array( 'ASC', 'DESC' )))
-				$order = $options[$number]['order'];
-
-			$single_before = '<div class="wp-tag-cloud">';
-			$single_between = ', ';
-			$single_after = '</div>';
-
-			$search_before = '<div class="wp-tag-cloud">';
-			$search_after = '</div>';
-			$search_options = array(
-				'smallest' => 1,
-				'largest' => 2.15,
-				'unit' => 'em',
-				'number' => $options[$number]['count'],
-				'format' => 'flat',
-				'orderby' => $orderby,
-				'order' => $order,
-				'facets' => $options[$number]['facets']);
-		}
-
-		if(is_singular() && $options[$number]['show_singular'] && $facets = $this->get_the_tag_list($options[$number]['facets'], $single_before, $single_between, $single_after)){
-			// actually, it's all done here, just display it below
-		}else if(is_search() && $options[$number]['show_search'] && $facets = $this->tag_cloud($search_options)){
-			$facets = $search_before . $facets . $search_after;
-		}else{
-			return;
-		}
-
-	?>
-			<?php echo $before_widget; ?>
-				<?php if ( !empty( $options[$number]['title'] ) ) { echo $before_title . $options[$number]['title'] . $after_title; } ?>
-				<?php echo convert_chars( wptexturize( $facets )); ?>
-			<?php echo $after_widget; ?>
-	<?php
-	}
-
-	public function widget_facets_control($number) {
-		$options = $newoptions = get_option('widget_scrib_facets');
-		if ( !is_array($options) )
-			$options = $newoptions = array();
-		if ( $_POST["widget_scrib_facets-submit-$number"] ) {
-			$newoptions[$number]['title'] = strip_tags(stripslashes($_POST["widget_scrib_facets-title-$number"]));
-			$newoptions[$number]['facets'] = stripslashes($_POST["widget_scrib_facets-facets-$number"]);
-			$newoptions[$number]['count'] = (int) $_POST["widget_scrib_facets-count-$number"];
-			$newoptions[$number]['show_search'] = stripslashes($_POST["widget_scrib_facets-showsearch-$number"]);
-			$newoptions[$number]['show_singular'] = stripslashes($_POST["widget_scrib_facets-showsingular-$number"]);
-			$newoptions[$number]['format'] = stripslashes($_POST["widget_scrib_facets-format-$number"]);
-			$newoptions[$number]['orderby'] = stripslashes($_POST["widget_scrib_facets-orderby-$number"]);
-			$newoptions[$number]['order'] = stripslashes($_POST["widget_scrib_facets-order-$number"]);
-		}
-		if ( $options != $newoptions ) {
-			$options = $newoptions;
-			update_option('widget_scrib_facets', $options);
-		}
-		$title = attribute_escape($options[$number]['title']);
-		$facets = format_to_edit($options[$number]['facets']);
-		$count = (int) $options[$number]['count'];
-		$show_search = $options[$number]['show_search'] ? 'checked="checked"' : '';
-		$show_singular = $options[$number]['show_singular'] ? 'checked="checked"' : '';
-		$format = attribute_escape($options[$number]['format']);
-	?>
-
-				<p><label for="widget_scrib_facets-title-<?php echo $number; ?>"><?php _e('Title:'); ?> <input style="width: 250px;" id="widget_scrib_facets-title-<?php echo $number; ?>" name="widget_scrib_facets-title-<?php echo $number; ?>" type="text" value="<?php echo $title; ?>" /></label></p>
-				<p><label for="widget_scrib_facets-facets-<?php echo $number; ?>"><?php _e('Facets:'); ?> <input style="width: 250px;" id="widget_scrib_facets-facets-<?php echo $number; ?>" name="widget_scrib_facets-facets-<?php echo $number; ?>" type="text" value="<?php echo $facets; ?>" /></label></p>
-				<p><label for="widget_scrib_facets-count-<?php echo $number; ?>"><?php _e('Number of entries to show:'); ?> <input style="width: 25px; text-align: center;" id="widget_scrib_facets-count-<?php echo $number; ?>" name="widget_scrib_facets-count-<?php echo $number; ?>" type="text" value="<?php echo $count; ?>" /></label></p>
-				<p><label for="widget_scrib_facets-showsearch-<?php echo $number; ?>"><?php _e('Show in search/browse'); ?> <input class="checkbox" type="checkbox" <?php echo $show_search; ?> id="widget_scrib_facets-showsearch-<?php echo $number; ?>" name="widget_scrib_facets-showsearch-<?php echo $number; ?>" /></label></p>
-				<p><label for="widget_scrib_facets-showsingular-<?php echo $number; ?>"><?php _e('Show in single'); ?> <input class="checkbox" type="checkbox" <?php echo $show_singular; ?> id="widget_scrib_facets-showsingular-<?php echo $number; ?>" name="widget_scrib_facets-showsingular-<?php echo $number; ?>" /></label></p>
-				<p><label for="widget_scrib_facets-format-<?php echo $number; ?>"><?php _e( 'Format:' ); ?>
-					<select name="widget_scrib_facets-format-<?php echo $number; ?>" id="widget_scrib_facets-format-<?php echo $number; ?>">
-						<option value="list"<?php selected( $options[$number]['format'], 'list' ); ?>><?php _e('List'); ?></option>
-						<option value="cloud"<?php selected( $options[$number]['format'], 'cloud' ); ?>><?php _e('Cloud'); ?></option>
-					</select></label></p>
-
-				<p><label for="widget_scrib_facets-orderby-<?php echo $number; ?>"><?php _e( 'Order By:' ); ?>
-					<select name="widget_scrib_facets-orderby-<?php echo $number; ?>" id="widget_scrib_facets-orderby-<?php echo $number; ?>">
-						<option value="count"<?php selected( $options[$number]['orderby'], 'count' ); ?>><?php _e('Count'); ?></option>
-						<option value="name"<?php selected( $options[$number]['orderby'], 'name' ); ?>><?php _e('Name'); ?></option>
-					</select></label></p>
-
-				<p><label for="widget_scrib_facets-order-<?php echo $number; ?>"><?php _e( 'Order:' ); ?>
-					<select name="widget_scrib_facets-order-<?php echo $number; ?>" id="widget_scrib_facets-order-<?php echo $number; ?>">
-						<option value="ASC"<?php selected( $options[$number]['order'], 'ASC' ); ?>><?php _e('Ascending A-Z & 0-9'); ?></option>
-						<option value="DESC"<?php selected( $options[$number]['order'], 'DESC' ); ?>><?php _e('Descening Z-A & 9-0'); ?></option>
-					</select></label></p>
-
-				<input type="hidden" id="widget_scrib_facets-submit-<?php echo "$number"; ?>" name="widget_scrib_facets-submit-<?php echo "$number"; ?>" value="1" />
-	<?php
-	}
-
-	public function widget_facets_setup() {
-		$options = $newoptions = get_option('widget_scrib_facets');
-		if ( isset($_POST['widget_scrib_facets-number-submit']) ) {
-			$number = (int) $_POST['widget_scrib_facets-number'];
-			if ( $number > 29 ) $number = 29;
-			if ( $number < 1 ) $number = 1;
-			$newoptions['number'] = $number;
-		}
-		if ( $options != $newoptions ) {
-			$options = $newoptions;
-			update_option('widget_scrib_facets', $options);
-			$this->widget_facets_register($options['number']);
-		}
-	}
-
-	public function widget_facets_page() {
-		$options = $newoptions = get_option('widget_scrib_facets');
-	?>
-		<div class="wrap">
-			<form method="POST">
-				<h2><?php _e('Scriblio Facets'); ?></h2>
-				<p style="line-height: 30px;"><?php _e('How many facets widgets would you like?'); ?>
-				<select id="widget_scrib_facets-number" name="widget_scrib_facets-number" value="<?php echo $options['number']; ?>">
-	<?php for ( $i = 1; $i < 30; ++$i ) echo "<option value='$i' ".($options['number']==$i ? "selected='selected'" : '').">$i</option>"; ?>
-				</select>
-				<span class="submit"><input type="submit" name="widget_scrib_facets-number-submit" id="widget_scrib_facets-number-submit" value="<?php echo attribute_escape(__('Save')); ?>" /></span></p>
-			</form>
-		</div>
-	<?php
-	}
-
-	public function widget_facets_register() {
-		$options = get_option('widget_scrib_facets');
-		$number = $options['number'];
-		if ( $number < 1 ) $number = 1;
-		if ( $number > 29 ) $number = 29;
-		$dims = array('width' => 460, 'height' => 350);
-		$class = array('classname' => 'widget_scrib_facets');
-		for ($i = 1; $i <= 29; $i++) {
-			$name = sprintf(__('Scrib Facets %d'), $i);
-			$id = "widget_scrib_facets-$i"; // Never never never translate an id
-			wp_register_sidebar_widget($id, $name, $i <= $number ? array(&$this, 'widget_facets') : /* unregister */ '', $class, $i);
-			wp_register_widget_control($id, $name, $i <= $number ? array(&$this, 'widget_facets_control') : /* unregister */ '', $dims, $i);
-		}
-		add_action('sidebar_admin_setup', array(&$this, 'widget_facets_setup'));
-		add_action('sidebar_admin_page', array(&$this, 'widget_facets_page'));
-	}
-
-	public function widgets_register(){
-		$class['classname'] = 'widget_scrib_searchedit';
-		wp_register_sidebar_widget('widget_scrib_searchedit', __('Scrib Search Editor'), array(&$this, 'widget_editsearch'), $class);
-		wp_register_widget_control('widget_scrib_searchedit', __('Scrib Search Editor'), array(&$this, 'widget_editsearch_control'), 'width=460&height=600');
-
-		$this->widget_facets_register();
-	}
-
 	public function array_unique_deep( $array ) {
 		$uniquer = array();
 		foreach( $array as $val ){
@@ -5333,6 +4951,372 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 // now instantiate this object
 $scrib = & new Scrib;
+
+
+/*
+Facets widget class
+*/
+class Scrib_Widget_Facets extends WP_Widget {
+
+	function Scrib_Widget_Facets() {
+		$widget_ops = array( 'classname' => 'widget_facets', 'description' => __( 'Explore your blog with facets' ) );
+		$this->WP_Widget( 'scrib_facets', __( 'Scriblio Facets' ), $widget_ops );
+	}
+
+	function widget( $args, $instance ) {
+		extract( $args );
+		global $scrib;
+
+		if( 'list' == $instance['format'] )
+		{
+			$orderby = 'count';
+			if( in_array( $instance['orderby'], array( 'count', 'name' )))
+				$orderby = $instance['orderby'];
+	
+			$order = 'DESC';
+			if( in_array( $instance['order'], array( 'ASC', 'DESC' )))
+				$order = $instance['order'];
+
+			$single_before = '<ul class="wp-tag-cloud"><li>';
+			$single_between = '</li><li>';
+			$single_after = '</li></ul>';
+
+			$search_before = '';
+			$search_after = '';
+			$search_options = array(
+				'smallest' => .9998,
+				'largest' => .9999,
+				'unit' => 'em',
+				'number' => $instance['count'],
+				'format' => 'list',
+				'orderby' => $orderby,
+				'order' => $order,
+				'facets' => array_keys( $instance['facets'] ),
+			);
+		}
+		else
+		{
+			$orderby = 'name';
+			if( in_array( $instance['orderby'], array( 'count', 'name' )))
+				$orderby = $instance['orderby'];
+	
+			$order = 'ASC';
+			if( in_array( $instance['order'], array( 'ASC', 'DESC' )))
+				$order = $instance['order'];
+
+			$single_before = '<div class="wp-tag-cloud">';
+			$single_between = ', ';
+			$single_after = '</div>';
+
+			$search_before = '<div class="wp-tag-cloud">';
+			$search_after = '</div>';
+			$search_options = array(
+				'smallest' => 1,
+				'largest' => 2.15,
+				'unit' => 'em',
+				'number' => $instance['count'],
+				'format' => 'flat',
+				'orderby' => $orderby,
+				'order' => $order,
+				'facets' => array_keys( $instance['facets'] ),
+			);
+		}
+
+		if( 
+			is_singular() 
+			&& $instance['show_singular'] 
+			&& $facets = $scrib->get_the_tag_list( $instance['facets'] , $single_before , $single_between , $single_after )
+		)
+		{
+			// actually, it's all done here, just display it below
+		}
+
+		else if( 
+			is_search() 
+			&& $instance['show_search'] 
+			&& $facets = $scrib->tag_cloud( $search_options )
+		)
+		{
+			$facets = $search_before . $facets . $search_after;
+		}
+
+		else
+		{
+			return;
+		}
+
+		echo $before_widget;
+		if( ! empty( $instance['title'] ))
+		{
+			echo $before_title . $instance['title'] . $after_title;
+		}
+		echo convert_chars( wptexturize( $facets ));
+		echo $after_widget;
+	}
+
+	function update( $new_instance, $old_instance )
+	{
+
+		$instance = $old_instance;
+		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
+		$instance['facets'] = array_filter( array_map( 'wp_filter_nohtml_kses', $new_instance['facets'] ));
+		$instance['count'] = absint( $new_instance['count'] );
+		$instance['show_search'] = absint( $new_instance['show_search'] );
+		$instance['show_singular'] = absint( $new_instance['show_singular'] );
+		$instance['format'] = in_array( $new_instance['format'], array( 'list', 'cloud' )) ? $new_instance['format']: '';
+		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name' )) ? $new_instance['orderby']: '';
+		$instance['order'] = in_array( $new_instance['order'], array( 'ASC', 'DESC' )) ? $new_instance['order']: '';
+
+		return $instance;
+	}
+
+	function form( $instance )
+	{
+
+		//Defaults
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'title' => '', 
+			)
+		);
+?>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo esc_attr( $instance['title'] ); ?>" />
+		</p>
+
+		<p>
+			<?php _e( 'Facets:' ); ?>
+			<ul><?php echo $this->control_facets( $instance , 'facets' ); ?></ul>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e('Number of entries to show:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('count'); ?>" name="<?php echo $this->get_field_name('count'); ?>" type="text" value="<?php echo absint( $instance['count'] ); ?>" />
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('show_search'); ?>"><?php _e('Show on search pages:'); ?> <input id="<?php echo $this->get_field_id('show_search'); ?>" name="<?php echo $this->get_field_name('show_search'); ?>" type="checkbox" value="1" <?php if ( $instance['show_search'] ) echo 'checked="checked"'; ?>/></label>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('show_singular'); ?>"><?php _e('Show on single item pages:'); ?> <input id="<?php echo $this->get_field_id('show_singular'); ?>" name="<?php echo $this->get_field_name('show_singular'); ?>" type="checkbox" value="1" <?php if ( $instance['show_singular'] ) echo 'checked="checked"'; ?>/></label>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('format'); ?>"><?php _e( 'Format:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('format'); ?>" id="<?php echo $this->get_field_id('format'); ?>" class="widefat">
+				<option value="list" <?php selected( $instance['format'], 'list' ); ?>><?php _e('List'); ?></option>
+				<option value="cloud" <?php selected( $instance['format'], 'cloud' ); ?>><?php _e('Cloud'); ?></option>
+			</select>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('orderby'); ?>"><?php _e( 'Order By:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('orderby'); ?>" id="<?php echo $this->get_field_id('orderby'); ?>" class="widefat">
+				<option value="count" <?php selected( $instance['orderby'], 'count' ); ?>><?php _e('Count'); ?></option>
+				<option value="name" <?php selected( $instance['orderby'], 'name' ); ?>><?php _e('Name'); ?></option>
+			</select>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('order'); ?>"><?php _e( 'Order:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('order'); ?>" id="<?php echo $this->get_field_id('order'); ?>" class="widefat">
+				<option value="ASC" <?php selected( $instance['order'], 'ASC' ); ?>><?php _e('Ascending A-Z & 0-9'); ?></option>
+				<option value="DESC" <?php selected( $instance['order'], 'DESC' ); ?>><?php _e('Descending Z-A & 9-0'); ?></option>
+			</select>
+		</p>
+
+<?php
+
+	}
+
+	function control_facets( $instance , $whichfield = 'facets' )
+	{
+		global $scrib;
+
+		foreach( $scrib->taxonomies as $item ){
+			$list[] = '<li>
+				<label for="'. $this->get_field_id( $whichfield .'-'. $item ) .'"><input id="'. $this->get_field_id( $whichfield .'-'. $item) .'" name="'. $this->get_field_name( $whichfield ) .'['. $item .']" type="checkbox" value="1" '. ( isset( $instance[ $whichfield ][ $item ] ) ? 'checked="checked"' : '' ) .'/> '. $item .'</label>
+			</li>';
+		}
+	
+		return implode( "\n", $list );
+	}
+
+}// end Scrib_Widget_Facets
+
+/*
+Searcheditor widget class
+*/
+class Scrib_Widget_Searcheditor extends WP_Widget {
+
+	function Scrib_Widget_Searcheditor() {
+		$widget_ops = array( 'classname' => 'widget_searcheditor', 'description' => __( 'An editor for the search and browse criteria' ) );
+		$this->WP_Widget( 'scrib_searcheditor', __( 'Scriblio Search Editor' ), $widget_ops );
+	}
+
+	function widget( $args, $instance ) {
+		if( ! is_search() )
+			return;
+
+		extract( $args );
+
+		global $scrib;
+		global $wp_query;
+
+		$subsmatch = array(
+			'[scrib_hit_count]',
+			'[scrib_search_suggestions]',
+		);
+
+		$subsreplace = array(
+			$scrib->shortcode_hitcount(),
+			$scrib->spellcheck(),
+		);
+
+		$search_title = $instance['search-title'];
+		$search_text_top = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['search-text-top'] ));
+		$search_text_bottom = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['search-text-bottom'] ));
+
+		$browse_title = $instance['browse-title'];
+		$browse_text_top = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['browse-text-top'] ));
+		$browse_text_bottom = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['browse-text-bottom'] ));
+
+		$default_title = $instance['default-title'];
+		$default_text = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['default-text'] ));
+
+		echo $before_widget;
+		if( $scrib->is_browse && empty( $scrib->search_terms )) {
+			if ( !empty( $default_title ) )
+				echo $before_title . $default_title . $after_title;
+			if ( !empty( $default_text ) )
+				echo '<div class="textwidget scrib_search_edit">' . $default_text . '</div>';
+		}else if( $scrib->is_browse ) {
+			if ( !empty( $browse_title ) )
+				echo $before_title . $browse_title . $after_title;
+			if ( !empty( $browse_text_top ) )
+				echo '<div class="textwidget scrib_search_edit">' . $browse_text_top . '</div>';
+			$scrib->editsearch();
+			if ( !empty( $browse_text_bottom ) )
+				echo '<div class="textwidget scrib_search_edit">' . $browse_text_bottom . '</div>';
+		}else{
+			if ( !empty( $search_title ) )
+				echo $before_title . $search_title . $after_title;
+			if ( !empty( $search_text_top ) )
+				echo '<div class="textwidget scrib_search_edit">' . $search_text_top . '</div>';
+			$scrib->editsearch();
+			if ( !empty( $search_text_bottom ) )
+				echo '<div class="textwidget scrib_search_edit">' . $search_text_bottom . '</div>';
+		}
+		echo $after_widget;
+	}
+
+	function update( $new_instance, $old_instance )
+	{
+		$instance = $old_instance;
+
+		$instance['search-title'] = wp_filter_nohtml_kses( $new_instance['search-title'] );
+		$instance['search-text-top'] = wp_filter_post_kses( $new_instance['search-text-top'] );
+		$instance['search-text-bottom'] = wp_filter_post_kses( $new_instance['search-text-bottom'] );
+
+		$instance['browse-title'] = wp_filter_nohtml_kses( $new_instance['browse-title'] );
+		$instance['browse-text-top'] = wp_filter_post_kses( $new_instance['browse-text-top'] );
+		$instance['browse-text-bottom'] = wp_filter_post_kses( $new_instance['browse-text-bottom'] );
+
+		$instance['default-title'] = wp_filter_nohtml_kses( $new_instance['default-title'] );
+		$instance['default-text'] = wp_filter_post_kses( $new_instance['default-text'] );
+
+		return $instance;
+	}
+
+	function form( $instance )
+	{
+
+		//Defaults
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'search-title' => 'Searching Our Collection',
+				'search-text-top' => 'Your search found [scrib_hit_count] items with all of the following terms:',
+				'search-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by keyword relevance.',
+
+				'browse-title' => 'Browsing Our Collection',
+				'browse-text-top' => 'We have [scrib_hit_count] items with all of the following terms:',
+				'browse-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by the date added to the collection.',
+
+				'default-title' => 'Browsing Our Collection',
+				'default-text' => 'We have [scrib_hit_count] books, CDs, DVDs, and other materials in our collection. You can click through the pages to see every last one of them, or click the links on the right to narrow it down.'
+			)
+		);
+?>
+
+		<div>
+			<h3>Search display</h3>
+			<p>
+				<label for="<?php echo $this->get_field_id('search-title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('search-title'); ?>" name="<?php echo $this->get_field_name('search-title'); ?>" type="text" value="<?php echo esc_attr( $instance['search-title'] ); ?>" />
+			</p>
+
+			<p>
+				<label for="<?php echo $this->get_field_id('search-text-top'); ?>"><?php _e('Text above:'); ?></label>
+				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('search-text-top'); ?>" name="<?php echo $this->get_field_name('search-text-top'); ?>"><?php echo format_to_edit( $instance['search-text-top'] ); ?></textarea>
+			</p>
+
+			<p>
+				<label for="<?php echo $this->get_field_id('search-text-bottom'); ?>"><?php _e('Text below:'); ?></label>
+				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('search-text-bottom'); ?>" name="<?php echo $this->get_field_name('search-text-bottom'); ?>"><?php echo format_to_edit( $instance['search-text-bottom'] ); ?></textarea>
+			</p>
+
+		</div>
+
+		<div>
+			<h3>Browse display (no keywords)</h3>
+			<p>
+				<label for="<?php echo $this->get_field_id('browse-title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('browse-title'); ?>" name="<?php echo $this->get_field_name('browse-title'); ?>" type="text" value="<?php echo esc_attr( $instance['browse-title'] ); ?>" />
+			</p>
+
+			<p>
+				<label for="<?php echo $this->get_field_id('browse-text-top'); ?>"><?php _e('Text above:'); ?></label>
+				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('search-text-top'); ?>" name="<?php echo $this->get_field_name('browse-text-top'); ?>"><?php echo format_to_edit( $instance['browse-text-top'] ); ?></textarea>
+			</p>
+
+			<p>
+				<label for="<?php echo $this->get_field_id('search-text-bottom'); ?>"><?php _e('Text below:'); ?></label>
+				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('browse-text-bottom'); ?>" name="<?php echo $this->get_field_name('browse-text-bottom'); ?>"><?php echo format_to_edit( $instance['browse-text-bottom'] ); ?></textarea>
+			</p>
+
+		</div>
+
+		<div>
+			<h3>Default display (no terms)</h3>
+			<p>
+				<label for="<?php echo $this->get_field_id('default-title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('default-title'); ?>" name="<?php echo $this->get_field_name('default-title'); ?>" type="text" value="<?php echo esc_attr( $instance['default-title'] ); ?>" />
+			</p>
+
+			<p>
+				<label for="<?php echo $this->get_field_id('default-text'); ?>"><?php _e('Text:'); ?></label>
+				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('default-text'); ?>" name="<?php echo $this->get_field_name('default-text'); ?>"><?php echo format_to_edit( $instance['default-text'] ); ?></textarea>
+			</p>
+
+		</div>
+<?php
+
+	}
+}// end Scrib_Widget_Searcheditor
+
+
+// register these widgets
+function scrib_widgets_init()
+{
+	register_widget( 'Scrib_Widget_Facets' );
+	register_widget( 'Scrib_Widget_Searcheditor' );
+}
+add_action( 'widgets_init', 'scrib_widgets_init', 1 );
+
+
+
+
+
+
+
 
 
 // some template functions...

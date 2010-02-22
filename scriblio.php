@@ -128,8 +128,6 @@ class Scrib {
 		$this->taxonomies_for_related = $this->options['taxonomies_for_related'];
 		$this->taxonomies_for_suggest = $this->options['taxonomies_for_suggest'];
 
-		$this->kses_allowedposttags(); // allow more tags
-
 		if( $bsuite->loadavg < get_option( 'bsuite_load_max' )) // only do cron if load is low-ish
 			add_filter('bsuite_interval', array( &$this, 'import_harvest_passive' ));
 	}
@@ -231,44 +229,6 @@ class Scrib {
 			KEY imported (imported),
 			KEY enriched (enriched)
 			) $charset_collate");
-	}
-
-	public function kses_allowedposttags() {
-		global $allowedposttags;
-		unset($allowedposttags['font']);
-
-		$allowedposttags['ul']['class'] = array();
-		$allowedposttags['ol']['class'] = array();
-		$allowedposttags['li']['class'] = array();
-
-		$allowedposttags['div']['class'] = array();
-		$allowedposttags['div']['style'] = array();
-
-		$allowedposttags['h1']['id'] = array();
-		$allowedposttags['h1']['class'] = array();
-		$allowedposttags['h2']['id'] = array();
-		$allowedposttags['h2']['class'] = array();
-		$allowedposttags['h3']['id'] = array();
-		$allowedposttags['h3']['class'] = array();
-		$allowedposttags['h4']['id'] = array();
-		$allowedposttags['h4']['class'] = array();
-		$allowedposttags['h5']['id'] = array();
-		$allowedposttags['h5']['class'] = array();
-		$allowedposttags['h6']['id'] = array();
-		$allowedposttags['h6']['class'] = array();
-
-		// tags required for YouTube embeds
-		$allowedposttags['embed']['src'] = array();
-		$allowedposttags['embed']['type'] = array();
-		$allowedposttags['embed']['wmode'] = array();
-		$allowedposttags['embed']['width'] = array();
-		$allowedposttags['embed']['height'] = array();
-		$allowedposttags['object']['width'] = array();
-		$allowedposttags['object']['height'] = array();
-		$allowedposttags['param']['name'] = array();
-		$allowedposttags['param']['value'] = array();
-
-		return(TRUE);
 	}
 
 	public function addmenus(){

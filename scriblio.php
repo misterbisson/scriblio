@@ -4750,14 +4750,6 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 //		return apply_filters( 'wp_generate_tag_cloud', $return, $tags, $args );
 	}
 
-	public function is_scrib(){
-		global $id;
-		if( $id && ( $r = get_post_meta( $id, 'scrib_meditor_content', true )) && is_array( $r['marcish'] ))
-			return(TRUE);
-		else
-			return(FALSE);
-	}
-
 	public function spellcheck(){
 		// using Y! Spellcheck Service
 
@@ -5357,11 +5349,6 @@ add_action( 'widgets_init', 'scrib_widgets_init', 1 );
 function is_browse() {
 	global $scrib;
 	return( $scrib->is_browse );
-}
-
-function is_scrib( $post_id = '' ) {
-	global $scrib;
-	return( $scrib->is_scrib( $post_id ) );
 }
 
 function scrib_the_related(){

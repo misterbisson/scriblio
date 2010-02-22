@@ -4678,12 +4678,18 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 	public function generate_tag_cloud( &$tags, &$args = '' ) {
 		global $wp_rewrite;
-		$defaults = array(
-			'smallest' => 8, 'largest' => 22, 'unit' => 'pt', 'number' => 45,
-			'format' => 'flat', 'orderby' => 'name', 'order' => 'ASC', 'facets' => $this->taxonomies
-		);
-		$args = wp_parse_args( $args, $defaults );
-		extract($args);
+
+		$args = wp_parse_args( $args, array(
+			'smallest' => 8, 
+			'largest' => 22, 
+			'unit' => 'pt', 
+			'number' => 45,
+			'format' => 'flat', 
+			'orderby' => 'name', 
+			'order' => 'ASC', 
+			'facets' => $this->taxonomies
+		));
+		extract( $args );
 
 		if(!is_array($facets))
 			$facets = explode(',', $facets);
@@ -4691,8 +4697,9 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		if ( !$tags )
 			return;
 		$counts = $tag_links = $selected = array();
-		foreach ( (array) $tags as $tag ) {
-			if(!in_array($tag->taxonomy, $facets))
+		foreach ( (array) $tags as $tag )
+		{
+			if( !in_array( $tag->taxonomy, $facets ))
 				continue;
 			$counts[$tag->name] = $tag->count;
 
@@ -4710,7 +4717,9 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		if ( !$counts )
 			return;
 
-		asort($counts);
+//print_r( $counts );
+
+		asort( $counts );
 		if($number > 0)
 			$counts = array_slice($counts, -$number, $number, TRUE);
 
@@ -4724,14 +4733,29 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$font_step = $font_spread / $spread;
 
 		// SQL cannot save you; this is a second (potentially different) sort on a subset of data.
-		if ( 'name' == $orderby )
-			uksort($counts, 'strnatcasecmp');
+		if( 'name' == $orderby )
+		{
+			uksort( $counts, 'strnatcasecmp' );
+		}
+		else if( 'custom' == $orderby && is_array( $order_custom ) && count( $order_custom ))
+		{
+			$newcounts = array();
+			foreach( $order_custom as $arb_facet )
+			{
+				if( isset( $counts[ $arb_facet ] ))
+					$newcounts[ $arb_facet ] = $counts[ $arb_facet ];
+			}
+
+			$counts = $newcounts;
+			unset( $newcounts );
+		}
 		else
-			asort($counts);
+		{
+			asort( $counts );
+		}
 
 		if ( 'DESC' == $order )
 			$counts = array_reverse( $counts, true );
-
 
 		$a = array();
 
@@ -4967,10 +4991,19 @@ class Scrib_Widget_Facets extends WP_Widget {
 		extract( $args );
 		global $scrib;
 
+			//Defaults
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'title' => '', 
+				'format_font_small' => 1, 
+				'format_font_large' => 2.15, 
+			)
+		);
+
 		if( 'list' == $instance['format'] )
 		{
 			$orderby = 'count';
-			if( in_array( $instance['orderby'], array( 'count', 'name' )))
+			if( in_array( $instance['orderby'], array( 'count', 'name', 'custom' )))
 				$orderby = $instance['orderby'];
 	
 			$order = 'DESC';
@@ -4984,20 +5017,21 @@ class Scrib_Widget_Facets extends WP_Widget {
 			$search_before = '';
 			$search_after = '';
 			$search_options = array(
-				'smallest' => .9998,
-				'largest' => .9999,
+				'smallest' => floatval( $instance['format_font_small'] ), 
+				'largest' => floatval( $instance['format_font_large'] ),
 				'unit' => 'em',
 				'number' => $instance['count'],
 				'format' => 'list',
 				'orderby' => $orderby,
 				'order' => $order,
 				'facets' => array_keys( $instance['facets'] ),
+				'order_custom' => $instance['order_custom'],
 			);
 		}
 		else
 		{
 			$orderby = 'name';
-			if( in_array( $instance['orderby'], array( 'count', 'name' )))
+			if( in_array( $instance['orderby'], array( 'count', 'name', 'custom' )))
 				$orderby = $instance['orderby'];
 	
 			$order = 'ASC';
@@ -5011,14 +5045,15 @@ class Scrib_Widget_Facets extends WP_Widget {
 			$search_before = '<div class="wp-tag-cloud">';
 			$search_after = '</div>';
 			$search_options = array(
-				'smallest' => 1,
-				'largest' => 2.15,
+				'smallest' => floatval( $instance['format_font_small'] ), 
+				'largest' => floatval( $instance['format_font_large'] ),
 				'unit' => 'em',
 				'number' => $instance['count'],
 				'format' => 'flat',
 				'orderby' => $orderby,
 				'order' => $order,
 				'facets' => array_keys( $instance['facets'] ),
+				'order_custom' => $instance['order_custom'],
 			);
 		}
 
@@ -5064,8 +5099,11 @@ class Scrib_Widget_Facets extends WP_Widget {
 		$instance['show_search'] = absint( $new_instance['show_search'] );
 		$instance['show_singular'] = absint( $new_instance['show_singular'] );
 		$instance['format'] = in_array( $new_instance['format'], array( 'list', 'cloud' )) ? $new_instance['format']: '';
-		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name' )) ? $new_instance['orderby']: '';
+		$instance['format_font_small'] = floatval( $new_instance['format_font_small'] );
+		$instance['format_font_large'] = floatval( $new_instance['format_font_large'] );
+		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name', 'custom' )) ? $new_instance['orderby']: '';
 		$instance['order'] = in_array( $new_instance['order'], array( 'ASC', 'DESC' )) ? $new_instance['order']: '';
+		$instance['order_custom'] = array_filter( array_map( 'trim', (array) preg_split( '/[\n\r]/', wp_filter_post_kses( $new_instance['order_custom'] ))));
 
 		return $instance;
 	}
@@ -5077,6 +5115,8 @@ class Scrib_Widget_Facets extends WP_Widget {
 		$instance = wp_parse_args( (array) $instance, 
 			array( 
 				'title' => '', 
+				'format_font_small' => 1, 
+				'format_font_large' => 2.25, 
 			)
 		);
 ?>
@@ -5111,10 +5151,39 @@ class Scrib_Widget_Facets extends WP_Widget {
 		</p>
 
 		<p>
+			<label for="<?php echo $this->get_field_id('format_font_small'); ?>"><?php _e( 'Smallest:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('format_font_small'); ?>" id="<?php echo $this->get_field_id('format_font_small'); ?>" class="widefat">
+<?php 
+				for( $i = .25 ; $i < 5.1 ; $i = $i + .25 )
+				{
+?>
+					<option value="<?php echo $i; ?>" <?php selected( $instance['format_font_small'], $i ); ?>><?php printf(__('%s em'), number_format( $i , 2 )); ?></option>
+<?php 
+				}
+?>
+			</select>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('format_font_large'); ?>"><?php _e( 'Largest:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('format_font_large'); ?>" id="<?php echo $this->get_field_id('format_font_large'); ?>" class="widefat">
+<?php 
+				for( $i = .25 ; $i < 5.1 ; $i = $i + .25 )
+				{
+?>
+					<option value="<?php echo $i; ?>" <?php selected( $instance['format_font_large'], $i ); ?>><?php printf(__('%s em'), number_format( $i , 2 )); ?></option>
+<?php 
+				}
+?>
+			</select>
+		</p>
+
+		<p>
 			<label for="<?php echo $this->get_field_id('orderby'); ?>"><?php _e( 'Order By:' ); ?></label>
 			<select name="<?php echo $this->get_field_name('orderby'); ?>" id="<?php echo $this->get_field_id('orderby'); ?>" class="widefat">
 				<option value="count" <?php selected( $instance['orderby'], 'count' ); ?>><?php _e('Count'); ?></option>
 				<option value="name" <?php selected( $instance['orderby'], 'name' ); ?>><?php _e('Name'); ?></option>
+				<option value="custom" <?php selected( $instance['orderby'], 'custom' ); ?>><?php _e('Custom (see below)'); ?></option>
 			</select>
 		</p>
 
@@ -5124,6 +5193,11 @@ class Scrib_Widget_Facets extends WP_Widget {
 				<option value="ASC" <?php selected( $instance['order'], 'ASC' ); ?>><?php _e('Ascending A-Z & 0-9'); ?></option>
 				<option value="DESC" <?php selected( $instance['order'], 'DESC' ); ?>><?php _e('Descending Z-A & 9-0'); ?></option>
 			</select>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('order_custom'); ?>"><?php _e('Display facets in the following order:'); ?></label>
+			<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('order_custom'); ?>" name="<?php echo $this->get_field_name('order_custom'); ?>"><?php echo format_to_edit( implode( "\n" , $instance['order_custom'] )); ?></textarea>
 		</p>
 
 <?php

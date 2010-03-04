@@ -242,6 +242,7 @@ class Scrib {
 		// get the taxonomies from the config or punt and read them from the DB
 		$taxonomies = get_option( 'scrib' );
 		$taxonomies = array_keys( $taxonomies['taxonomies'] );
+		return( $taxonomies );
 
 		// register those taxonomies
 		foreach( $taxonomies as $taxonomy ){

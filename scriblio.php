@@ -229,6 +229,47 @@ class Scrib {
 		// register the meditor box in the post and page editors
 		add_meta_box('scrib_meditor_div', __('Scriblio Metadata Editor'), array( &$this, 'meditor_metabox' ), 'post', 'advanced', 'high');
 		add_meta_box('scrib_meditor_div', __('Scriblio Metadata Editor'), array( &$this, 'meditor_metabox' ), 'page', 'advanced', 'high');
+
+
+		// register the settings
+		register_setting( 'Scrib' , 'scrib_taxonomies' , array( &$this , 'save_scrib_taxonomies' ));
+		register_setting( 'Scrib' , 'scrib_categories' , array( &$this , 'save_scrib_categories' ));
+	}
+
+	public function save_scrib_taxonomies( $input )
+	{
+		global $wp_taxonomies;
+
+		$all_taxonomies = (array) array_flip( array_keys( (array) $wp_taxonomies ));
+		
+		$r = array();
+
+		$r['name'] = array_map( 'wp_filter_nohtml_kses' , array_intersect_key( $input['name'] , $all_taxonomies ));
+		$r['search'] = array_keys( array_intersect_key( $input['search'] , $all_taxonomies ));
+		$r['related'] = array_keys( array_intersect_key( $input['related'] , $all_taxonomies ));
+		$r['suggest'] = array_keys( array_intersect_key( $input['suggest'] , $all_taxonomies ));
+
+		return $r;
+	}
+
+	public function save_scrib_categories( $input )
+	{
+
+		$r = array();
+
+		foreach( $input['browse'] as $category => $v )
+		{
+			if( is_array( is_term( $category , 'category' )))
+				$r['browse'][] = $category;
+		}
+
+		foreach( $input['hide'] as $category => $v )
+		{
+			if( is_array( is_term( $category , 'category' )))
+				$r['hide'][] = $category;
+		}
+
+		return $r;
 	}
 
 	public function admin_menu(){

@@ -98,12 +98,12 @@ class Scrib {
 
 		$slash = $wp_rewrite->use_trailing_slashes ? '' : '/';
 
-		$this->options = get_option('scrib');
+		$this->options = get_option('scrib_opts');
 		$this->options['site_url'] = get_settings('siteurl') . '/';
 		$this->options['search_url'] = get_settings('siteurl') .'/search/';
-		$this->options['browse_url'] = get_permalink($this->options['browse_id']) . $slash;
+		$this->options['browse_url'] = get_permalink($this->options['browseid']) . $slash;
 		$this->options['browse_base'] = str_replace( $this->options['site_url'] , '', $this->options['browse_url'] );
-		$this->options['browse_name'] = trim(substr(get_page_uri($this->options['browse_id']), strrpos(get_page_uri($this->options['browse_id']), '/')), '/');
+		$this->options['browse_name'] = trim(substr(get_page_uri($this->options['browseid']), strrpos(get_page_uri($this->options['browseid']), '/')), '/');
 
 		$this->the_matching_posts = NULL;
 		$this->the_matching_posts_ordinals = NULL;
@@ -114,112 +114,26 @@ class Scrib {
 
 		$this->initial_articles = array( '/^a /i','/^an /i','/^da /i','/^de /i','/^the /i','/^ye /i' );
 
-		$this->taxonomy_name = $this->options['taxonomies'];
-		$this->taxonomies = $this->taxonomies_register();
-		$this->taxonomies_for_related = $this->options['taxonomies_for_related'];
-		$this->taxonomies_for_suggest = $this->options['taxonomies_for_suggest'];
+		$temp = get_option( 'scrib_categories' );
+		$this->category_browse = $temp['browse'];
+		$this->category_hide = $temp['hide'];
+
+		$temp = get_option( 'scrib_taxonomies' );
+		$this->taxonomy_name = $temp['name'];
+		$this->taxonomies = $temp['search'];
+		$this->taxonomies_for_related = $temp['related'];
+		$this->taxonomies_for_suggest = $temp['suggest'];
+
+		unset( $temp );
 
 		if( $bsuite->loadavg < get_option( 'bsuite_load_max' )) // only do cron if load is low-ish
 			add_filter('bsuite_interval', array( &$this, 'import_harvest_passive' ));
+
 	}
 
-	public function activate() {
-		global $wpdb;
+	public function activate()
+	{
 
-		// setup default options
-		if( !get_option( 'scrib' ))
-			update_option('scrib', array(
-				'taxonomies' => array(
-					's' => 'Keyword',
-					'category' => 'Category',
-
-					'partial' => 'Partial Term',
-					'creator' => 'Author',
-					'lang' => 'Language',
-					'cy' => 'Year Published',
-					'cm' => 'Month Published',
-					'format' => 'Format',
-					'subject' => 'Subject',
-					'genre' => 'Genre',
-					'person' => 'Person',
-					'place' => 'Place',
-					'time' => 'Time Period',
-					'sy' => 'Subject Year',
-					'sm' => 'Subject Month',
-					'sd' => 'Subject Day',
-					'collection' => 'Collection',
-					'exhibit' => 'Exhibit',
-					'award' => 'Award',
-					'readinglevel' => 'Reading Level',
-					'sourceid' => 'Source ID',
-					'isbn' => 'ISBN',
-					'issn' => 'ISSN',
-					'lccn' => 'LCCN',
-					'asin' => 'ASIN',
-					'ean' => 'ean',
-					'oclc' => 'oclc',
-					'olid' => 'olid',
-
-				),
-				'taxonomies_for_related' => array( 'creator', 'subject', 'genre', 'person', 'place', 'time', 'exhibit' ),
-				'taxonomies_for_suggest' => array( 'partial', 'creator', 'subject', 'genre', 'person', 'place', 'time', 'exhibit', 'title' )
-				));
-
-		$options = get_option('scrib');
-
-		// setup the browse page, if it doesn't exist
-		if(empty($options['browse_id']) || $wpdb->get_var("SELECT ID FROM $wpdb->posts WHERE ID = ". intval($options['browse_id']) .' AND post_status = "publish" AND post_type = "page" ') == FALSE){
-			// create the default browse page
-			$postdata['post_title'] = 'Browse';
-			$postdata['post_name'] = 'browse';
-			$postdata['comment_status'] = 0;
-			$postdata['ping_status'] 	= 0;
-			$postdata['post_status'] 	= 'publish';
-			$postdata['post_type'] 		= 'page';
-			$postdata['post_content']	= 'Browse new titles.';
-			$postdata['post_excerpt']	= 'Browse new titles.';
-			$postdata['post_author'] = 0;
-			$post_id = wp_insert_post($postdata); // insert the post
-
-			// set the options with this new page
-			$options['browse_id'] = (int) $post_id;
-			update_option('scrib', $options);
-		}
-
-		// setup the catalog author, if it doesn't exist
-		if(empty($options['catalog_author_id']) || get_userdata($options['catalog_author_id']) == FALSE){
-			// create the default author
-			$random_password = substr( md5( uniqid( microtime() )), 0, 6 );
-			$user_id = wp_create_user( 'cataloger', $random_password );
-			$user = new WP_User( $user_id );
-			$user->set_role( 'contributor' );
-
-			// set the options
-			$options['catalog_author_id'] = (int) $user_id;
-			update_option('scrib', $options);
-		}
-
-		// create tables
-		$charset_collate = '';
-		if ( version_compare( mysql_get_server_info(), '4.1.0', '>=' )) {
-			if ( ! empty( $wpdb->charset ))
-				$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
-			if ( ! empty( $wpdb->collate ))
-				$charset_collate .= " COLLATE $wpdb->collate";
-		}
-
-		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-		dbDelta("
-			CREATE TABLE $this->harvest_table (
-			source_id varchar(85) NOT NULL,
-			harvest_date date NOT NULL,
-			imported tinyint(1) default '0',
-			content longtext NOT NULL,
-			enriched tinyint(1) default '0',
-			PRIMARY KEY  (source_id),
-			KEY imported (imported),
-			KEY enriched (enriched)
-			) $charset_collate");
 	}
 
 	public function addmenus(){
@@ -234,6 +148,7 @@ class Scrib {
 		// register the settings
 		register_setting( 'Scrib' , 'scrib_taxonomies' , array( &$this , 'save_scrib_taxonomies' ));
 		register_setting( 'Scrib' , 'scrib_categories' , array( &$this , 'save_scrib_categories' ));
+		register_setting( 'Scrib' , 'scrib_opts' , array( &$this , 'save_scrib_opts' ));
 	}
 
 	public function save_scrib_taxonomies( $input )
@@ -259,21 +174,28 @@ class Scrib {
 
 		foreach( $input['browse'] as $category => $v )
 		{
-			if( is_array( is_term( $category , 'category' )))
-				$r['browse'][] = $category;
+			if(( $temp = is_term( absint( $category ) , 'category' )) && is_array( $temp ))
+				$r['browse'][] = $temp['term_id'];
 		}
 
 		foreach( $input['hide'] as $category => $v )
 		{
-			if( is_array( is_term( $category , 'category' )))
-				$r['hide'][] = $category;
+			if(( $temp = is_term( absint( $category ) , 'category' )) && is_array( $temp ))
+				$r['hide'][] = $temp['term_id'];
 		}
 
 		return $r;
 	}
 
+	public function save_scrib_opts( $input )
+	{
+		$r['browseid'] = absint( $input['browseid'] );
+
+		return $r;
+	}
+
 	public function admin_menu(){
-		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/scriblio_admin.php');
+		require( ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/scriblio_admin.php' );
 	}
 
 	public function taxonomies_register() {
@@ -397,7 +319,7 @@ class Scrib {
 
 		// hide catalog entries from the front page
 		if( is_home() || is_front_page() )
-			$the_wp_query->query_vars['category__not_in'] = array( $this->options['catalog_category_id'] );
+			$the_wp_query->query_vars['category__not_in'] = $this->options['category_hide'];
 		return( $the_wp_query );
 	}
 
@@ -459,7 +381,8 @@ class Scrib {
 	public function add_browse_filter(){
 		global $wpdb, $bsuite;
 
-		$search_terms = array( 'category' => array( get_cat_name( $this->options['catalog_category_id'] )));
+		if( count( $this->category_browse ))
+			$search_terms = array( 'category' => array_map( 'get_cat_name' , (array) $this->category_browse ));
 
 		if( !empty( $search_terms )){
 			foreach($search_terms as $taxonomy => $values){
@@ -1251,6 +1174,35 @@ class Scrib {
 		}
 
 		wp_defer_term_counting( FALSE ); // now update the term counts that we'd defered earlier
+	}
+
+	public function import_create_harvest_table()
+	{
+		global $wpdb, $bsuite;
+
+		// create tables
+		$charset_collate = '';
+		if ( version_compare( mysql_get_server_info(), '4.1.0', '>=' )) {
+			if ( ! empty( $wpdb->charset ))
+				$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
+			if ( ! empty( $wpdb->collate ))
+				$charset_collate .= " COLLATE $wpdb->collate";
+		}
+
+		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		dbDelta("
+			CREATE TABLE $this->harvest_table (
+			source_id varchar(85) NOT NULL,
+			harvest_date date NOT NULL,
+			imported tinyint(1) default '0',
+			content longtext NOT NULL,
+			enriched tinyint(1) default '0',
+			PRIMARY KEY  (source_id),
+			KEY imported (imported),
+			KEY enriched (enriched)
+			) $charset_collate
+		");
+
 	}
 
 

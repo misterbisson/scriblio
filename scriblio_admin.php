@@ -91,10 +91,10 @@ function scrib_control_categories()
 				<?php echo $category->name; ?>
 			</td>
 			<td align="center">
-				<input type="checkbox" id="category_browse_<?php echo $category->slug; ?>" name="scrib_categories[browse][<?php echo $category->slug; ?>]" value="1" <?php if( in_array( $category->slug, $options['browse'] )) echo 'CHECKED'; ?> />
+				<input type="checkbox" id="category_browse_<?php echo $category->cat_ID; ?>" name="scrib_categories[browse][<?php echo $category->cat_ID; ?>]" value="1" <?php if( in_array( $category->cat_ID, $options['browse'] )) echo 'CHECKED'; ?> />
 			</td>
 			<td align="center">
-				<input type="checkbox" id="category_hide_<?php echo $category->slug; ?>" name="scrib_categories[hide][<?php echo $category->slug; ?>]" value="1" <?php if( in_array( $category->slug, $options['hide'] )) echo 'CHECKED'; ?> />
+				<input type="checkbox" id="category_hide_<?php echo $category->cat_ID; ?>" name="scrib_categories[hide][<?php echo $category->cat_ID; ?>]" value="1" <?php if( in_array( $category->cat_ID, $options['hide'] )) echo 'CHECKED'; ?> />
 			</td>
 		</tr>
 <?php
@@ -116,6 +116,8 @@ function scrib_control_categories()
 
 global $wpdb, $wp_rewrite;
 
+$options = get_option('scrib_opts');
+
 $this->activate();
 
 ?> 
@@ -130,6 +132,9 @@ $this->activate();
 
 		<h3><?php _e('Categories', 'Scrib'); ?></h3>
 		<?php scrib_control_categories(); ?>
+
+		<h3><?php _e('Browse Page', 'Scrib'); ?></h3>
+		<p><label for="browse_id"><?php _e('Browse base', 'Scrib'); ?>: <select id="scrib_opts_browseid" name="scrib_opts[browseid]"><option value="0"><?php _e('Main Page (no parent)'); ?></option><?php parent_dropdown( $options['browseid'] ); ?></select></label> (select "Main Page (no parent)" for none)</p>
 
 	    <p class="submit">
 	    <input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />

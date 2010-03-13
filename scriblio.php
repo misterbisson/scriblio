@@ -1480,14 +1480,32 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 	public function tag_cloud( $args = '' ) {
 		$defaults = array(
-			'smallest' => 8, 'largest' => 33, 'unit' => 'pt', 'number' => 45,
-			'format' => 'flat', 'orderby' => 'name', 'order' => 'ASC',
-			'exclude' => '', 'include' => ''
+			'scope' => 'query', 
+			'smallest' => 8, 
+			'largest' => 33, 
+			'unit' => 'pt', 
+			'number' => 45,
+			'format' => 'flat', 
+			'orderby' => 'name', 
+			'order' => 'ASC',
+			'exclude' => '', 
+			'include' => '',
 		);
 		$args = wp_parse_args( $args, $defaults );
 
-		if ( empty($this->the_matching_facets) )
-			return;
+		if( $args['scope'] == 'query' )
+		{
+			if( empty( $this->the_matching_facets ))
+				return;
+			$tags &= $this->the_matching_facets;
+		}
+		else
+		{
+			$tags = get_terms( $args['taxonomy'], array_merge( $args, array( 'orderby' => 'count', 'order' => 'DESC' )));
+
+			if ( empty( $tags ))
+				return;
+		}
 
 		$return = $this->generate_tag_cloud( $this->the_matching_facets, $args ); // Here's where those top tags get sorted according to $args
 		//echo apply_filters( 'wp_tag_cloud', $return, $args );
@@ -1830,6 +1848,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 				'smallest' => floatval( $instance['format_font_small'] ), 
 				'largest' => floatval( $instance['format_font_large'] ),
 				'unit' => 'em',
+				'scope' => $instance['scope'],
 				'number' => $instance['count'],
 				'format' => 'list',
 				'orderby' => $orderby,
@@ -1858,6 +1877,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 				'smallest' => floatval( $instance['format_font_small'] ), 
 				'largest' => floatval( $instance['format_font_large'] ),
 				'unit' => 'em',
+				'scope' => $instance['scope'],
 				'number' => $instance['count'],
 				'format' => 'flat',
 				'orderby' => $orderby,
@@ -1905,6 +1925,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 		$instance = $old_instance;
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
 		$instance['facets'] = array_filter( array_map( 'wp_filter_nohtml_kses', $new_instance['facets'] ));
+		$instance['scope'] = in_array( $new_instance['scope'], array( 'query', 'global' )) ? $new_instance['scope']: '';
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['show_search'] = absint( $new_instance['show_search'] );
 		$instance['show_singular'] = absint( $new_instance['show_singular'] );
@@ -1938,6 +1959,14 @@ class Scrib_Widget_Facets extends WP_Widget {
 		<p>
 			<?php _e( 'Facets:' ); ?>
 			<ul><?php echo $this->control_facets( $instance , 'facets' ); ?></ul>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('scope'); ?>"><?php _e( 'Show facets from:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('scope'); ?>" id="<?php echo $this->get_field_id('scope'); ?>" class="widefat">
+				<option value="query" <?php selected( $instance['scope'], 'query' ); ?>><?php _e('The found results'); ?></option>
+				<option value="global" <?php selected( $instance['scope'], 'global' ); ?>><?php _e('The entire collection'); ?></option>
+			</select>
 		</p>
 
 		<p>

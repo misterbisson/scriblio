@@ -300,9 +300,9 @@ class Scrib {
 		}
 
 		// it's not a browse page, but the query contains Scrib search terms
-		if( count( $this->search_terms )){
-			if( !count( $temp ))
-				$this->is_browse = TRUE;
+		if( count( $this->search_terms ))
+		{
+			$this->is_browse = TRUE;
 
 			$this->add_search_filters();
 			return( $the_wp_query );
@@ -436,17 +436,9 @@ class Scrib {
 	}
 
 	public function posts_request( $query ) {
-		global $wpdb, $wp_query;
+		global $wpdb;
 
 //echo "<h2>$query</h2>";
-//print_r( $wp_query );
-
-		if( 
-			$wp_query->is_category ||
-			$wp_query->is_tag ||
-			$wp_query->is_tax
-		)
-			$this->is_browse = TRUE;
 
 		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
 			FROM ("
@@ -1828,7 +1820,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 		extract( $args );
 		global $scrib;
 
-			//Defaults
+		//Defaults
 		$instance = wp_parse_args( (array) $instance, 
 			array( 
 				'title' => '', 
@@ -1906,7 +1898,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 		}
 
 		else if( 
-			is_search() 
+			is_search() || $scrib->is_browse
 			&& $instance['show_search'] 
 			&& $facets = $scrib->tag_cloud( $search_options )
 		)
@@ -2079,13 +2071,13 @@ class Scrib_Widget_Searcheditor extends WP_Widget {
 	}
 
 	function widget( $args, $instance ) {
-		if( ! is_search() )
-			return;
 
 		extract( $args );
 
-		global $scrib;
-		global $wp_query;
+		global $wp_query, $scrib;
+
+		if( ! ( is_search() || $scrib->is_browse ))
+			return;
 
 		$subsmatch = array(
 			'[scrib_hit_count]',

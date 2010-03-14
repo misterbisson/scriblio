@@ -264,7 +264,7 @@ class Scrib {
 		$temp = array_intersect_key( $the_wp_query->query_vars, array_flip( $this->taxonomies ));
 		if( count( $temp )){
 			foreach( $temp as $key => $val ){
-				$values = ( explode( '|', urldecode( $val ) ));
+				$values = array_filter( explode( '|', urldecode( $val ) ));
 				foreach( $values as $val )
 					$terms[ $key ][] = $val;
 			}
@@ -273,17 +273,15 @@ class Scrib {
 		// set the search terms array
 		$this->search_terms = array_filter( $terms );
 
-/*
+
 		if( 
 			1 == count( $this->search_terms ) &&
 			1 == count( current( $this->search_terms )) &&
 			! ( strpos( get_term_link( current( current( $this->search_terms )), key( $this->search_terms )) , $_SERVER['REQUEST_URI'] ))
 		)
 		{
-
 			die( wp_redirect( get_term_link( current( current( $this->search_terms )), key( $this->search_terms ))));
 		}
-*/
 
 		// check if this is a browse page
 		if( isset( $the_wp_query->query_vars['pagename'] ) && $the_wp_query->query_vars['pagename'] == $this->options['browse_name'] ){

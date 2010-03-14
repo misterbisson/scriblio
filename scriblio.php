@@ -289,7 +289,7 @@ class Scrib {
 			! ( strpos( get_term_link( current( current( $this->search_terms )), key( $this->search_terms )) , $_SERVER['REQUEST_URI'] ))
 		)
 		{
-			die( wp_redirect( get_term_link( current( current( $this->search_terms )), key( $this->search_terms ))));
+			die( wp_redirect( get_term_link( current( current( $this->search_terms )), key( $this->search_terms )) , 301 ));
 		}
 
 		// check if this is a browse page

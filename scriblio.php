@@ -275,6 +275,7 @@ class Scrib {
 
 		// check if this is a browse page
 		if( isset( $the_wp_query->query_vars['pagename'] ) && $the_wp_query->query_vars['pagename'] == $this->options['browse_name'] ){
+			$the_wp_query->query_vars['post_type'] = 'post';
 			$the_wp_query->query_vars['pagename'] = '';
 			$the_wp_query->query_vars['page_id'] = 0;
 			unset( $the_wp_query->queried_object );
@@ -435,9 +436,17 @@ class Scrib {
 	}
 
 	public function posts_request( $query ) {
-		global $wpdb;
+		global $wpdb, $wp_query;
 
 //echo "<h2>$query</h2>";
+//print_r( $wp_query );
+
+		if( 
+			$wp_query->is_category ||
+			$wp_query->is_tag ||
+			$wp_query->is_tax
+		)
+			$this->is_browse = TRUE;
 
 		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
 			FROM ("
@@ -1933,7 +1942,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 		$instance['format_font_small'] = floatval( $new_instance['format_font_small'] );
 		$instance['format_font_large'] = floatval( $new_instance['format_font_large'] );
 		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name', 'custom' )) ? $new_instance['orderby']: '';
-		$instance['order'] = in_array( $new_instance['order'], array( 'ASC', 'DESC' )) ? $new_instance['order']: '';
+		$instance['order'] = in_array( $new_instance['order'], array( 'ASC', 'DESC', 'ARB' )) ? $new_instance['order']: '';
 		$instance['order_custom'] = array_filter( array_map( 'trim', (array) preg_split( '/[\n\r]/', wp_filter_post_kses( $new_instance['order_custom'] ))));
 
 		return $instance;
@@ -2031,6 +2040,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 			<select name="<?php echo $this->get_field_name('order'); ?>" id="<?php echo $this->get_field_id('order'); ?>" class="widefat">
 				<option value="ASC" <?php selected( $instance['order'], 'ASC' ); ?>><?php _e('Ascending A-Z & 0-9'); ?></option>
 				<option value="DESC" <?php selected( $instance['order'], 'DESC' ); ?>><?php _e('Descending Z-A & 9-0'); ?></option>
+				<option value="ARB" <?php selected( $instance['order'], 'ARB' ); ?>><?php _e('Arbitrary (enter facet order below)'); ?></option>
 			</select>
 		</p>
 

@@ -457,7 +457,9 @@ class Scrib {
 			wp_cache_set( $cachekey , $this->the_matching_facets, 'scrib_facets', 126000 );
 		}
 
-		return($query);
+//print_r( $this->the_matching_facets );
+
+		return $query;
 	}
 
 	public function editsearch() {
@@ -1898,7 +1900,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 		}
 
 		else if( 
-			is_search() || $scrib->is_browse
+			( is_search() || $scrib->is_browse )
 			&& $instance['show_search'] 
 			&& $facets = $scrib->tag_cloud( $search_options )
 		)

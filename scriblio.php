@@ -156,7 +156,13 @@ class Scrib {
 		global $wp_taxonomies;
 
 		$all_taxonomies = (array) array_flip( array_keys( (array) $wp_taxonomies ));
-		
+		$all_taxonomies['s'] = TRUE;
+
+		// do some hokey stuff to set the name for the keyword search query var 's'
+		$input['search']['s'] = TRUE; 
+		unset( $input['related']['s'] ); 
+		unset( $input['suggest']['s'] ); 
+
 		$r = array();
 
 		$r['name'] = array_map( 'wp_filter_nohtml_kses' , array_intersect_key( $input['name'] , $all_taxonomies ));
@@ -273,9 +279,12 @@ class Scrib {
 		// set the search terms array
 		$this->search_terms = array_filter( $terms );
 
+//print_r( $this->search_terms );
+//die;
 
 		if( 
 			1 == count( $this->search_terms ) &&
+			( key( $this->search_terms ) <> 's' ) &&
 			1 == count( current( $this->search_terms )) &&
 			! ( strpos( get_term_link( current( current( $this->search_terms )), key( $this->search_terms )) , $_SERVER['REQUEST_URI'] ))
 		)

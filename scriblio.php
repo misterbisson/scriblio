@@ -2076,7 +2076,10 @@ class Scrib_Widget_Searcheditor extends WP_Widget {
 
 		global $wp_query, $scrib;
 
-		if( ! ( is_search() || $scrib->is_browse ))
+		if(
+			is_singular() ||
+			! ( is_search() || $scrib->is_browse )
+		)
 			return;
 
 		$subsmatch = array(

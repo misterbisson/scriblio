@@ -1395,11 +1395,15 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		return trim($taglink, '?');
 	}
 
-	public function get_tag_link( $tag ) {
+	public function get_tag_link( $tag )
+	{
 		global $wp_rewrite;
 
 		if( is_object( $tag ))
 			$tag = get_object_vars( $tag );
+
+//get_term_link( $term, $taxonomy )
+echo "<h2>". get_term_link( urldecode( $tag['slug'] ), $tag['taxonomy'] ) ."</h2>";
 
 		$taglink = $this->options['browse_url'] . '?' . $tag['taxonomy'] . '=' . $tag['slug'];
 

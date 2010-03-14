@@ -196,6 +196,7 @@ class Scrib {
 	public function save_scrib_opts( $input )
 	{
 		$r['browseid'] = absint( $input['browseid'] );
+		$r['searchprompt'] = wp_filter_nohtml_kses( $input['searchprompt'] );
 
 		return $r;
 	}
@@ -1298,7 +1299,12 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			return( number_format( $wp_query->found_posts, 0, _c('.|decimal separator'), _c(',|thousands separator') ));
 	}
 
-	public function suggest_js(){
+	public function suggest_js()
+	{
+		$searchprompt = $this->options['searchprompt'];
+
+		if( isset( $this->search_terms['s'] ) && count( $this->search_terms['s'] ))
+			$searchprompt = implode( ' ' , $this->search_terms['s'] );
 ?>
 	<script type="text/javascript">
 		jQuery(function() {
@@ -1306,17 +1312,23 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 			jQuery("input.scrib-search").scribsuggest("<?php bloginfo('home'); ?>/index.php?scrib_suggest=go");
 
-			jQuery("input.scrib-search").val("<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>")
+			jQuery("input.scrib-search").val("<?php echo $searchprompt; ?>")
+<?php
+		if( ! count( $this->search_terms['s'] )):
+?>
 			.focus(function(){
-				if(this.value == "<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>") {
+				if(this.value == "<?php echo $searchprompt; ?>") {
 					this.value = '';
 				}
 			})
 			.blur(function(){
 				if(this.value == '') {
-					this.value = "<?php _e( 'Books, Movies, etc.', 'Scrib' ) ?>";
+					this.value = "<?php echo $searchprompt; ?>";
 				}
 			});
+<?php
+		endif;
+?>
 		});
 	</script>
 <?php

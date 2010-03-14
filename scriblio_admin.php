@@ -134,7 +134,10 @@ $this->activate();
 		<?php scrib_control_categories(); ?>
 
 		<h3><?php _e('Browse Page', 'Scrib'); ?></h3>
-		<p><label for="browse_id"><?php _e('Browse base', 'Scrib'); ?>: <select id="scrib_opts_browseid" name="scrib_opts[browseid]"><option value="0"><?php _e('Main Page (no parent)'); ?></option><?php parent_dropdown( $options['browseid'] ); ?></select></label> (select "Main Page (no parent)" for none)</p>
+		<p><label for="browse_id"><?php _e('Browse base', 'Scrib'); ?>: <select id="scrib_opts_browseid" name="scrib_opts[browseid]"><option value="0"><?php _e('None'); ?></option><?php parent_dropdown( $options['browseid'] ); ?></select></label></p>
+
+		<h3><?php _e('Search Prompt', 'Scrib'); ?></h3>
+		<p><label for="browse_id"><?php _e('Attractor text', 'Scrib'); ?>: <input type='text' value="<?php echo esc_html( $options['searchprompt'] ); ?>" id="scrib_opts_searchprompt" name="scrib_opts[searchprompt]" /></label></p>
 
 	    <p class="submit">
 	    <input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />

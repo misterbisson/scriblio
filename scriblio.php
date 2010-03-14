@@ -1402,14 +1402,13 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		if( is_object( $tag ))
 			$tag = get_object_vars( $tag );
 
-//get_term_link( $term, $taxonomy )
-echo "<h2>". get_term_link( urldecode( $tag['slug'] ), $tag['taxonomy'] ) ."</h2>";
+		return get_term_link( urldecode( $tag['slug'] ), $tag['taxonomy'] );
 
+/*
 		$taglink = $this->options['browse_url'] . '?' . $tag['taxonomy'] . '=' . $tag['slug'];
 
 		return $taglink;
 
-/*
 		global $wp_rewrite;
 		$taglink = $this->options['browse_url'] . '?' . $tag->taxonomy . '=' . $tag->slug;
 

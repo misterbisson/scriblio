@@ -504,7 +504,12 @@ class Scrib {
 
 					$matches = !empty( $this->the_matching_post_counts[ $key ][ $i ] ) ? ' ('. $this->the_matching_post_counts[ $key ][ $i ] .' matches)' : '';
 
-					echo '<li><label>'. $this->taxonomy_name[ $key ] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. convert_chars( wptexturize( $q )) .'</a>&nbsp;'. $excludesearch .'</li>';
+					if( strpos( ' '.$q, '-' ))
+						$term_name = get_term_by( 'slug' , $q , $key );
+					else
+						$term_name->name = $q;
+
+					echo '<li><label>'. $this->taxonomy_name[ $key ] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. convert_chars( wptexturize( $term_name->name )) .'</a>&nbsp;'. $excludesearch .'</li>';
 				}
 			}
 			echo '</ul>';

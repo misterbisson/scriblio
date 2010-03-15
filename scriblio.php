@@ -56,7 +56,7 @@ class Scrib {
 		add_action('wp_head', 'wp_print_styles', '9');
 
 		// register WordPress hooks
-		register_activation_hook(__FILE__, array(&$this, 'activate'));
+		register_activation_hook(__FILE__, array( &$this, 'activate' ));
 		add_action('init', array(&$this, 'init'));
 
 		add_action( 'parse_query', array(&$this, 'parse_query'), 10);
@@ -102,7 +102,7 @@ class Scrib {
 		$this->options = get_option('scrib_opts');
 
 		// upgrade old versions
-		if( 16 > $this->options['version'] )
+		if( 290 > $this->options['version'] )
 			$this->upgrade( $this->options['version'] );
 
 		$this->options['site_url'] = get_settings('siteurl') . '/';
@@ -134,18 +134,24 @@ class Scrib {
 
 		if( $bsuite->loadavg < get_option( 'bsuite_load_max' )) // only do cron if load is low-ish
 			add_filter('bsuite_interval', array( &$this, 'import_harvest_passive' ));
-
 	}
 
 	public function activate()
 	{
 		// check for and upgrade old options
-		if( is_array( get_option( 'scrib' )))
-			$this->upgrade( 0 );
+		$this->options = get_option('scrib_opts');
+
+		// upgrade old versions
+		if( 290 > $this->options['version'] )
+			$this->upgrade( $this->options['version'] );
+
 	}
 
 	public function upgrade( $version )
 	{
+		static $nonced = FALSE;
+		if( $nonced )
+			return;
 
 		if( 290 > $version )
 		{
@@ -155,15 +161,15 @@ class Scrib {
 			{
 				update_option( 'scrib_opts' , 
 					array(
-						'browse' => absint( $old['browse_id'] ),
+						'browseid' => absint( $old['browse_id'] ),
 						'searchprompt' => 'Books, movies, music',
 					)
 				);
 				
 				update_option( 'scrib_categories' ,
 					array(
-						'browseid' => array( absint( $old['catalog_category_id'] )),
-						'hide' => array( absint( $old['catalog_category_id'] )),
+						'browse' => array( (string) absint( $old['catalog_category_id'] )),
+						'hide' => array( (string) absint( $old['catalog_category_id'] )),
 				));
 				
 				update_option( 'scrib_taxonomies' ,
@@ -174,14 +180,16 @@ class Scrib {
 						'suggest' => $old['taxonomies_for_suggest'],
 				));
 	
-//				delete_option('scrib');
+				delete_option('scrib');
 			}
 		}
 
 		// reload the new options and set the updated version number
 		$this->options = get_option('scrib_opts');
-//		$this->options['version'] = 290;
-//		update_option( 'scrib_opts' , $this->options );
+		$this->options['version'] = 290;
+		update_option( 'scrib_opts' , $this->options );
+
+		$nonced = TRUE;
 	}
 
 	public function addmenus(){

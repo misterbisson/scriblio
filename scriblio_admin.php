@@ -1,7 +1,5 @@
 <?php
 
-
-
 function scrib_control_taxonomies()
 {
 	global $wpdb, $wp_taxonomies;

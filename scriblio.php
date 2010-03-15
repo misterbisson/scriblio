@@ -90,7 +90,8 @@ class Scrib {
 		// end register WordPress hooks
 	}
 
-	public function init(){
+	public function init()
+	{
 		global $wpdb, $wp_rewrite, $bsuite;
 
 		$this->suggest_table = $wpdb->prefix . 'scrib_suggest';
@@ -99,11 +100,16 @@ class Scrib {
 		$slash = $wp_rewrite->use_trailing_slashes ? '' : '/';
 
 		$this->options = get_option('scrib_opts');
+
+		// upgrade old versions
+		if( 16 > $this->options['version'] )
+			$this->upgrade( $this->options['version'] );
+
 		$this->options['site_url'] = get_settings('siteurl') . '/';
 		$this->options['search_url'] = get_settings('siteurl') .'/search/';
 		$this->options['browse_url'] = get_permalink($this->options['browseid']) . $slash;
 		$this->options['browse_base'] = str_replace( $this->options['site_url'] , '', $this->options['browse_url'] );
-		$this->options['browse_name'] = trim(substr(get_page_uri($this->options['browseid']), strrpos(get_page_uri($this->options['browseid']), '/')), '/');
+		$this->options['browse_name'] = trim( substr( get_page_uri( $this->options['browseid'] ), strrpos( get_page_uri( $this->options['browseid'] ), '/')), '/');
 
 		$this->the_matching_posts = NULL;
 		$this->the_matching_posts_ordinals = NULL;
@@ -133,7 +139,49 @@ class Scrib {
 
 	public function activate()
 	{
+		// check for and upgrade old options
+		if( is_array( get_option( 'scrib' )))
+			$this->upgrade( 0 );
+	}
 
+	public function upgrade( $version )
+	{
+
+		if( 290 > $version )
+		{
+			$old = get_option('scrib');
+
+			if( is_array( $old ))
+			{
+				update_option( 'scrib_opts' , 
+					array(
+						'browse' => absint( $old['browse_id'] ),
+						'searchprompt' => 'Books, movies, music',
+					)
+				);
+				
+				update_option( 'scrib_categories' ,
+					array(
+						'browseid' => array( absint( $old['catalog_category_id'] )),
+						'hide' => array( absint( $old['catalog_category_id'] )),
+				));
+				
+				update_option( 'scrib_taxonomies' ,
+					array(
+						'name' => $old['taxonomies'],
+						'search' => array_keys( $old['taxonomies'] ),
+						'related' => $old['taxonomies_for_related'],
+						'suggest' => $old['taxonomies_for_suggest'],
+				));
+	
+//				delete_option('scrib');
+			}
+		}
+
+		// reload the new options and set the updated version number
+		$this->options = get_option('scrib_opts');
+//		$this->options['version'] = 290;
+//		update_option( 'scrib_opts' , $this->options );
 	}
 
 	public function addmenus(){

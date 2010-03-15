@@ -1569,9 +1569,11 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$facets = explode(',', $facets);
 
 		$tag_list = $before;
-		foreach ( $tags as $taxonomy ){
-			foreach ( $taxonomy as $tag ){
-				if(in_array($tag->taxonomy, $facets))
+		foreach ( $tags as $taxonomy )
+		{
+			foreach ( $taxonomy as $tag )
+			{
+				if( in_array( $tag->taxonomy, $facets ))
 					$tag_links[] = '<a href="' . $this->get_tag_link($tag) . '" rel="tag">' . $tag->name . '</a>';
 			}
 		}
@@ -2019,7 +2021,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 		if( 
 			is_singular() 
 			&& $instance['show_singular'] 
-			&& $facets = $scrib->get_the_tag_list( $instance['facets'] , $single_before , $single_between , $single_after )
+			&& $facets = $scrib->get_the_tag_list( array_keys( $instance['facets'] ) , $single_before , $single_between , $single_after )
 		)
 		{
 			// actually, it's all done here, just display it below

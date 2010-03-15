@@ -137,6 +137,9 @@ $this->activate();
 		<h3><?php _e('Search Prompt', 'Scrib'); ?></h3>
 		<p><label for="browse_id"><?php _e('Attractor text', 'Scrib'); ?>: <input type='text' value="<?php echo esc_html( $options['searchprompt'] ); ?>" id="scrib_opts_searchprompt" name="scrib_opts[searchprompt]" /></label></p>
 
+		<h3><?php _e('Aggregation', 'Scrib'); ?></h3>
+		<p><label for="browse_id"><?php _e('Base the facets on the top N matched results', 'Scrib'); ?>: <input type='text' value="<?php echo absint( $options['facetfound'] ); ?>" id="scrib_opts_facetfound" name="scrib_opts[facetfound]" /></label></p>
+
 	    <p class="submit">
 	    <input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
 	    </p>

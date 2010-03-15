@@ -253,6 +253,7 @@ class Scrib {
 	{
 		$r['browseid'] = absint( $input['browseid'] );
 		$r['searchprompt'] = wp_filter_nohtml_kses( $input['searchprompt'] );
+		$r['facetfound'] = absint( $input['facetfound'] );
 
 		return $r;
 	}
@@ -514,11 +515,13 @@ class Scrib {
 	public function posts_request( $query ) {
 		global $wpdb;
 
+		if( ! $this->options['facetfound'] )
+			$this->options['facetfound'] = 1000;
 //echo "<h2>$query</h2>";
 
 		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
 			FROM ("
-				. str_replace( $wpdb->posts .'.* ', $wpdb->posts .'.ID ', str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, 1000', $query ))) .
+				. str_replace( $wpdb->posts .'.* ', $wpdb->posts .'.ID ', str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, '. $this->options['facetfound'], $query ))) .
 			") p
 			INNER JOIN $wpdb->term_relationships c ON p.ID = c.object_id
 			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
@@ -1615,17 +1618,18 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		{
 			if( empty( $this->the_matching_facets ))
 				return;
-			$tags &= $this->the_matching_facets;
+
+			$tags = $this->the_matching_facets;
 		}
 		else
 		{
-			$tags = get_terms( $args['taxonomy'], array_merge( $args, array( 'orderby' => 'count', 'order' => 'DESC' )));
+			$tags = get_terms( $args['facets'], array_merge( $args, array( 'orderby' => 'count', 'order' => 'DESC' )));
 
 			if ( empty( $tags ))
 				return;
 		}
 
-		$return = $this->generate_tag_cloud( $this->the_matching_facets, $args ); // Here's where those top tags get sorted according to $args
+		$return = $this->generate_tag_cloud( $tags, $args ); // Here's where those top tags get sorted according to $args
 		//echo apply_filters( 'wp_tag_cloud', $return, $args );
 		return $return;
 	}
@@ -1945,6 +1949,13 @@ class Scrib_Widget_Facets extends WP_Widget {
 				'format_font_large' => 2.15, 
 			)
 		);
+
+		if( $instance['format_font_small'] == $instance['format_font_large'] )
+		{
+			$instance['format_font_small'] = $instance['format_font_small'] - .002;
+			$instance['format_font_large'] = $instance['format_font_large'] - .001;
+		}
+
 
 		if( 'list' == $instance['format'] )
 		{

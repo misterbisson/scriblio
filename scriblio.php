@@ -506,11 +506,13 @@ class Scrib {
 					$matches = !empty( $this->the_matching_post_counts[ $key ][ $i ] ) ? ' ('. $this->the_matching_post_counts[ $key ][ $i ] .' matches)' : '';
 
 					if( strpos( ' '.$q, '-' ))
-						$term_name = get_term_by( 'slug' , $q , $key );
-					else
-						$term_name->name = $q;
+					{
+						$q = get_term_by( 'slug' , $q , $key );
+						$q = $q->name;
+						$this->search_terms[ $key ][ $i ] = $q;
+					}
 
-					echo '<li><label>'. $this->taxonomy_name[ $key ] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. convert_chars( wptexturize( $term_name->name )) .'</a>&nbsp;'. $excludesearch .'</li>';
+					echo '<li><label>'. $this->taxonomy_name[ $key ] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. convert_chars( wptexturize( $q )) .'</a>&nbsp;'. $excludesearch .'</li>';
 				}
 			}
 			echo '</ul>';
@@ -773,7 +775,8 @@ class Scrib {
 		return( FALSE );
 	}
 
-	public function meditor_sanitize_punctuation( $str ) {
+	public function meditor_sanitize_punctuation( $str )
+	{
 		// props to K. T. Lam of HKUST
 
 		$str = html_entity_decode( $str );
@@ -806,7 +809,7 @@ class Scrib {
 		$lead_pattern = '/^[\(]([^\)]+)$/';
 		$str = preg_replace($lead_pattern, '\\1', preg_replace($trail_pattern,'\\1', preg_replace($both_pattern, '\\1', $str)));
 
-		return( $str );
+		return $str;
 	}
 
 	public function meditor_sanitize_related( $val ){
@@ -1328,6 +1331,23 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			});
 <?php
 		endif;
+
+		if( count( $this->search_terms ))
+		{
+			foreach( $this->search_terms as $taxonomy )
+				foreach( $taxonomy as $term )
+					foreach( explode( ' ' , $term ) as $term_part )
+						$all_terms[] = $this->meditor_sanitize_punctuation( $term_part );
+
+			$all_terms = array_filter( $all_terms );
+
+			if( count( $all_terms ))
+			{
+				echo "var scrib_search_terms = {terms:['". implode( "','" , array_map( 'htmlentities' , $all_terms )) ."']};";
+				echo "jQuery(function(){bsuite_highlight(scrib_search_terms);});";
+			}
+
+		}
 ?>
 		});
 	</script>

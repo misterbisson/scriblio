@@ -342,8 +342,10 @@ class Scrib {
 
 		if( 
 			1 == count( $this->search_terms ) &&
+			strpos( $_SERVER['REQUEST_URI'] , '?' ) &&
 			( key( $this->search_terms ) <> 's' ) &&
 			1 == count( current( $this->search_terms )) &&
+			! ( strpos( current( current( $this->search_terms )) , '*' )) &&
 			! ( strpos( get_term_link( current( current( $this->search_terms )), key( $this->search_terms )) , $_SERVER['REQUEST_URI'] ))
 		)
 		{

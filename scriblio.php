@@ -76,6 +76,7 @@ class Scrib {
 		add_shortcode('scrib_availability', array(&$this, 'shortcode_availability'));
 		add_shortcode('scrib_taglink', array(&$this, 'shortcode_taglink'));
 		add_shortcode('scrib_hitcount', array(&$this, 'shortcode_hitcount'));
+		add_shortcode('facets', array(&$this, 'shortcode_facets'));
 
 		add_action('admin_menu', array( &$this, 'admin_menu_hook' ));
 
@@ -104,6 +105,9 @@ class Scrib {
 		// upgrade old versions
 		if( 290 > $this->options['version'] )
 			$this->upgrade( $this->options['version'] );
+
+		if( ! $this->options['facetfound'] )
+			$this->options['facetfound'] = 1000;
 
 		$this->options['site_url'] = get_settings('siteurl') . '/';
 		$this->options['search_url'] = get_settings('siteurl') .'/search/';
@@ -399,7 +403,8 @@ class Scrib {
 
 		// hide catalog entries from the front page
 		if( is_home() || is_front_page() )
-			$the_wp_query->query_vars['category__not_in'] = $this->options['category_hide'];
+			$the_wp_query->query_vars['category__not_in'] = $this->category_hide;
+
 		return( $the_wp_query );
 	}
 
@@ -517,8 +522,6 @@ class Scrib {
 	public function posts_request( $query ) {
 		global $wpdb;
 
-		if( ! $this->options['facetfound'] )
-			$this->options['facetfound'] = 1000;
 //echo "<h2>$query</h2>";
 
 		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
@@ -1300,10 +1303,6 @@ class Scrib {
 
 
 
-
-
-
-
 	public function wp_footer_js(){
 		$this->suggest_js();
 	}
@@ -1357,10 +1356,54 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		global $wp_query;
 
-		if( is_array( $this->search_terms['s'] ) && 999 < $wp_query->found_posts )
-			return( __( 'more than 1000' ));
+		if( is_array( $this->search_terms['s'] ) && ( $this->options['facetfound'] - 1 ) < $wp_query->found_posts )
+			return( __( 'more than ' . $this->options['facetfound'] ));
 		else
 			return( number_format( $wp_query->found_posts, 0, _c('.|decimal separator'), _c(',|thousands separator') ));
+	}
+
+	public function shortcode_facets( $arg )
+	{
+		// [facets ]
+
+		$arg = shortcode_atts( array(
+			'facets' => FALSE,
+			'font_small' => 1,
+			'font_large' => 1,
+			'count' => 25,
+			'format' => 'list',
+			'orderby' => 'name',
+			'order' => 'ASC',
+		), $arg );
+
+		if( 'cloud' == $arg['format'] )
+			$arg['format'] = 'flat';
+
+		if( $arg['font_small'] == $arg['font_small'] )
+		{
+			$arg['font_small'] = $arg['font_small'] - .002;
+			$arg['font_large'] = $arg['font_large'] - .001;
+		}
+
+		$arg['facets'] = array_filter( array_map( 'trim' , (array) explode( ',' , $arg['facets'] )));
+
+		if( empty( $arg['facets'] ))
+			return;
+
+		$search_options = array(
+			'smallest' => floatval( $arg['font_small'] ), 
+			'largest' => floatval( $arg['font_large'] ),
+			'unit' => 'em',
+			'scope' => 'global',
+			'number' => absint( $arg['count'] ),
+			'format' => in_array( $arg['format'], array( 'list', 'flat' )) ? $arg['format'] : 'list',
+			'orderby' => in_array( $arg['orderby'], array( 'count', 'name', 'custom' )) ? $arg['orderby'] : 'name',
+			'order' => in_array( $arg['order'], array( 'ASC', 'DESC' )) ? $arg['order'] : 'ASC',
+			'facets' => $arg['facets'],
+//			'order_custom' => $instance['order_custom'],
+		);
+
+		return( $this->tag_cloud( $search_options ));
 	}
 
 	public function suggest_js()
@@ -1493,7 +1536,6 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 	}
 
 	public function get_search_link( $input ) {
-
 		$tags = array();
 		foreach( $input as $key => $val )
 			$tags[ $key ] = implode( '|', $val );
@@ -1670,7 +1712,10 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				$tag_links[$tag->name] = $this->get_search_link( $this->search_terms );
 			}else{
 				$selected[$tag->name] = '';
-				$tag_links[$tag->name] = $this->get_search_link( array_merge_recursive($this->search_terms, array($tag->taxonomy => array($tag->name))) );
+				if( isset( $this->search_terms ))
+					$tag_links[$tag->name] = $this->get_search_link( array_merge_recursive( (array) $this->search_terms, array($tag->taxonomy => array($tag->name))) );
+				else
+					$tag_links[$tag->name] = $this->get_tag_link( $tag );
 			}
 
 			$tag_ids[$tag->name] = $tag->term_id;

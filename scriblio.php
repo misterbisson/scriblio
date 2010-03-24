@@ -80,6 +80,15 @@ class Scrib {
 
 		add_action('admin_menu', array( &$this, 'admin_menu_hook' ));
 
+		sanitize_title_with_dashes($args['query_var']);
+
+		add_filter( 'query_vars', array( &$this, 'sort_qvars' ));
+		add_action( 'scrib_init_sort', array( &$this, 'sort_defaults' ));
+		add_action( 'scrib_sort_relevance' , array( &$this , 'sort_relevance' ));
+		add_action( 'scrib_sort_title' , array( &$this , 'sort_title' ));
+		add_action( 'scrib_sort_date' , array( &$this , 'sort_date' ));
+		$this->posts_orderby = array();
+
 		add_action('save_post', array(&$this, 'meditor_save_post'), 2, 2);
 		add_filter('pre_post_title', array(&$this, 'meditor_pre_save_filters'));
 		add_filter('pre_post_excerpt', array(&$this, 'meditor_pre_save_filters'));
@@ -347,6 +356,7 @@ class Scrib {
 		if( 
 			1 == count( $this->search_terms ) &&
 			strpos( $_SERVER['REQUEST_URI'] , '?' ) &&
+			strpos( $_SERVER['REQUEST_URI'] , '/'. $this->options['browse_name'] .'/' ) &&
 			( key( $this->search_terms ) <> 's' ) &&
 			1 == count( current( $this->search_terms )) &&
 			! ( strpos( current( current( $this->search_terms )) , '*' )) &&
@@ -427,7 +437,7 @@ class Scrib {
 				LIMIT 0, 1250
 			) scrib_b ON ( scrib_b.post_id = $wpdb->posts.ID )";
 			$this->posts_where[] = '';
-			$this->posts_orderby[] = ' scrib_b.score DESC, ';
+			$this->posts_orderby[] = 'scrib_b.score DESC';
 
 			add_filter( 'posts_fields',		array( &$this, 'posts_fields' ), 7 );
 
@@ -456,6 +466,8 @@ class Scrib {
 				$i++;
 			}
 		}
+
+		$this->add_sort_filters();
 
 		add_filter( 'posts_join',		array( &$this, 'posts_join' ), 7 );
 		add_filter( 'posts_where',		array( &$this, 'posts_where' ), 7 );
@@ -492,10 +504,20 @@ class Scrib {
 			}
 		}
 
+		$this->add_sort_filters();
+
 		add_filter( 'posts_join',		array( &$this, 'posts_join' ), 7 );
 		add_filter( 'posts_where',		array( &$this, 'posts_where' ), 7 );
 		add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
 
+	}
+
+	public function add_sort_filters()
+	{
+		global $wp_query;
+
+		if( isset( $wp_query->query_vars['sortby'] ))
+			do_action( 'scrib_sort_'. $wp_query->query_vars['sortby'] , $wp_query->query_vars['sort'] );
 	}
 
 	public function posts_fields( $query ) {
@@ -505,8 +527,11 @@ class Scrib {
 	public function posts_orderby( $query ) {
 		global $wp_query, $wpdb;
 
+		if( count( $this->posts_orderby ))
+			$this->posts_orderby[] = '';
+
 		if( $wp_query->is_search || $this->is_browse )
-			return( implode( $this->posts_orderby ) . $query );
+			return( implode( ', ' , $this->posts_orderby ) . $query );
 		else
 			return( str_replace( $wpdb->posts .'.post_date', $wpdb->posts .'.post_date_gmt', $query ));
 	}
@@ -546,6 +571,61 @@ class Scrib {
 		return $query;
 	}
 
+	public function register_sort( $handle , $opts )
+	{
+		$this->methods_sort[ $handle ] = $opts;
+	}
+
+	public function sort_qvars( $vars )
+	{
+	    array_push( $vars, 'sort' , 'sortby' );
+	    return $vars;
+	}
+
+	public function sort_defaults()
+	{
+		if( !empty( $this->search_terms['s'] ))
+			$this->register_sort( 'relevance' , array( 'name' => 'Relevance' , 'order' => 'DESC' ));
+		$this->register_sort( 'title' , array( 'name' => 'Title' , 'order' => 'ASC' ));
+		$this->register_sort( 'date' , array( 'name' => 'Date' , 'order' => 'DESC' ));
+	}
+
+	public function sort_relevance( $order )
+	{
+		if( !empty( $this->search_terms['s'] ))
+			array_unshift( $this->posts_orderby , 'scrib_b.score '. ( in_array( $order , array( 'ASC' , 'DESC' ) ) ? $order : 'DESC' ));
+	}
+
+	public function sort_title( $order )
+	{
+		global $wpdb;
+
+		array_unshift( $this->posts_orderby , $wpdb->posts .'.post_name '. ( in_array( $order , array( 'ASC' , 'DESC' ) ) ? $order : 'ASC' ));
+	}
+
+	public function sort_date( $order )
+	{
+		global $wpdb;
+
+		array_unshift( $this->posts_orderby , $wpdb->posts .'.post_date '. ( in_array( $order , array( 'ASC' , 'DESC' ) ) ? $order : 'ASC' ));
+	}
+
+	public function editsort()
+	{
+		global $wp_query;
+//print_r( $wp_query );
+
+		do_action( 'scrib_init_sort' );
+
+		foreach( (array) $this->methods_sort as $handle => $method )
+		{
+			if( $handle == $wp_query->query_vars['sortby'] )
+				$selected = 'class="selected"';
+
+			echo '<li><a href="'. add_query_arg(array( 'sortby' => $handle , 'sort' => $method['order'])) .'" '. $selected .'>'. $method['name'] .'</a></li>';
+		}
+	}
+
 	public function editsearch() {
 		global $wpdb, $wp_query, $bsuite;
 		$search_terms = $this->search_terms;
@@ -581,6 +661,8 @@ class Scrib {
 			}
 			echo '</ul>';
 		}
+
+//		$this->editsort();
 	}
 
 	public function admin_menu_hook() {
@@ -2286,6 +2368,7 @@ class Scrib_Widget_Searcheditor extends WP_Widget {
 				echo $before_title . $default_title . $after_title;
 			if ( !empty( $default_text ) )
 				echo '<div class="textwidget scrib_search_edit">' . $default_text . '</div>';
+			$scrib->editsearch();
 		}else if( $scrib->is_browse ) {
 			if ( !empty( $browse_title ) )
 				echo $before_title . $browse_title . $after_title;

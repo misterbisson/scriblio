@@ -62,6 +62,7 @@ class Scrib {
 		add_action( 'parse_query', array(&$this, 'parse_query'), 10);
 		add_action( 'pre_get_posts', array( &$this, 'pre_get_posts' ), 7 );
 		add_filter( 'posts_orderby', array( &$this, 'posts_orderby' ), 7 );
+		add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
 
 		add_action('wp_ajax_meditor_suggest_tags', array( &$this, 'meditor_suggest_tags' ));
 		if ( isset( $_GET['scrib_suggest'] ) )
@@ -82,12 +83,12 @@ class Scrib {
 
 		sanitize_title_with_dashes($args['query_var']);
 
-		add_filter( 'query_vars', array( &$this, 'sort_qvars' ));
-		add_action( 'scrib_init_sort', array( &$this, 'sort_defaults' ));
-		add_action( 'scrib_sort_relevance' , array( &$this , 'sort_relevance' ));
-		add_action( 'scrib_sort_title' , array( &$this , 'sort_title' ));
-		add_action( 'scrib_sort_date' , array( &$this , 'sort_date' ));
-		$this->posts_orderby = array();
+//		add_filter( 'query_vars', array( &$this, 'sort_qvars' ));
+//		add_action( 'scrib_init_sort', array( &$this, 'sort_defaults' ));
+//		add_action( 'scrib_sort_relevance' , array( &$this , 'sort_relevance' ));
+//		add_action( 'scrib_sort_title' , array( &$this , 'sort_title' ));
+//		add_action( 'scrib_sort_date' , array( &$this , 'sort_date' ));
+//		$this->posts_orderby = array();
 
 		add_action('save_post', array(&$this, 'meditor_save_post'), 2, 2);
 		add_filter('pre_post_title', array(&$this, 'meditor_pre_save_filters'));
@@ -339,21 +340,30 @@ class Scrib {
 		}
 
 		$temp = array_intersect_key( $the_wp_query->query_vars, array_flip( $this->taxonomies ));
-		if( count( $temp )){
-			foreach( $temp as $key => $val ){
+		if( count( $temp ))
+		{
+			foreach( $temp as $key => $val )
+			{
 				$values = array_filter( explode( '|', urldecode( $val ) ));
 				foreach( $values as $val )
 					$terms[ $key ][] = $val;
+//					$terms[ $key ][] = $term = get_term_by( 'slug' , $val , $key )->slug;
 			}
+//			$the_wp_query->query_vars[ $key ] = implode( ',', $terms[ $key ] );
+//			$the_wp_query->query_vars['taxonomy'] = $key;
+//			$the_wp_query->query_vars['term'] = $term;
 		}
+
 
 		// set the search terms array
 		$this->search_terms = array_filter( $terms );
 
+//print_r( $the_wp_query );
 //print_r( $this->search_terms );
 //die;
 
 		if( 
+//			1 == 5 &&
 			1 == count( $this->search_terms ) &&
 			strpos( $_SERVER['REQUEST_URI'] , '?' ) &&
 			strpos( $_SERVER['REQUEST_URI'] , '/'. $this->options['browse_name'] .'/' ) &&
@@ -367,7 +377,11 @@ class Scrib {
 		}
 
 		// check if this is a browse page
-		if( isset( $the_wp_query->query_vars['pagename'] ) && $the_wp_query->query_vars['pagename'] == $this->options['browse_name'] ){
+		if( 
+			( $the_wp_query->is_tax && count( $this->search_terms ))
+			|| ( isset( $the_wp_query->query_vars['pagename'] ) && $the_wp_query->query_vars['pagename'] == $this->options['browse_name'] )
+		)
+		{
 			$the_wp_query->query_vars['post_type'] = 'post';
 			$the_wp_query->query_vars['pagename'] = '';
 			$the_wp_query->query_vars['page_id'] = 0;
@@ -379,6 +393,7 @@ class Scrib {
 			$the_wp_query->is_search = TRUE;
 			$the_wp_query->is_page = FALSE;
 			$the_wp_query->is_singular = FALSE;
+			$the_wp_query->is_tax = FALSE;
 
 			if( count( $this->search_terms )){
 				$this->add_search_filters();
@@ -547,6 +562,8 @@ class Scrib {
 	public function posts_request( $query ) {
 		global $wpdb;
 
+//global $wp_query;
+//print_r( $wp_query );
 //echo "<h2>$query</h2>";
 
 		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`

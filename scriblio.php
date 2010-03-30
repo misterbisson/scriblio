@@ -83,12 +83,12 @@ class Scrib {
 
 		sanitize_title_with_dashes($args['query_var']);
 
-//		add_filter( 'query_vars', array( &$this, 'sort_qvars' ));
-//		add_action( 'scrib_init_sort', array( &$this, 'sort_defaults' ));
-//		add_action( 'scrib_sort_relevance' , array( &$this , 'sort_relevance' ));
-//		add_action( 'scrib_sort_title' , array( &$this , 'sort_title' ));
-//		add_action( 'scrib_sort_date' , array( &$this , 'sort_date' ));
-//		$this->posts_orderby = array();
+		add_filter( 'query_vars', array( &$this, 'sort_qvars' ));
+		add_action( 'scrib_init_sort', array( &$this, 'sort_defaults' ));
+		add_action( 'scrib_sort_relevance' , array( &$this , 'sort_relevance' ));
+		add_action( 'scrib_sort_title' , array( &$this , 'sort_title' ));
+		add_action( 'scrib_sort_date' , array( &$this , 'sort_date' ));
+		$this->posts_orderby = array();
 
 		add_action('save_post', array(&$this, 'meditor_save_post'), 2, 2);
 		add_filter('pre_post_title', array(&$this, 'meditor_pre_save_filters'));
@@ -437,8 +437,11 @@ class Scrib {
 		global $wpdb, $bsuite;
 
 		$search_terms = $this->search_terms;
+		$sorttype = 'browse';
 
 		if( !empty( $search_terms['s'] )){
+			$sorttype = 'search';
+
 			$boolean = '';
 			if(ereg('"|\+|\-|\(|\<|\>|\*', $this->search_terms['s']))
 				$boolean = ' IN BOOLEAN MODE';
@@ -482,7 +485,7 @@ class Scrib {
 			}
 		}
 
-		$this->add_sort_filters();
+		$this->add_sort_filters( $sorttype );
 
 		add_filter( 'posts_join',		array( &$this, 'posts_join' ), 7 );
 		add_filter( 'posts_where',		array( &$this, 'posts_where' ), 7 );
@@ -519,7 +522,7 @@ class Scrib {
 			}
 		}
 
-		$this->add_sort_filters();
+		$this->add_sort_filters( 'browse' );
 
 		add_filter( 'posts_join',		array( &$this, 'posts_join' ), 7 );
 		add_filter( 'posts_where',		array( &$this, 'posts_where' ), 7 );
@@ -527,12 +530,14 @@ class Scrib {
 
 	}
 
-	public function add_sort_filters()
+	public function add_sort_filters( $type )
 	{
 		global $wp_query;
 
 		if( isset( $wp_query->query_vars['sortby'] ))
 			do_action( 'scrib_sort_'. $wp_query->query_vars['sortby'] , $wp_query->query_vars['sort'] );
+		else
+			do_action( 'scrib_sort_default_'. $type , $wp_query->query_vars['sort'] );
 	}
 
 	public function posts_fields( $query ) {
@@ -1586,7 +1591,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			");
 */
 
-			$results = $wpdb->get_results( "SELECT t.name, tt.taxonomy, ( ( 100 - t.len ) * tt.count ) AS hits
+			$terms = $wpdb->get_results( "SELECT t.name, tt.taxonomy, ( ( 100 - t.len ) * tt.count ) AS hits
 				FROM
 				(
 					SELECT term_id, name, LENGTH(name) AS len
@@ -1602,12 +1607,18 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 				LIMIT 25;
 			");
 
-
+			$posts = $wpdb->get_results( "SELECT ID, post_title
+				FROM $wpdb->posts
+				WHERE post_title LIKE '" . $s . "%'
+				ORDER BY post_title ASC
+				LIMIT 25;
+			");
 
 			$searchfor = $suggestion = $beginswith = array();
 			$searchfor[] = 'Search for "<a href="'. $this->get_search_link( array( 's' => array( attribute_escape( $_REQUEST['q'] )))) .'">'. attribute_escape( $_REQUEST['q'] ) .'</a>"';
 			$template = '<span class="taxonomy_name">%%taxonomy%%</span> <a href="%%link%%">%%term%%</a>';
-			foreach($results as $term){
+			foreach( $terms as $term )
+			{
 				if('hint' == $term->taxonomy){
 					$suggestion[] = str_replace(array('%%term%%','%%taxonomy%%','%%link%%'), array($term->name, $this->taxonomy_name['s'], $this->get_search_link(array('s' => array( $this->suggest_search_fixlong( $term->name ))))), $template);
 				}else{
@@ -1616,6 +1627,13 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 					$beginswith[ $term->taxonomy ] = $this->taxonomy_name[ $term->taxonomy ] .' begins with "<a href="'. $this->get_search_link( array( $term->taxonomy => array( $s .'*' ))) .'">'. attribute_escape( $_REQUEST['q'] ) .'</a>"';
  					}
 			}
+
+			foreach( $posts as $post )
+			{
+				$beginswith[ 'p'. $post->ID ] = 'Go to: <a href="'. get_permalink( $post->ID ) .'">'. attribute_escape( $post->post_title ) .'</a>';
+			}
+
+
 			$suggestion = array_merge( $searchfor, array_slice( $suggestion, 0, 10 ), $beginswith );
 			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest', 126000 );
 		}
@@ -1802,22 +1820,25 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$counts = $tag_links = $selected = array();
 		foreach ( (array) $tags as $tag )
 		{
+			$tag_names[ strtolower( $tag->name ) ] = $tag->name;
+			$tag->name = strtolower( $tag->name );
+
 			if( !in_array( $tag->taxonomy, $facets ))
 				continue;
-			$counts[$tag->name] = $tag->count;
+			$counts[ $tag->name ] = $tag->count;
 
-			if(in_array($tag->name, $this->search_terms[$tag->taxonomy])){
-				$selected[$tag->name] = ' selected';
-				$tag_links[$tag->name] = $this->get_search_link( $this->search_terms );
+			if(in_array( $tag->name, $this->search_terms[$tag->taxonomy])){
+				$selected[ $tag->name ] = ' selected';
+				$tag_links[ $tag->name ] = $this->get_search_link( $this->search_terms );
 			}else{
-				$selected[$tag->name] = '';
+				$selected[ $tag->name ] = '';
 				if( isset( $this->search_terms ))
-					$tag_links[$tag->name] = $this->get_search_link( array_merge_recursive( (array) $this->search_terms, array($tag->taxonomy => array($tag->name))) );
+					$tag_links[ $tag->name ] = $this->get_search_link( array_merge_recursive( (array) $this->search_terms, array($tag->taxonomy => array($tag->name))) );
 				else
-					$tag_links[$tag->name] = $this->get_tag_link( $tag );
+					$tag_links[ $tag->name ] = $this->get_tag_link( $tag );
 			}
 
-			$tag_ids[$tag->name] = $tag->term_id;
+			$tag_ids[ $tag->name ] = $tag->term_id;
 		}
 
 		if ( !$counts )
@@ -1848,6 +1869,8 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$newcounts = array();
 			foreach( $order_custom as $arb_facet )
 			{
+				$arb_facet = strtolower( $arb_facet );
+
 				if( isset( $counts[ $arb_facet ] ))
 					$newcounts[ $arb_facet ] = $counts[ $arb_facet ];
 			}
@@ -1875,7 +1898,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			$tag = wp_specialchars( $tag );
 			$a[] = "<a href='$tag_link' class='tag-link-$tag_id". $selected[$tag] ."' title='" . attribute_escape( sprintf( __('%d topics'), $count ) ) . "'$rel style='font-size: " .
 				( $smallest + ( ( $count - $min_count ) * $font_step ) )
-				. "$unit;'>$tag</a>" ;
+				. "$unit;'>". $tag_names[ $tag ] .'</a>' ;
 		}
 
 		switch ( $format ) :

@@ -1892,10 +1892,13 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		$rel = ( is_object($wp_rewrite) && $wp_rewrite->using_permalinks() ) ? ' rel="tag"' : '';
 
+
+//print_r($tag_links);
+
 		foreach ( $counts as $tag => $count )
 		{
 			$tag_id = $tag_ids[ $tag ];
-			$tag_link = clean_url( $tag_links[ $tag ] );
+//			$tag_link = clean_url( $tag_links[ $tag ] );
 			$tag_link = $tag_links[ $tag ];
 			// $tag_names[ $tag ] = str_replace(' ', '&nbsp;', wp_specialchars( $tag_names[ $tag ] ));
 			$tag_names[ $tag ] = wp_specialchars( $tag_names[ $tag ] );
@@ -2414,13 +2417,16 @@ class Scrib_Widget_Searcheditor extends WP_Widget {
 		$default_text = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['default-text'] ));
 
 		echo $before_widget;
-		if( $scrib->is_browse && empty( $scrib->search_terms )) {
+		if( $scrib->is_browse && empty( $scrib->search_terms ))
+		{
 			if ( !empty( $default_title ) )
 				echo $before_title . $default_title . $after_title;
 			if ( !empty( $default_text ) )
 				echo '<div class="textwidget scrib_search_edit">' . $default_text . '</div>';
 			$scrib->editsearch();
-		}else if( $scrib->is_browse ) {
+		}
+		else if( $scrib->is_browse && ! count( $scrib->search_terms['s'] ))
+		{
 			if ( !empty( $browse_title ) )
 				echo $before_title . $browse_title . $after_title;
 			if ( !empty( $browse_text_top ) )
@@ -2428,7 +2434,9 @@ class Scrib_Widget_Searcheditor extends WP_Widget {
 			$scrib->editsearch();
 			if ( !empty( $browse_text_bottom ) )
 				echo '<div class="textwidget scrib_search_edit">' . $browse_text_bottom . '</div>';
-		}else{
+		}
+		else if( count( $scrib->search_terms['s'] ))
+		{
 			if ( !empty( $search_title ) )
 				echo $before_title . $search_title . $after_title;
 			if ( !empty( $search_text_top ) )

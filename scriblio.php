@@ -1475,6 +1475,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			'font_small' => 1,
 			'font_large' => 1,
 			'count' => 25,
+			'name' => 'name',
 			'format' => 'list',
 			'orderby' => 'name',
 			'order' => 'ASC',
@@ -1769,6 +1770,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			'largest' => 33, 
 			'unit' => 'pt', 
 			'number' => 45,
+			'name' => 'name', 
 			'format' => 'flat', 
 			'orderby' => 'name', 
 			'order' => 'ASC',
@@ -1821,7 +1823,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$counts = $tag_links = $selected = array();
 		foreach ( (array) $tags as $tag )
 		{
-			$tag_names[ strtolower( $tag->name ) ] =  $name == 'description' ? $tag->description : $tag->description;
+			$tag_names[ strtolower( $tag->name ) ] =  $name == 'description' ? $tag->description : $tag->name;
 			$tag->name = strtolower( $tag->name );
 
 			if( !in_array( $tag->taxonomy, $facets ))
@@ -2156,6 +2158,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 				'unit' => 'em',
 				'scope' => $instance['scope'],
 				'number' => $instance['count'],
+				'name' => $instance['name'],
 				'format' => 'list',
 				'orderby' => $orderby,
 				'order' => $order,
@@ -2185,6 +2188,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 				'unit' => 'em',
 				'scope' => $instance['scope'],
 				'number' => $instance['count'],
+				'name' => $instance['name'],
 				'format' => 'flat',
 				'orderby' => $orderby,
 				'order' => $order,
@@ -2235,6 +2239,7 @@ class Scrib_Widget_Facets extends WP_Widget {
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['show_search'] = absint( $new_instance['show_search'] );
 		$instance['show_singular'] = absint( $new_instance['show_singular'] );
+		$instance['name'] = in_array( $new_instance['name'], array( 'name', 'description' )) ? $new_instance['name']: '';
 		$instance['format'] = in_array( $new_instance['format'], array( 'list', 'cloud' )) ? $new_instance['format']: '';
 		$instance['format_font_small'] = floatval( $new_instance['format_font_small'] );
 		$instance['format_font_large'] = floatval( $new_instance['format_font_large'] );

@@ -571,7 +571,7 @@ class Scrib {
 //print_r( $wp_query );
 //echo "<h2>$query</h2>";
 
-		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, COUNT(c.term_taxonomy_id) AS `count`
+		$facets_query = "SELECT b.term_id, b.name, a.taxonomy, a.description, COUNT(c.term_taxonomy_id) AS `count`
 			FROM ("
 				. str_replace( $wpdb->posts .'.* ', $wpdb->posts .'.ID ', str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, '. $this->options['facetfound'], $query ))) .
 			") p
@@ -1805,6 +1805,7 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 			'largest' => 22, 
 			'unit' => 'pt', 
 			'number' => 45,
+			'name' => 'name', 
 			'format' => 'flat', 
 			'orderby' => 'name', 
 			'order' => 'ASC', 
@@ -1820,14 +1821,15 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 		$counts = $tag_links = $selected = array();
 		foreach ( (array) $tags as $tag )
 		{
-			$tag_names[ strtolower( $tag->name ) ] = $tag->name;
+			$tag_names[ strtolower( $tag->name ) ] =  $name == 'description' ? $tag->description : $tag->description;
 			$tag->name = strtolower( $tag->name );
 
 			if( !in_array( $tag->taxonomy, $facets ))
 				continue;
 			$counts[ $tag->name ] = $tag->count;
 
-			if(in_array( $tag->name, $this->search_terms[$tag->taxonomy])){
+			if( in_array( $tag->name, $this->search_terms[ $tag->taxonomy ] ))
+			{
 				$selected[ $tag->name ] = ' selected';
 				$tag_links[ $tag->name ] = $this->get_search_link( $this->search_terms );
 			}else{
@@ -1890,12 +1892,13 @@ return( $scribiii_import->iii_availability( $id, $arg['sourceid'] ));
 
 		$rel = ( is_object($wp_rewrite) && $wp_rewrite->using_permalinks() ) ? ' rel="tag"' : '';
 
-		foreach ( $counts as $tag => $count ) {
-			$tag_id = $tag_ids[$tag];
-			$tag_link = clean_url($tag_links[$tag]);
-			$tag_link = $tag_links[$tag];
-			// $tag = str_replace(' ', '&nbsp;', wp_specialchars( $tag ));
-			$tag = wp_specialchars( $tag );
+		foreach ( $counts as $tag => $count )
+		{
+			$tag_id = $tag_ids[ $tag ];
+			$tag_link = clean_url( $tag_links[ $tag ] );
+			$tag_link = $tag_links[ $tag ];
+			// $tag_names[ $tag ] = str_replace(' ', '&nbsp;', wp_specialchars( $tag_names[ $tag ] ));
+			$tag_names[ $tag ] = wp_specialchars( $tag_names[ $tag ] );
 			$a[] = "<a href='$tag_link' class='tag-link-$tag_id". $selected[$tag] ."' title='" . attribute_escape( sprintf( __('%d topics'), $count ) ) . "'$rel style='font-size: " .
 				( $smallest + ( ( $count - $min_count ) * $font_step ) )
 				. "$unit;'>". $tag_names[ $tag ] .'</a>' ;
@@ -2286,6 +2289,14 @@ class Scrib_Widget_Facets extends WP_Widget {
 			<select name="<?php echo $this->get_field_name('format'); ?>" id="<?php echo $this->get_field_id('format'); ?>" class="widefat">
 				<option value="list" <?php selected( $instance['format'], 'list' ); ?>><?php _e('List'); ?></option>
 				<option value="cloud" <?php selected( $instance['format'], 'cloud' ); ?>><?php _e('Cloud'); ?></option>
+			</select>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('name'); ?>"><?php _e( 'Name:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('name'); ?>" id="<?php echo $this->get_field_id('name'); ?>" class="widefat">
+				<option value="name" <?php selected( $instance['name'], 'name' ); ?>><?php _e('Display term names'); ?></option>
+				<option value="description" <?php selected( $instance['name'], 'description' ); ?>><?php _e('Display term descriptions'); ?></option>
 			</select>
 		</p>
 

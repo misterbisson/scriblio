@@ -1242,8 +1242,6 @@ class Scrib {
 		$nsourceid = $bibr['_sourceid'];
 		$ncategory = $bibr['_category'];
 
-print_r( $bibr );
-
 		unset( $bibr['_title'] );
 		unset( $bibr['_acqdate'] );
 		unset( $bibr['_idnumbers'] );

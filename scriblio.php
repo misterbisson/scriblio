@@ -177,6 +177,7 @@ class Scrib {
 					array(
 						'browseid' => absint( $old['browse_id'] ),
 						'searchprompt' => 'Books, movies, music',
+						'facetfound' => 1000,
 					)
 				);
 				

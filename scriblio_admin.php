@@ -118,6 +118,12 @@ $options = get_option('scrib_opts');
 
 $this->activate();
 
+if ( $_REQUEST['command'] == __( 'Publish Harvested Records' , 'Scriblio' ))
+{
+	$this->import_harvest_publish();
+}
+
+
 ?> 
 <div class="wrap">
 	<h2><?php _e('Scriblio Options', 'Scrib'); ?></h2>
@@ -148,6 +154,9 @@ $this->activate();
 
 		<h3>Commands:</h3>
 
+	</form>
+
+	<form method="post" name="scrib_commands" name="scrib_commands">
 		<div class="submit"><input type="submit" name="command" value="<?php _e('Publish Harvested Records', 'Scriblio'); ?>" /> (<?php echo $this->import_harvest_tobepublished_count() ?> records remain to be published)</div>
 	</form>
 

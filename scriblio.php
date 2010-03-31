@@ -1108,6 +1108,16 @@ class Scrib {
 		die;
 	}
 
+	public function import_insert_harvest( &$bibr, $enriched = 0 ){
+		global $wpdb;
+
+		$wpdb->get_results("REPLACE INTO $this->harvest_table
+			( source_id, harvest_date, imported, content, enriched )
+			VALUES ( '". $wpdb->escape( $bibr['_sourceid'] ) ."', NOW(), 0, '". $wpdb->escape( serialize( $bibr )) ."', ". absint( $enriched ) ." )" );
+
+		wp_cache_set( $bibr['_sourceid'], time() + 2500000, 'scrib_harvested', time() + 2500000 );
+	}
+
 	public function import_post_exists( $idnumbers ) {
 		global $wpdb;
 
@@ -1205,6 +1215,7 @@ class Scrib {
 				$postdata['post_modified'] =
 				$postdata['post_modified_gmt'] = strlen( get_post_field( 'post_date', $postdata['ID'] )) ? get_post_field( 'post_date', $postdata['ID'] ) : $bibr['_acqdate'];
 
+			$postdata['post_author'] = 1 < get_post_field( 'post_author', $postdata['ID'] ) ? get_post_field( 'post_author', $postdata['ID'] ) : $bibr['_userid'];
 		}else{
 
 			$postdata['post_title'] = apply_filters( 'scrib_meditor_pre_title', $bibr['_title'], $bibr );
@@ -1217,24 +1228,29 @@ class Scrib {
 				$postdata['post_modified'] =
 				$postdata['post_modified_gmt'] = $bibr['_acqdate'];
 
+			$postdata['post_author'] = $bibr['_userid'];
 		}
 
 		$postdata['comment_status'] = get_option('default_comment_status');
 		$postdata['ping_status'] 	= get_option('default_ping_status');
 		$postdata['post_status'] 	= 'publish';
 		$postdata['post_type'] 		= 'post';
-		$postdata['post_author'] 	= $this->options['catalog_author_id'];
 
 		if( isset( $bibr['_icon'] ))
 			$the_icon = $bibr['_icon'];
 
 		$nsourceid = $bibr['_sourceid'];
+		$ncategory = $bibr['_category'];
+
+print_r( $bibr );
 
 		unset( $bibr['_title'] );
 		unset( $bibr['_acqdate'] );
 		unset( $bibr['_idnumbers'] );
 		unset( $bibr['_sourceid'] );
 		unset( $bibr['_icon'] );
+		unset( $bibr['_category'] );
+		unset( $bibr['_userid'] );
 
 		$postdata['post_excerpt'] = '';
 
@@ -1258,9 +1274,17 @@ class Scrib {
 //echo "<h2>Merged</h2>";
 //print_r( $bibr );
 
+//print_r( $postdata );
+
 		$post_id = wp_insert_post( $postdata ); // insert the post
-		if($post_id){
+		if( $post_id )
+		{
+
+			if( ! empty( $ncategory ))
+				wp_set_object_terms( $post_id, $ncategory , 'category', FALSE );
+
 			add_post_meta( $post_id, 'scrib_meditor_content', $bibr, TRUE ) or update_post_meta( $post_id, 'scrib_meditor_content', $bibr );
+
 			do_action( 'scrib_meditor_save_record', $post_id, $bibr );
 
 			if( isset( $the_icon )){
@@ -1269,6 +1293,7 @@ class Scrib {
 				else if( is_string( $the_icon ))
 					$bsuite->icon_resize( $the_icon, $post_id, TRUE );
 			}
+
 
 			return( $post_id );
 		}

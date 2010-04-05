@@ -143,7 +143,6 @@ class Scrib {
 		$this->taxonomies = $temp['search'];
 		$this->taxonomies_for_related = $temp['related'];
 		$this->taxonomies_for_suggest = $temp['suggest'];
-
 		unset( $temp );
 
 		if( $bsuite->loadavg < get_option( 'bsuite_load_max' )) // only do cron if load is low-ish
@@ -579,7 +578,7 @@ class Scrib {
 			INNER JOIN $wpdb->term_relationships c ON p.ID = c.object_id
 			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
 			INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
-			GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 1500";
+			GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000";
 
 //echo $facets_query;
 

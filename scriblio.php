@@ -2401,7 +2401,15 @@ class Scrib_Widget_Facets extends WP_Widget {
 	{
 		global $scrib;
 
-		foreach( $scrib->taxonomies as $item ){
+		// upgrade the facet list from the pre 2.9 format
+		if( ! is_array( $instance[ $whichfield ] ))
+		{
+			$temp = array_filter( array_map( 'trim', (array) explode( ',' , $instance[ $whichfield ] )));
+			$instance[ $whichfield ] = array_flip( $temp );
+		}
+
+		foreach( $scrib->taxonomies as $item )
+		{
 			$list[] = '<li>
 				<label for="'. $this->get_field_id( $whichfield .'-'. $item ) .'"><input id="'. $this->get_field_id( $whichfield .'-'. $item) .'" name="'. $this->get_field_name( $whichfield ) .'['. $item .']" type="checkbox" value="1" '. ( isset( $instance[ $whichfield ][ $item ] ) ? 'checked="checked"' : '' ) .'/> '. $item .'</label>
 			</li>';

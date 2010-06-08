@@ -72,3 +72,8 @@ ul#scrib_meditor {
 	color: #888;
 	display: block;
 }
+
+p.scrib_meditor_end
+{
+	clear: both;
+}

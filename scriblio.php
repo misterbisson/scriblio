@@ -3,7 +3,7 @@
 Plugin Name: Scriblio
 Plugin URI: http://about.scriblio.net/
 Description: Leveraging WordPress as a library OPAC.
-Version: 2.9-r1
+Version: 3.0-a1
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -23,14 +23,6 @@ Author URI: http://maisonbisson.com/blog/
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/*
-
-TODO
-
-replace $this->taxonomies
-
 */
 
 error_reporting(E_ERROR);
@@ -499,6 +491,8 @@ class Scrib {
 		if( count( $this->category_browse ))
 			$search_terms = array( 'category' => array_map( 'get_cat_name' , (array) $this->category_browse ));
 
+		$search_terms = apply_filters( 'scrib_default_browse_terms', $search_terms );
+
 		if( !empty( $search_terms )){
 			foreach($search_terms as $taxonomy => $values){
 				foreach($values as $key => $value){
@@ -541,11 +535,14 @@ class Scrib {
 	}
 
 	public function posts_fields( $query ) {
+		remove_filter( 'posts_fields', array( &$this , 'posts_fields' ), 7 );
 		return( $query . implode( $this->posts_fields ));
 	}
 
 	public function posts_orderby( $query ) {
 		global $wp_query, $wpdb;
+
+		remove_filter( 'posts_orderby', array( &$this , 'posts_orderby' ), 7 );
 
 		if( count( $this->posts_orderby ))
 			$this->posts_orderby[] = '';
@@ -557,15 +554,19 @@ class Scrib {
 	}
 
 	public function posts_join( $query ) {
+		remove_filter( 'posts_join', array( &$this , 'posts_join' ), 7 );
 		return( $query . implode( $this->posts_join ));
 	}
 
 	public function posts_where( $query ) {
+		remove_filter( 'posts_where', array( &$this , 'posts_where' ), 7 );
 		return( $query . implode( $this->posts_where ));
 	}
 
 	public function posts_request( $query ) {
 		global $wpdb;
+
+		remove_filter( 'posts_request', array( &$this , 'posts_request' ), 7 );
 
 //global $wp_query;
 //print_r( $wp_query );

@@ -2,15 +2,17 @@
 
 function scrib_control_taxonomies()
 {
-	global $wpdb, $wp_taxonomies;
+	global $wpdb;
 
 	$options = get_option('scrib_taxonomies');
 
 	foreach( (array) $wpdb->get_results( "SELECT taxonomy , COUNT(*) AS hits FROM $wpdb->term_taxonomy GROUP BY taxonomy" ) as $count)
 		$counts[ $count->taxonomy ] = $count->hits;
 
+	$wp_taxonomies = array_flip( (array) get_object_taxonomies( 'post' ) );
 	ksort( $wp_taxonomies );
-	$taxonomies = array_merge( array( 's' => (object) array( 'label' => 'Keyword' , 'object_type' => 'post' )) , $wp_taxonomies );
+
+	$taxonomies = array_merge( array( 's' => (object) array( 'label' => 'Keyword' , 'object_type' => array( 'post' ) )) , $wp_taxonomies );
 
 ?>
 <table class="form-table">
@@ -28,33 +30,33 @@ function scrib_control_taxonomies()
 <?php
 	foreach( $taxonomies as $taxonomy => $v )
 	{
-		if( $v->object_type <> 'post' )
-			continue;
+		if( ! isset( $v->label ))
+			$v = get_taxonomy( $taxonomy );
 ?>
-			<tr>
-				<td>
-					<label for="taxonomy_name_<?php echo $taxonomy; ?>"><?php echo $taxonomy; ?></label>
-				</td>
-				<td>
-					<input type="text" style="width:100px" id="taxonomy_name_<?php echo $taxonomy; ?>" name="scrib_taxonomies[name][<?php echo $taxonomy; ?>]" value="<?php echo esc_html( wp_filter_nohtml_kses( empty( $options['name'][ $k ] ) ? $v->label : $options['name'][ $k ] )); ?>" />
-				</td>
-				<td align="right">
-					<?php if( $counts[ $taxonomy ] ): ?>
-						<a href="<?php echo admin_url( '/edit-tags.php?taxonomy='. $taxonomy ); ?>"><?php echo number_format( $counts[ $taxonomy ] ); ?></a>
-					<?php else: ?>
-						0
-					<?php endif; ?>
-				</td>
-				<td align="center">
-					<input type="checkbox" id="taxonomy_for_search_<?php echo $taxonomy; ?>" name="scrib_taxonomies[search][<?php echo $taxonomy; ?>]" value="1" <?php if( in_array( $taxonomy, $options['search'] )) echo 'CHECKED'; ?> />
-				</td>
-				<td align="center">
-					<input type="checkbox" id="taxonomy_for_related_<?php echo $taxonomy; ?>" name="scrib_taxonomies[related][<?php echo $taxonomy; ?>]" value="1" <?php if( in_array( $taxonomy, $options['related'] )) echo 'CHECKED'; ?> />
-				</td>
-				<td align="center">
-					<input type="checkbox" id="taxonomy_for_suggest_<?php echo $taxonomy; ?>" name="scrib_taxonomies[suggest][<?php echo $taxonomy; ?>]" value="1" <?php if( in_array( $taxonomy, $options['suggest'] )) echo 'CHECKED'; ?> />
-				</td>
-			</tr>
+		<tr>
+			<td>
+				<label for="taxonomy_name_<?php echo $taxonomy; ?>"><?php echo $taxonomy; ?></label>
+			</td>
+			<td>
+				<input type="text" style="width:100px" id="taxonomy_name_<?php echo $taxonomy; ?>" name="scrib_taxonomies[name][<?php echo $taxonomy; ?>]" value="<?php echo esc_html( wp_filter_nohtml_kses( empty( $options['name'][ $k ] ) ? $v->label : $options['name'][ $k ] )); ?>" />
+			</td>
+			<td align="right">
+				<?php if( $counts[ $taxonomy ] ): ?>
+					<a href="<?php echo admin_url( '/edit-tags.php?taxonomy='. $taxonomy ); ?>"><?php echo number_format( $counts[ $taxonomy ] ); ?></a>
+				<?php else: ?>
+					0
+				<?php endif; ?>
+			</td>
+			<td align="center">
+				<input type="checkbox" id="taxonomy_for_search_<?php echo $taxonomy; ?>" name="scrib_taxonomies[search][<?php echo $taxonomy; ?>]" value="1" <?php if( in_array( $taxonomy, $options['search'] )) echo 'CHECKED'; ?> />
+			</td>
+			<td align="center">
+				<input type="checkbox" id="taxonomy_for_related_<?php echo $taxonomy; ?>" name="scrib_taxonomies[related][<?php echo $taxonomy; ?>]" value="1" <?php if( in_array( $taxonomy, $options['related'] )) echo 'CHECKED'; ?> />
+			</td>
+			<td align="center">
+				<input type="checkbox" id="taxonomy_for_suggest_<?php echo $taxonomy; ?>" name="scrib_taxonomies[suggest][<?php echo $taxonomy; ?>]" value="1" <?php if( in_array( $taxonomy, $options['suggest'] )) echo 'CHECKED'; ?> />
+			</td>
+		</tr>
 <?php
 	}
 ?>

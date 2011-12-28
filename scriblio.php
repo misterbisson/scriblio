@@ -11,12 +11,18 @@ class Facets
 {
 	var $_all_facets = array();
 	var $_query_vars = array();
+	var $_foundpostslimit = 1000;
 
 	function __construct()
 	{
-		do_action( 'scrib_register_facets' );
+		add_action( 'init' , array( $this , 'init' ));
 		add_action( 'parse_query' , array( $this , 'parse_query' ));
 		add_filter( 'posts_request',	array( $this, 'posts_request' ), 11 );
+	}
+
+	function init()
+	{
+		do_action( 'scrib_register_facets' );
 	}
 
 	function register_facet( $facet_name , $facet_type , $args = array() )
@@ -54,9 +60,10 @@ echo "</pre>";
 
 		global $wpdb;
 
-//		remove_filter( 'posts_request', array( $this , 'posts_request' ), 11 );
+		// deregister this filter after it's run on the first/default query
+		remove_filter( 'posts_request', array( $this , 'posts_request' ), 11 );
 
-		$this->matching_post_ids_sql = str_replace( $wpdb->posts .'.* ', $wpdb->posts .'.ID ', str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, '. 1000 , $query )));
+		$this->matching_post_ids_sql = str_replace( $wpdb->posts .'.* ', $wpdb->posts .'.ID ', str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, '. $this->_foundpostslimit , $query )));
 
 //echo "<h2>$this->matching_post_ids_sql</h2>";
 
@@ -160,7 +167,7 @@ class Facet_taxonomy extends Facet
 
 	function get_matching_facets()
 	{
-		if( is_array( $this->facets->_tax_matches ))
+		if( is_array( $this->facets->_matching_tax_facets ))
 			return $this->facets->_matching_tax_facets[ $this->name ];
 
 		global $wpdb;
@@ -183,23 +190,12 @@ class Facet_taxonomy extends Facet
 				'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
 				'slug' => $term->slug,
 				'name' => $term->name,
+				'description' => $term->description,
 				'term_id' => $term->term_id,
 				'term_taxonomy_id' => $term->term_taxonomy_id,
-				'description' => $term->description,
 				'count' => $term->count,
 			);
-
-
-echo "<h2>". $this->facets->facet_permalink( (object) array(
-	'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
-	'slug' => $term->slug,
-	'name' => $term->name,
-	'description' => $term->description,
-	'count' => $term->count,
-)) ."</h2>";
 		}
-
-
 
 		return $this->facets->_matching_tax_facets[ $this->name ];
 	}

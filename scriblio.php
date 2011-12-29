@@ -132,7 +132,7 @@ class Facets
 		{
 			$new_vars = array();
 			foreach( (array) $vars as $facet => $terms )
-				$new_vars[ $facet ] = implode( ',' , array_keys( $terms ));
+				$new_vars[ $facet ] = implode( '+' , array_keys( $terms ));
 
 			return build_query( $new_vars );
 		}
@@ -254,7 +254,7 @@ class Facet
 
 	function parse_query( $query_terms )
 	{
-		return array_filter( array_map( 'trim' , (array) explode( ',' , $query_terms )));
+		return array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|]/' , $query_terms )));
 	}
 }
 
@@ -262,12 +262,6 @@ class Facet
 
 class Facet_taxonomy extends Facet
 {
-
-	var $_special_qvs = array(
-		'category' => array( 'category__in', 'category__not_in', 'category__and' ),
-		'post_tag' => array( 'tag__in', 'tag__not_in', 'tag__and', 'tag_slug__in', 'tag_slug__and' ),
-	);
-
 	function __construct( $name , $args , $facets_object )
 	{
 		parent::__construct( $name , $args , $facets_object );
@@ -287,25 +281,6 @@ class Facet_taxonomy extends Facet
 
 	function parse_query( $query_terms , $wp_query )
 	{
-
-		// unset the old-style query vars for tag and category taxonomies, if relevant
-		if( is_array( $this->_special_qvs[ $this->taxonomy ] ))
-		{
-			unset( $wp_query->query_vars['tag_id'] );
-			foreach( $this->_special_qvs[ $this->taxonomy ] as $qv )
-				unset( $wp_query->query_vars[ $qv ] );
-		}
-
-		// unset the natively generated taxonomy query vars so we can recreate with our own operated (and, in, not) 
-		if( is_array( $wp_query->tax_query->queries ))
-		{
-			foreach( $wp_query->tax_query->queries as $k => $v )
-			{
-				if( $this->taxonomy == $v['taxonomy'] )
-					unset( $wp_query->tax_query->queries[ $k ] );
-			}
-		}
-
 		// identify the terms in this query
 		foreach( parent::parse_query( $query_terms ) as $val )
 		{
@@ -471,11 +446,11 @@ class Facet_taxonomy extends Facet
 			if ( empty($termlink) ) // dang, we're not using pretty permalinks
 			{
 				$t = get_taxonomy( $this->taxonomy );
-				$termlink = "?$t->query_var=". implode( ',' , array_keys( $terms ));
+				$termlink = "?$t->query_var=". implode( '+' , array_keys( $terms ));
 			}
 			else
 			{
-				$termlink = str_replace( "%$this->taxonomy%" , implode( ',' , array_keys( $terms )) , $termlink );
+				$termlink = str_replace( "%$this->taxonomy%" , implode( '+' , array_keys( $terms )) , $termlink );
 			}
 
 			$termlink = home_url( user_trailingslashit( $termlink , 'category' ));

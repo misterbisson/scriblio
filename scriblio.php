@@ -16,7 +16,7 @@ class Facets
 	function __construct()
 	{
 		add_action( 'init' , array( $this , 'init' ));
-		add_action( 'parse_query' , array( $this , 'parse_query' ));
+		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
 		add_filter( 'posts_request',	array( $this, 'posts_request' ), 11 );
 	}
 
@@ -52,16 +52,23 @@ class Facets
 		$searched = array_intersect_key( $query->query , $this->_query_vars );
 		$this->selected_facets = (object) array();
 		foreach( $searched as $k => $v )
-			$this->selected_facets->{$this->_query_vars[ $k ]} = $this->facets->{$this->_query_vars[ $k ]}->parse_query_terms( $v , $query );
+			$this->selected_facets->{$this->_query_vars[ $k ]} = $this->facets->{$this->_query_vars[ $k ]}->parse_query( $v , $query );
 
 //echo "<pre>";
 //print_r( $query );
 //print_r( $this );
 //echo "</pre>";
+
+		return $query;
 	}
 
 	public function posts_request( $query )
 	{
+
+//global $wp_query;
+//echo "<pre>";
+//print_r( $wp_query );
+//echo "</pre>";
 //echo "<h2>$query</h2>";
 
 		global $wpdb;
@@ -245,7 +252,7 @@ class Facet
 		return $this->query_var;
 	}
 
-	function parse_query_terms( $query_terms )
+	function parse_query( $query_terms )
 	{
 		return array_filter( array_map( 'trim' , (array) explode( ',' , $query_terms )));
 	}
@@ -255,6 +262,12 @@ class Facet
 
 class Facet_taxonomy extends Facet
 {
+
+	var $_special_qvs = array(
+		'category' => array( 'category__in', 'category__not_in', 'category__and' ),
+		'post_tag' => array( 'tag__in', 'tag__not_in', 'tag__and', 'tag_slug__in', 'tag_slug__and' ),
+	);
+
 	function __construct( $name , $args , $facets_object )
 	{
 		parent::__construct( $name , $args , $facets_object );
@@ -272,9 +285,29 @@ class Facet_taxonomy extends Facet
 
 	}
 
-	function parse_query_terms( $query_terms )
+	function parse_query( $query_terms , $wp_query )
 	{
-		foreach( parent::parse_query_terms( $query_terms ) as $val )
+
+		// unset the old-style query vars for tag and category taxonomies, if relevant
+		if( is_array( $this->_special_qvs[ $this->taxonomy ] ))
+		{
+			unset( $wp_query->query_vars['tag_id'] );
+			foreach( $this->_special_qvs[ $this->taxonomy ] as $qv )
+				unset( $wp_query->query_vars[ $qv ] );
+		}
+
+		// unset the natively generated taxonomy query vars so we can recreate with our own operated (and, in, not) 
+		if( is_array( $wp_query->tax_query->queries ))
+		{
+			foreach( $wp_query->tax_query->queries as $k => $v )
+			{
+				if( $this->taxonomy == $v['taxonomy'] )
+					unset( $wp_query->tax_query->queries[ $k ] );
+			}
+		}
+
+		// identify the terms in this query
+		foreach( parent::parse_query( $query_terms ) as $val )
 		{
 			if( $term = get_term_by( 'slug' , $val , $this->taxonomy ))
 				$this->selected_terms[ $term->slug ] = $term;

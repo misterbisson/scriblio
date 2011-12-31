@@ -33,6 +33,7 @@ class Facets
 	function register_facet( $facet_name , $facet_class , $args = array() )
 	{
 		$args = wp_parse_args( $args, array(
+			'has_rewrite' => FALSE, 
 			'priority' => 5, 
 		));
 
@@ -48,6 +49,9 @@ class Facets
 
 		// set the priority to determine how to generate the permalink when there are two or more active facets
 		// as with WP hook priority, this should be 1-10
+		// facets without pretty permalink rewrite rules get no priority
+		if( ( 9 > $args['priority'] ) && ( ! $args['has_rewrite'] ) )
+			$args['priority'] = 9;
 		$this->priority[ $facet_name ] = (int) $args['priority'];
 		
 	}
@@ -499,6 +503,7 @@ class Facet_Searchword implements Facet
 {
 
 	var $query_var = 's';
+	var $exclude_from_widget = TRUE;
 
 	function __construct( $name , $args , $facets_object )
 	{
@@ -758,7 +763,8 @@ class Scrib_Facets_Widget extends WP_Widget
 		array_multisort( $facet_list , $names );
 
 		foreach ( $facet_list as $facet )
-			echo "\n\t<option value=\"". $facet .'" '. selected( $default , $facet , FALSE ) .'>'. ( isset( $facets->facets->{$facet}->label ) ? $facets->facets->{$facet}->label : $facet ) .'</option>';
+			if( ! isset( $facets->facets->$facet->exclude_from_widget ))
+				echo "\n\t<option value=\"". $facet .'" '. selected( $default , $facet , FALSE ) .'>'. ( isset( $facets->facets->$facet->label ) ? $facets->facets->$facet->label : $facet ) .'</option>';
 	}
 
 }// end Scrib_Facets_Widget
@@ -870,9 +876,9 @@ function scrib_register_facet( $name , $type , $args = array() )
 
 function register_facet_test()
 {
-	scrib_register_facet( 'searchword' , 'Facet_Searchword' , array( 'priority' => 0 ) );
-	scrib_register_facet( 'tag' , 'Facet_Taxonomy' , array( 'taxonomy' => 'post_tag' , 'query_var' => 'tag' , 'priority' => 5 ) );
-	scrib_register_facet( 'category' , 'Facet_Taxonomy' , array( 'query_var' => 'category_name' , 'priority' => 4 ) );
+	scrib_register_facet( 'searchword' , 'Facet_Searchword' , array( 'priority' => 0 , 'has_rewrite' => TRUE ) );
+	scrib_register_facet( 'tag' , 'Facet_Taxonomy' , array( 'taxonomy' => 'post_tag' , 'query_var' => 'tag' , 'has_rewrite' => TRUE , 'priority' => 5 ) );
+	scrib_register_facet( 'category' , 'Facet_Taxonomy' , array( 'query_var' => 'category_name' , 'has_rewrite' => TRUE , 'priority' => 4 ) );
 //	scrib_register_facet( 'post_author' , 'Facet_Post' );
 
 //echo "<h2>Hey!</h2>";

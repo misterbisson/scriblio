@@ -136,6 +136,7 @@ class Facets
 		}
 		else if( 1 === $count_of_facets ) // there's just one facet (with any number of terms)
 		{
+			$facet = key( $vars );
 			return $this->facets->$facet->permalink( $vars->$facet );
 		}
 		else // more than one facet

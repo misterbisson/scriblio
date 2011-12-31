@@ -60,6 +60,8 @@ class Facets
 		}
 
 //echo "<pre>";
+//global $wp_rewrite;
+//print_r( $wp_rewrite );
 //print_r( $query );
 //print_r( $this );
 //print_r( $this->selected_facets );

@@ -57,7 +57,10 @@ class Facets
 		$searched = array_intersect_key( $query->query , $this->_query_vars );
 		$this->selected_facets = (object) array();
 		foreach( $searched as $k => $v )
+		{
 			$this->selected_facets->{$this->_query_vars[ $k ]} = $this->facets->{$this->_query_vars[ $k ]}->parse_query( $v , $query );
+			$this->selected_facets_counts->{$this->_query_vars[ $k ]} = count( (array) $this->selected_facets->{$this->_query_vars[ $k ]} );
+		}
 
 //echo "<pre>";
 //print_r( $query );
@@ -136,7 +139,7 @@ class Facets
 		}
 		else if( 1 === $count_of_facets ) // there's just one facet (with any number of terms)
 		{
-			$facet = key( $vars );
+			$facet = key( $vars ); // because the one remaining facet isn't always the facet that called the function
 			return $this->facets->$facet->permalink( $vars->$facet );
 		}
 		else // more than one facet
@@ -251,7 +254,7 @@ class Facets
 		{
 
 			// how many facets are currently selected?
-			$count_of_facets = count( (array) $this->selected_facets );
+			$count_of_facets = array_product( (array) $this->selected_facets_counts );
 
 			// display the search terms in priority order
 			$facet_priority = array_intersect_key( $this->priority , (array) $this->selected_facets );

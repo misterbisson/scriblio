@@ -32,6 +32,10 @@ class Facets
 
 	function register_facet( $facet_name , $facet_class , $args = array() )
 	{
+		$args = wp_parse_args( $args, array(
+			'priority' => 5, 
+		));
+
 		// instantiate the facet
 		if( class_exists( $facet_class ))
 			$this->facets->$facet_name = new $facet_class( $facet_name , $args , $this );
@@ -41,6 +45,11 @@ class Facets
 		// register the query var and associate it with this facet
 		$query_var = $this->facets->$facet_name->register_query_var();
 		$this->_query_vars[ $query_var ] = $facet_name;
+
+		// set the priority to determine how to generate the permalink when there are two or more active facets
+		// as with WP hook priority, this should be 1-10
+		$this->priority[ $facet_name ] = (int) $args['priority'];
+		
 	}
 
 	function parse_query( $query )
@@ -53,6 +62,7 @@ class Facets
 //echo "<pre>";
 //print_r( $query );
 //print_r( $this );
+//print_r( $this->selected_facets );
 //echo "</pre>";
 
 		return $query;
@@ -90,47 +100,61 @@ class Facets
 		return $this->matching_post_ids;
 	}
 
-	function get_queryvars( $facet , $term , $additive = -1 )
+	function get_queryterms( $facet , $term , $additive = -1 )
 	{
 		switch( (int) $additive )
 		{
 			case 1: // TRUE add this facet to the other facets in the previous query
 				$vars = clone $this->selected_facets;
-				$vars->{$facet} = $this->facets->$facet->queryvar_add( $term , $vars->{$facet} );
+				$vars->{$facet} = $this->facets->$facet->queryterm_add( $term , $vars->{$facet} );
 				return $vars;
 				break;
 
 			case 0: // FALSE remove this term from the current query vars
 				$vars = clone $this->selected_facets;
-				$vars->{$facet} = $this->facets->$facet->queryvar_remove( $term , $vars->{$facet} );
-				return (object) array_filter( (array) $vars );
+				$vars->$facet = $this->facets->$facet->queryterm_remove( $term , $vars->{$facet} );
+				if( ! count( (array) $vars->$facet ))
+					unset( $vars->$facet );
+				return $vars;
 				break;
 
 			case -1: // default, just create a permalink for this facet on its own
 			default:
-				return (object) array( $facet => $this->facets->$facet->queryvar_add( $term , FALSE ) );
+				return (object) array( $facet => $this->facets->$facet->queryterm_add( $term , FALSE ) );
 		}
 	}
 
 	function permalink( $facet , $term , $additive = -1 )
 	{
-		$vars = $this->get_queryvars( $facet , $term , $additive );
+		$vars = $this->get_queryterms( $facet , $term , $additive );
 
-		if( ! count( $vars )) // oops, there are no query vars
+		$count_of_facets = count( (array) $vars );
+
+		if( ! $count_of_facets ) // oops, there are no query vars
 		{
 			return;
 		}
-		else if( 1 === count( $vars )) // there's just one facet (with any number of terms)
+		else if( 1 === $count_of_facets ) // there's just one facet (with any number of terms)
 		{
 			return $this->facets->$facet->permalink( $vars->$facet );
 		}
 		else // more than one facet
 		{
+			// get the top priority facet to generate the URL base from
+			$facet_priority = array_intersect_key( $this->priority , (array) $vars );
+			asort( $facet_priority );
+			$priority_facet = key( $facet_priority );
+			$base = $this->facets->$priority_facet->permalink( $vars->$priority_facet );
+
+			// unset the priority facet from the vars so we don't get duplicate entries
+			unset( $vars->$priority_facet );
+
+			// generate the additional query vars
 			$new_vars = array();
 			foreach( (array) $vars as $facet => $terms )
-				$new_vars[ $facet ] = implode( '+' , array_keys( $terms ));
+				$new_vars[ $this->facets->$facet->query_var ] = implode( '+' , array_keys( $terms ));
 
-			return build_query( $new_vars );
+			return add_query_arg( $new_vars , $base );
 		}
 	}
 
@@ -193,7 +217,7 @@ class Facets
 		$a = array();
 		foreach ( $counts as $tag => $count )
 		{
-			$a[] = '<a href="'. $this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , TRUE ) .'" class="tag-link'. ( $this->facets->{$tag_info[ $tag ]->facet}->selected( $tag_info[ $tag ] ) ? ' selected' : '' ) .
+			$a[] = '<a href="'. $this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , 1 ) .'" class="tag-link'. ( $this->facets->{$tag_info[ $tag ]->facet}->selected( $tag_info[ $tag ] ) ? ' selected' : '' ) .
 				'" title="'. attribute_escape( sprintf( __('%d topics') , $count )) .'"'.
 				( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ) .
 				'>'. wp_specialchars( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ) .'</a>' ;
@@ -221,38 +245,38 @@ class Facets
 		global $wpdb, $wp_query, $bsuite;
 		$search_terms = $this->search_terms;
 
-		if( ! empty( $search_terms ))
+		$return_string = '';
+		if( ! empty( $this->selected_facets ))
 		{
-			echo '<ul>';
-			reset($search_terms);
-			foreach( $search_terms as $key => $vals ){
-				foreach( $vals as $i => $q ){
-					$q = stripslashes( $q );
 
-					$temp_query_vars = $search_terms;
-					unset( $temp_query_vars[ $key ][ array_search( $q, $search_terms[ $key ] ) ] );
-					$temp_query_vars = array_filter( $temp_query_vars );
+			// how many facets are currently selected?
+			$count_of_facets = count( (array) $this->selected_facets );
 
+			// display the search terms in priority order
+			$facet_priority = array_intersect_key( $this->priority , (array) $this->selected_facets );
+			asort( $facet_priority );
+
+			foreach( (array) array_keys( $facet_priority ) as $facet )
+			{
+				foreach( $this->selected_facets->$facet as $k => $term )
+				{
 					// build the query that excludes this search term
-					$excludesearch = '[<a href="'. $this->get_search_link( $temp_query_vars ) .'" title="Retry this search without this term">x</a>]';
+					$exclude_url = $this->permalink( $facet , $term , 0 );
+					$exclude_link = '[<a href="'. $exclude_url .'" title="Retry this search without this term">x</a>]';
 
-					// build the URL singles out the search term
-					$path = $this->get_search_link( array( $key => array( $q ))) ;
+					// build a query for this search term alone
+					$solo_url = $this->permalink( $facet , $term );
+					$solo_link = '<a href="'. $solo_url .'" title="Search only this term">'. convert_chars( wptexturize( $term->name )) .'</a>';
 
-					$matches = !empty( $this->the_matching_post_counts[ $key ][ $i ] ) ? ' ('. $this->the_matching_post_counts[ $key ][ $i ] .' matches)' : '';
-
-					if( strpos( ' '.$q, '-' ))
-					{
-						$q = get_term_by( 'slug' , $q , $key );
-						$q = $q->name;
-						$this->search_terms[ $key ][ $i ] = $q;
-					}
-
-					echo '<li><label>'. $this->taxonomy_name[ $key ] .'</label>: <a href="'. $path .'" title="Search only this term'. $matches .'">'. convert_chars( wptexturize( $q )) .'</a>&nbsp;'. $excludesearch .'</li>';
+					// put it all together
+					$return_string .= '<li><label>'. $this->facets->$facet->labels->singular_name .'</label>: '. $solo_link . ( ( 1 < $count_of_facets ) ? '&nbsp;'. $exclude_link : '' ) .'</li>';
 				}
 			}
-			echo '</ul>';
+
+			return $return_string;
 		}
+
+		return FALSE;
 	}
 
 }
@@ -260,7 +284,31 @@ $facets = new Facets;
 
 
 
-class Facet
+interface Facet
+{
+
+	function register_query_var();
+
+	function parse_query( $query_terms , $wp_query );
+
+	function get_terms_in_corpus();
+
+	function get_terms_in_found_set();
+
+	function get_terms_in_post( $post_id = FALSE );
+
+	function selected( $term );
+
+	function queryterm_add( $term , $current );
+
+	function queryterm_remove( $term , $current );
+
+	function permalink( $terms );
+}
+
+
+
+class Facet_Taxonomy implements Facet
 {
 	function __construct( $name , $args , $facets_object )
 	{
@@ -268,9 +316,17 @@ class Facet
 		$this->args = $args;
 		$this->facets = $facets_object;
 
-		$this->label = $args['label'];
-		$this->labels = $args['labels'];
-		$this->query_var = $args['query_var'];
+		$this->taxonomy = $args['taxonomy'] ? $args['taxonomy'] : $this->name;
+
+		$this->facets->_tax_to_facet[ $this->taxonomy ] = $this->name;
+		$this->facets->_facet_to_tax[ $this->name ] = $this->taxonomy;
+
+		$taxonomy = get_taxonomy( $this->taxonomy );
+		$this->label = $taxonomy->label;
+		$this->labels = $taxonomy->labels;
+		if( $taxonomy->query_var )
+			$this->query_var = $taxonomy->query_var;
+
 	}
 
 	function register_query_var()
@@ -287,37 +343,11 @@ class Facet
 		return $this->query_var;
 	}
 
-	function parse_query( $query_terms )
-	{
-		return array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|]/' , $query_terms )));
-	}
-}
-
-
-
-class Facet_taxonomy extends Facet
-{
-	function __construct( $name , $args , $facets_object )
-	{
-		parent::__construct( $name , $args , $facets_object );
-
-		$this->taxonomy = $args['taxonomy'] ? $args['taxonomy'] : $this->name;
-
-		$this->facets->_tax_to_facet[ $this->taxonomy ] = $this->name;
-		$this->facets->_facet_to_tax[ $this->name ] = $this->taxonomy;
-
-		$taxonomy = get_taxonomy( $this->taxonomy );
-		$this->label = $taxonomy->label;
-		$this->labels = $taxonomy->labels;
-		if( $taxonomy->query_var )
-			$this->query_var = $taxonomy->query_var;
-
-	}
-
 	function parse_query( $query_terms , $wp_query )
 	{
+
 		// identify the terms in this query
-		foreach( parent::parse_query( $query_terms ) as $val )
+		foreach( array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|]/' , $query_terms ))) as $val )
 		{
 			if( $term = get_term_by( 'slug' , $val , $this->taxonomy ))
 				$this->selected_terms[ $term->slug ] = $term;
@@ -411,54 +441,18 @@ class Facet_taxonomy extends Facet
 		return $terms_in_post;
 	}
 
-
-	function get_matching_facets()
-	{
-		if( is_array( $this->facets->_matching_tax_facets ))
-			return $this->facets->_matching_tax_facets[ $this->name ];
-
-		global $wpdb;
-
-		$matching_post_ids = $this->facets->get_matching_post_ids();
-
-		$facets_query = "SELECT b.term_id, c.term_taxonomy_id, b.slug, b.name, a.taxonomy, a.description, COUNT(c.term_taxonomy_id) AS `count`
-			FROM $wpdb->term_relationships c
-			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
-			INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
-			WHERE c.object_id IN (". implode( ',' , $matching_post_ids ) .")
-			GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000";
-
-		$terms = $wpdb->get_results( $facets_query );
-		$this->facets->_matching_tax_facets = array();
-		foreach( $terms as $term )
-		{
-
-			$this->facets->_matching_tax_facets[ $this->facets->_tax_to_facet[ $term->taxonomy ]][] = (object) array(
-				'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
-				'slug' => $term->slug,
-				'name' => $term->name,
-				'description' => $term->description,
-				'term_id' => $term->term_id,
-				'term_taxonomy_id' => $term->term_taxonomy_id,
-				'count' => $term->count,
-			);
-		}
-
-		return $this->facets->_matching_tax_facets[ $this->name ];
-	}
-
 	function selected( $term )
 	{
 		return( isset( $this->selected_terms[ ( is_object( $term ) ? $term->slug : $term ) ] ));
 	}
 
-	function queryvar_add( $term , $current )
+	function queryterm_add( $term , $current )
 	{
 		$current[ $term->slug ] = $term;
 		return $current;
 	}
 
-	function queryvar_remove( $term , $current )
+	function queryterm_remove( $term , $current )
 	{
 		unset( $current[ $term->slug ] );
 		return $current;
@@ -497,7 +491,99 @@ class Facet_taxonomy extends Facet
 
 
 
-class Facet_post extends Facet
+class Facet_Searchword implements Facet
+{
+
+	var $query_var = 's';
+
+	function __construct( $name , $args , $facets_object )
+	{
+		$this->name = $name;
+		$this->args = $args;
+		$this->facets = $facets_object;
+
+		$this->label = __( 'Search Keyword' );
+		$this->labels = (object) array(
+			'name' => 'Search Keyword',
+			'singular_name' => 'Search Keyword',
+			'search_items' => 'Search Keywords',
+			'popular_items' => 'Popular Keywords',
+			'all_items' => 'All Keywords',
+			'parent_item' => '',
+			'parent_item_colon' => '',
+			'edit_item' => 'Edit Keyword',
+			'view_item' => 'View Keyword',
+			'update_item' => 'Update Keyword',
+			'add_new_item' => 'Add New Keyword',
+			'new_item_name' => 'New Keyword Name',
+			'separate_items_with_commas' => 'Separate keyword with commas',
+			'add_or_remove_items' => 'Add or remove keyword',
+			'choose_from_most_used' => 'Choose from the most used keyword',
+			'menu_name' => 'Keywords',
+			'name_admin_bar' => 's',
+		);
+	}
+
+	function register_query_var()
+	{
+		return $this->query_var;
+	}
+
+	function parse_query( $query_terms , $wp_query )
+	{
+		$term = trim( urldecode( $query_terms ));
+		$this->selected_terms[ $term ] = (object) array(
+			'facet' => $this->name,
+			'slug' => urlencode( $term ),
+			'name' => $term,
+		);
+
+		return $this->selected_terms;
+	}
+
+	function get_terms_in_corpus()
+	{
+		return array();
+	}
+
+	function get_terms_in_found_set()
+	{
+		return array();
+	}
+
+	function get_terms_in_post( $post_id = FALSE )
+	{
+		return array();
+	}
+
+	function selected( $term )
+	{
+		return( isset( $this->selected_terms[ $term->name ] ));
+	}
+
+	function queryterm_add( $term , $current )
+	{
+		$current[ $term->name ] = $term;
+		return $current;
+	}
+
+	function queryterm_remove( $term , $current )
+	{
+		unset( $current[ $term->name ] );
+		return $current;
+	}
+
+	function permalink( $terms )
+	{
+		if( is_array( $terms ))
+			$terms = implode( ' ' , array_keys( $terms ));
+
+		return get_search_link( $terms );
+	}
+}
+
+/*
+class Facet_Post implements Facet
 {
 	function __construct( $name , $args , $facets_object )
 	{
@@ -505,8 +591,23 @@ class Facet_post extends Facet
 
 		$this->post_field = $args['post_field'] ? $args['post_field'] : $this->name;
 	}
-}
 
+	function register_query_var()
+	{
+		global $wp;
+
+		if ( TRUE === $this->query_var )
+			$this->query_var = $this->name;
+
+		// @ TODO: check to see if the query var is registered before adding it again
+		$this->query_var = sanitize_title_with_dashes( $this->query_var );
+		$wp->add_query_var( $this->query_var );
+
+		return $this->query_var;
+	}
+
+}
+*/
 
 class Scrib_Facets_Widget extends WP_Widget
 {
@@ -694,7 +795,7 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 			echo $before_title . $title . $after_title;
 		if ( ! empty( $context_top ) )
 			echo '<div class="textwidget scrib_search_edit">' . $context_top . '</div>';
-		$facets->editsearch();
+		echo '<ul>'. $facets->editsearch() .'</ul>';
 		if ( ! empty( $context_bottom ) )
 			echo '<div class="textwidget scrib_search_edit">' . $context_bottom . '</div>';
 
@@ -765,8 +866,9 @@ function scrib_register_facet( $name , $type , $args = array() )
 
 function register_facet_test()
 {
-	scrib_register_facet( 'tag' , 'Facet_Taxonomy' , array( 'taxonomy' => 'post_tag' , 'query_var' => 'tag' ) );
-	scrib_register_facet( 'category' , 'Facet_Taxonomy' , array( 'query_var' => 'category_name' ) );
+	scrib_register_facet( 'searchword' , 'Facet_Searchword' , array( 'priority' => 0 ) );
+	scrib_register_facet( 'tag' , 'Facet_Taxonomy' , array( 'taxonomy' => 'post_tag' , 'query_var' => 'tag' , 'priority' => 5 ) );
+	scrib_register_facet( 'category' , 'Facet_Taxonomy' , array( 'query_var' => 'category_name' , 'priority' => 4 ) );
 //	scrib_register_facet( 'post_author' , 'Facet_Post' );
 
 //echo "<h2>Hey!</h2>";

@@ -30,17 +30,13 @@ class Facets
 		return is_tax() || is_tag() || is_category();
 	}
 
-	function register_facet( $facet_name , $facet_type , $args = array() )
+	function register_facet( $facet_name , $facet_class , $args = array() )
 	{
-		$defaults = array(
-			'query_var' => $facet_name,
-			'labels' => array(),
-		);
-		$args = wp_parse_args( $args, $defaults );
-
 		// instantiate the facet
-		$facet_type = 'Facet_'. $facet_type;
-		$this->facets->$facet_name = new $facet_type( $facet_name , $args , $this );
+		if( class_exists( $facet_class ))
+			$this->facets->$facet_name = new $facet_class( $facet_name , $args , $this );
+		else
+			return FALSE;
 
 		// register the query var and associate it with this facet
 		$query_var = $this->facets->$facet_name->register_query_var();
@@ -678,57 +674,30 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 		if( ! ( is_search() || $facets->is_browse() ))
 			return;
 
-/*
 		$subsmatch = array(
 			'[scrib_hit_count]',
 			'[scrib_search_suggestions]',
 		);
 
 		$subsreplace = array(
-			$scrib->shortcode_hitcount(),
-			$scrib->spellcheck(),
+			'',
+			'',
 		);
-*/
-		$search_title = $instance['search-title'];
-		$search_text_top = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['search-text-top'] ));
-		$search_text_bottom = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['search-text-bottom'] ));
 
-		$browse_title = $instance['browse-title'];
-		$browse_text_top = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['browse-text-top'] ));
-		$browse_text_bottom = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['browse-text-bottom'] ));
-
-		$default_title = $instance['default-title'];
-		$default_text = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['default-text'] ));
+		$title = $instance['title'];
+		$context_top = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['context-top'] ));
+		$context_bottom = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['context-bottom'] ));
 
 		echo $before_widget;
-		if( $facets->is_browse() && empty( $facets->selected_facets ))
-		{
-			if ( !empty( $default_title ) )
-				echo $before_title . $default_title . $after_title;
-			if ( !empty( $default_text ) )
-				echo '<div class="textwidget scrib_search_edit">' . $default_text . '</div>';
-			$facets->editsearch();
-		}
-		else if( $facets->is_browse() )
-		{
-			if ( !empty( $browse_title ) )
-				echo $before_title . $browse_title . $after_title;
-			if ( !empty( $browse_text_top ) )
-				echo '<div class="textwidget scrib_search_edit">' . $browse_text_top . '</div>';
-			$facets->editsearch();
-			if ( !empty( $browse_text_bottom ) )
-				echo '<div class="textwidget scrib_search_edit">' . $browse_text_bottom . '</div>';
-		}
-		else if( is_search() )
-		{
-			if ( !empty( $search_title ) )
-				echo $before_title . $search_title . $after_title;
-			if ( !empty( $search_text_top ) )
-				echo '<div class="textwidget scrib_search_edit">' . $search_text_top . '</div>';
-			$facets5->editsearch();
-			if ( !empty( $search_text_bottom ) )
-				echo '<div class="textwidget scrib_search_edit">' . $search_text_bottom . '</div>';
-		}
+
+		if ( ! empty( $title ) )
+			echo $before_title . $title . $after_title;
+		if ( ! empty( $context_top ) )
+			echo '<div class="textwidget scrib_search_edit">' . $context_top . '</div>';
+		$facets->editsearch();
+		if ( ! empty( $context_bottom ) )
+			echo '<div class="textwidget scrib_search_edit">' . $context_bottom . '</div>';
+
 		echo $after_widget;
 	}
 
@@ -736,16 +705,9 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 	{
 		$instance = $old_instance;
 
-		$instance['search-title'] = wp_filter_nohtml_kses( $new_instance['search-title'] );
-		$instance['search-text-top'] = wp_filter_post_kses( $new_instance['search-text-top'] );
-		$instance['search-text-bottom'] = wp_filter_post_kses( $new_instance['search-text-bottom'] );
-
-		$instance['browse-title'] = wp_filter_nohtml_kses( $new_instance['browse-title'] );
-		$instance['browse-text-top'] = wp_filter_post_kses( $new_instance['browse-text-top'] );
-		$instance['browse-text-bottom'] = wp_filter_post_kses( $new_instance['browse-text-bottom'] );
-
-		$instance['default-title'] = wp_filter_nohtml_kses( $new_instance['default-title'] );
-		$instance['default-text'] = wp_filter_post_kses( $new_instance['default-text'] );
+		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
+		$instance['context-top'] = wp_filter_post_kses( $new_instance['context-top'] );
+		$instance['context-bottom'] = wp_filter_post_kses( $new_instance['context-bottom'] );
 
 		return $instance;
 	}
@@ -756,68 +718,27 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 		//Defaults
 		$instance = wp_parse_args( (array) $instance, 
 			array( 
-				'search-title' => 'Searching Our Collection',
-				'search-text-top' => 'Your search found [scrib_hit_count] items with all of the following terms:',
-				'search-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by keyword relevance.',
-
-				'browse-title' => 'Browsing Our Collection',
-				'browse-text-top' => 'We have [scrib_hit_count] items with all of the following terms:',
-				'browse-text-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search. <a href="http://about.scriblio.net/wiki/what-are-facets">What are facets?</a> Results sorted by the date added to the collection.',
-
-				'default-title' => 'Browsing Our Collection',
-				'default-text' => 'We have [scrib_hit_count] books, CDs, DVDs, and other materials in our collection. You can click through the pages to see every last one of them, or click the links on the right to narrow it down.'
+				'title' => 'Searching Our Collection',
+				'context-top' => 'Your search found [scrib_hit_count] items with all of the following terms:',
+				'context-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search.',
 			)
 		);
 ?>
 
-		<div>
-			<h3>Search display</h3>
-			<p>
-				<label for="<?php echo $this->get_field_id('search-title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('search-title'); ?>" name="<?php echo $this->get_field_name('search-title'); ?>" type="text" value="<?php echo esc_attr( $instance['search-title'] ); ?>" />
-			</p>
+		<p>
+			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo esc_attr( $instance['title'] ); ?>" />
+		</p>
 
-			<p>
-				<label for="<?php echo $this->get_field_id('search-text-top'); ?>"><?php _e('Text above:'); ?></label>
-				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('search-text-top'); ?>" name="<?php echo $this->get_field_name('search-text-top'); ?>"><?php echo format_to_edit( $instance['search-text-top'] ); ?></textarea>
-			</p>
+		<p>
+			<label for="<?php echo $this->get_field_id('context-top'); ?>"><?php _e('Text above:'); ?></label>
+			<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('context-top'); ?>" name="<?php echo $this->get_field_name('context-top'); ?>"><?php echo format_to_edit( $instance['context-top'] ); ?></textarea>
+		</p>
 
-			<p>
-				<label for="<?php echo $this->get_field_id('search-text-bottom'); ?>"><?php _e('Text below:'); ?></label>
-				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('search-text-bottom'); ?>" name="<?php echo $this->get_field_name('search-text-bottom'); ?>"><?php echo format_to_edit( $instance['search-text-bottom'] ); ?></textarea>
-			</p>
+		<p>
+			<label for="<?php echo $this->get_field_id('context-bottom'); ?>"><?php _e('Text below:'); ?></label>
+			<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('context-bottom'); ?>" name="<?php echo $this->get_field_name('context-bottom'); ?>"><?php echo format_to_edit( $instance['context-bottom'] ); ?></textarea>
+		</p>
 
-		</div>
-
-		<div>
-			<h3>Browse display (no keywords)</h3>
-			<p>
-				<label for="<?php echo $this->get_field_id('browse-title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('browse-title'); ?>" name="<?php echo $this->get_field_name('browse-title'); ?>" type="text" value="<?php echo esc_attr( $instance['browse-title'] ); ?>" />
-			</p>
-
-			<p>
-				<label for="<?php echo $this->get_field_id('browse-text-top'); ?>"><?php _e('Text above:'); ?></label>
-				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('search-text-top'); ?>" name="<?php echo $this->get_field_name('browse-text-top'); ?>"><?php echo format_to_edit( $instance['browse-text-top'] ); ?></textarea>
-			</p>
-
-			<p>
-				<label for="<?php echo $this->get_field_id('search-text-bottom'); ?>"><?php _e('Text below:'); ?></label>
-				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('browse-text-bottom'); ?>" name="<?php echo $this->get_field_name('browse-text-bottom'); ?>"><?php echo format_to_edit( $instance['browse-text-bottom'] ); ?></textarea>
-			</p>
-
-		</div>
-
-		<div>
-			<h3>Default display (no terms)</h3>
-			<p>
-				<label for="<?php echo $this->get_field_id('default-title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('default-title'); ?>" name="<?php echo $this->get_field_name('default-title'); ?>" type="text" value="<?php echo esc_attr( $instance['default-title'] ); ?>" />
-			</p>
-
-			<p>
-				<label for="<?php echo $this->get_field_id('default-text'); ?>"><?php _e('Text:'); ?></label>
-				<textarea class="widefat" rows="7" cols="20" id="<?php echo $this->get_field_id('default-text'); ?>" name="<?php echo $this->get_field_name('default-text'); ?>"><?php echo format_to_edit( $instance['default-text'] ); ?></textarea>
-			</p>
-
-		</div>
 <?php
 
 	}
@@ -844,9 +765,9 @@ function scrib_register_facet( $name , $type , $args = array() )
 
 function register_facet_test()
 {
-	scrib_register_facet( 'tag' , 'taxonomy' , array( 'taxonomy' => 'post_tag' , 'query_var' => 'tag' ) );
-	scrib_register_facet( 'category' , 'taxonomy' , array( 'query_var' => 'category_name' ) );
-//	scrib_register_facet( 'post_author' , 'post' );
+	scrib_register_facet( 'tag' , 'Facet_Taxonomy' , array( 'taxonomy' => 'post_tag' , 'query_var' => 'tag' ) );
+	scrib_register_facet( 'category' , 'Facet_Taxonomy' , array( 'query_var' => 'category_name' ) );
+//	scrib_register_facet( 'post_author' , 'Facet_Post' );
 
 //echo "<h2>Hey!</h2>";
 //global $facets;

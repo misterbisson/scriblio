@@ -33,7 +33,7 @@ class Facet_Post implements Facet
 		$this->args = $args;
 		$this->facets = $facets_object;
 
-		add_action( 'init' , array( $this , 'init' ));
+		add_action( 'init' , array( $this , 'update_permastructs' ) , 10 );
 	}
 
 	function update_permastructs()

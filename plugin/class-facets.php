@@ -253,7 +253,7 @@ class Facets
 		{
 
 			// how many facets are currently selected?
-			$count_of_facets = array_product( (array) $this->selected_facets_counts );
+			$count_of_facets = array_sum( (array) $this->selected_facets_counts );
 
 			// display the search terms in priority order
 			$facet_priority = array_intersect_key( $this->priority , (array) $this->selected_facets );

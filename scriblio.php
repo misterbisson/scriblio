@@ -15,18 +15,30 @@ require_once( __DIR__ .'/plugin/class-facet-taxonomy.php');
 require_once( __DIR__ .'/plugin/widgets.php');
 
 // register stuff
-function register_facet_test()
+function scrib_register_default_facets()
 {
+
+	// register keyword search facet
 	scrib_register_facet( 'searchword' , 'Facet_Searchword' , array( 'priority' => 0 , 'has_rewrite' => TRUE ) );
-	scrib_register_facet( 'tag' , 'Facet_Taxonomy' , array( 'taxonomy' => 'post_tag' , 'query_var' => 'tag' , 'has_rewrite' => TRUE , 'priority' => 5 ) );
-	scrib_register_facet( 'category' , 'Facet_Taxonomy' , array( 'query_var' => 'category_name' , 'has_rewrite' => TRUE , 'priority' => 4 ) );
+
+	// register public taxonomies as facets
+	foreach( (array) get_taxonomies( array( 'public' => true )) as $taxonomy )
+	{
+		$taxonomy = get_taxonomy( $taxonomy );
+
+		scrib_register_facet( 
+			( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label )),
+			'Facet_Taxonomy' ,
+			array( 
+				'taxonomy' => $taxonomy->name ,
+				'query_var' => $taxonomy->query_var ,
+				'has_rewrite' => ( is_array( $taxonomy->rewrite ) ? TRUE : FALSE ),
+				'priority' => 5,
+			)
+		);
+	}
+
+	// register facets from the posts table
 //	scrib_register_facet( 'post_author' , 'Facet_Post' );
-
-//echo "<h2>Hey!</h2>";
-//global $facets;
-//print_r( $facets );
 }
-add_action( 'init' , 'register_facet_test' );
-//add_action( 'scrib_register_facets' , 'register_facet_test' );
-
-
+add_action( 'scrib_register_facets' , 'scrib_register_default_facets' );

@@ -5,16 +5,13 @@ Requires at least: 3.3
 Tested up to: 3.3.1
 Stable tag: trunk
 
-Scriblio enables faceted searching and browsing of WordPress posts, pages, and custom post types. Tags and other taxonomies are represented as clickable facets that you can use to explore a site.
+Scriblio enables faceted searching and browsing of WordPress posts, pages, and custom post types. 
 
 == Description ==
 
-Scriblio (formerly <a href="http://maisonbisson.com/blog/post/11133/">WPopac</a>) is an <a href="http://rit.mellon.org/awards/matcpressrelease.pdf/">award winning</a>, <a href="http://www.fsf.org/licensing/essays/free-sw.html">free</a>, <a href="http://www.opensource.org/docs/osd">open source</a> <a href="http://en.wikipedia.org/wiki/Web_content_management_system">CMS</a> and <a href="http://en.wikipedia.org/wiki/OPAC">OPAC</a> with faceted searching and browsing features based on <a href="http://wordpress.org/">WordPress</a>. Scriblio is a project of <a href="http://www.plymouth.edu/">Plymouth State University</a>, supported in part by the <a href="http://www.mellon.org/">Andrew W. Mellon Foundation</a>.
+Scriblio enables faceted searching and browsing of WordPress posts, pages, and custom post types. Tags and other taxonomies are represented as clickable facets that you can use to explore a site.
 
-1. Free and open source
-1. Represents bibliographic collections &#8212; library catalogs and such &#8212; in an easily searchable, highly remixable web-based format
-1. Leverages WordPress to offer rich content management features for all a library's content
-1. Free and open source
+Scriblio was originally built for libraries and once known as <a href="http://maisonbisson.com/blog/post/11133/">WPopac</a>. Early support was given by <a href="http://www.plymouth.edu/">Plymouth State University</a> and the <a href="http://www.mellon.org/">Andrew W. Mellon Foundation</a>.
 
 == Installation ==
 

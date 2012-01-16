@@ -4,6 +4,15 @@ class Scrib_Suggest
 
 	function __construct()
 	{
+		// establish web path to this plugin's directory
+		$this->path_web = plugins_url( str_replace( WP_PLUGIN_DIR , '' , dirname( __FILE__ )) );
+
+		wp_register_script( 'scrib-suggest', $this->path_web . '/js/jquery.scribsuggest.js', array('jquery'), '20081030' );
+		wp_enqueue_script( 'scrib-suggest' );
+
+		wp_register_style( 'scrib-suggest', $this->path_web .'/css/suggest.css' );
+		wp_enqueue_style( 'scrib-suggest' );
+
 		// handle requests for suggestions
 		if ( isset( $_GET['scrib_suggest'] ) )
 			add_action( 'init' , array( $this , 'the_suggestions' ));
@@ -22,7 +31,7 @@ class Scrib_Suggest
 ?>
 	<script type="text/javascript">
 		jQuery(function() {
-			jQuery("#s").addClass( "scrib-search" );
+			jQuery('input[name="s"]').addClass( "scrib-search" );
 			jQuery("input.scrib-search").scribsuggest( "<?php echo site_url('/index.php?scrib_suggest=go'); ?>" );
 			jQuery("input.scrib-search").attr( "placeholder" , "<?php echo $searchprompt; ?>" );
 		});
@@ -38,9 +47,8 @@ class Scrib_Suggest
 	{
 		$suggestion = $this->get_suggestions( $_REQUEST['q'] , $_GET['tax'] );
 
-
 		@header('Content-Type: text/html; charset=' . get_option('blog_charset'));
-		echo implode( $suggestion , "\n" );
+		echo implode( (array) $suggestion , "\n" );
 
 		die;
 	}
@@ -49,11 +57,10 @@ class Scrib_Suggest
 	// generate suggestions
 	function get_suggestions( $s = '' , $taxonomy = array() )
 	{
-
 		// get and validate the search string
 		$s = trim( $s );
-		if ( strlen( $s ) < 2 )
-			die; // require 2 chars for matching
+		if ( strlen( $s ) < 1 )
+			return FALSE; // require 2 chars for matching
 
 		// identify which taxonomies we're searching
 		if ( isset( $taxonomy ))
@@ -78,7 +85,7 @@ class Scrib_Suggest
 			global $wpdb , $facets;
 
 			$terms = $wpdb->get_results( "
-				SELECT t.term_id , t.name , tt.taxonomy , ( ( 100 - t.len ) * tt.count ) AS hits
+				SELECT t.term_id , t.name , tt.taxonomy , tt.count , ( ( 100 - t.len ) * tt.count ) AS hits
 				FROM
 				(
 					SELECT term_id, name, LENGTH(name) AS len
@@ -97,7 +104,9 @@ class Scrib_Suggest
 			// get post titles beginning with the search term
 			$posts = $wpdb->get_results( $wpdb->prepare( "SELECT ID
 				FROM $wpdb->posts
-				WHERE post_name LIKE %s
+				WHERE 1=1
+				AND post_name LIKE %s
+				AND post_status = 'publish'
 				ORDER BY post_title ASC
 				LIMIT 25;
 			", sanitize_title( $s ) .'%' ));
@@ -109,15 +118,16 @@ class Scrib_Suggest
 			$searchfor[] = 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"';
 
 			// create suggestions for the matched taxonomies
-			$template = '<span class="taxonomy_name">%%taxonomy%%</span> <a href="%%link%%">%%term%%</a>';
+			$template = '<span class="taxonomy_name">%%taxonomy%%</span> <a href="%%link%%" title="%%link_title%%">%%term%%</a>';
 			foreach( (array) $terms as $term )
 			{
 				$suggestion[] = str_replace( 
-					array( '%%term%%','%%taxonomy%%','%%link%%') , 
+					array( '%%term%%','%%taxonomy%%','%%link%%','%%link_title%%') , 
 					array( 
 						$term->name , 
 						get_taxonomy( $term->taxonomy )->labels->singular_name , 
 						$facets->permalink( $facets->_tax_to_facet[ $term->taxonomy ] , get_term( $term->term_id , $term->taxonomy ) ) ,
+						$term->count .' items',
 					) , 
 					$template 
 				);

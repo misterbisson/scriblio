@@ -51,6 +51,11 @@ class Facets
 
 	function parse_query( $query )
 	{
+
+		// remove the action so it only runs on the main query and the vars don't get reset
+		remove_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
+
+		// identify the selected search terms
 		$searched = array_intersect_key( $query->query , $this->_query_vars );
 		$this->selected_facets = (object) array();
 		foreach( $searched as $k => $v )
@@ -246,7 +251,6 @@ class Facets
 	function editsearch()
 	{
 		global $wpdb, $wp_query, $bsuite;
-		$search_terms = $this->search_terms;
 
 		$return_string = '';
 		if( ! empty( $this->selected_facets ))

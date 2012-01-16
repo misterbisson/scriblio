@@ -1,95 +1,89 @@
 <?php
+class Scrib_Suggest
+{
 
-/*
-Code to do search suggestions:
-*/
+	function __construct()
+	{
+		// handle requests for suggestions
+		if ( isset( $_GET['scrib_suggest'] ) )
+			add_action( 'init' , array( $this , 'the_suggestions' ));
 
-// in the class __construct() register this:
-if ( isset( $_GET['scrib_suggest'] ) )
-	add_action( 'init', array( $this, 'suggest_search' ));
-
-// then this code
-	add_action('wp_footer', array(&$this, 'wp_footer_js'));
-	public function wp_footer_js(){
-		$this->suggest_js();
+		// insert the JS in the footer
+		add_action( 'wp_footer' , array( $this , 'footer_js' ));
 	}
 
-	public function suggest_js()
-	{
-		$searchprompt = $this->options['searchprompt'];
 
-		if( isset( $this->search_terms['s'] ) && count( $this->search_terms['s'] ))
-			$searchprompt = implode( ' ' , $this->search_terms['s'] );
+
+	// insert the JS that activates the suggestions
+	function footer_js()
+	{
+		// @TODO: make this a configurable option
+		$searchprompt = get_search_query() ? get_search_query() : 'Go Fish!';
 ?>
 	<script type="text/javascript">
 		jQuery(function() {
-			jQuery("#s").addClass("scrib-search");
-
-			jQuery("input.scrib-search").scribsuggest("<?php bloginfo('home'); ?>/index.php?scrib_suggest=go");
-
-			jQuery("input.scrib-search").val("<?php echo $searchprompt; ?>")
-<?php
-		if( ! count( $this->search_terms['s'] )):
-?>
-			.focus(function(){
-				if(this.value == "<?php echo $searchprompt; ?>") {
-					this.value = '';
-				}
-			})
-			.blur(function(){
-				if(this.value == '') {
-					this.value = "<?php echo $searchprompt; ?>";
-				}
-			});
-<?php
-		endif;
-
-		if( count( $this->search_terms ))
-		{
-			foreach( $this->search_terms as $taxonomy )
-				foreach( $taxonomy as $term )
-					foreach( explode( ' ' , $term ) as $term_part )
-						$all_terms[] = $this->meditor_sanitize_punctuation( $term_part );
-
-			$all_terms = array_filter( $all_terms );
-
-			if( count( $all_terms ))
-			{
-				echo "var scrib_search_terms = {terms:['". implode( "','" , array_map( 'htmlentities' , $all_terms )) ."']};";
-				echo "jQuery(function(){bsuite_highlight(scrib_search_terms);});";
-			}
-
-		}
-?>
+			jQuery("#s").addClass( "scrib-search" );
+			jQuery("input.scrib-search").scribsuggest( "<?php echo site_url('/index.php?scrib_suggest=go'); ?>" );
+			jQuery("input.scrib-search").attr( "placeholder" , "<?php echo $searchprompt; ?>" );
 		});
 	</script>
 <?php
+		// @TODO: this piece used to insert search word highlighting JS, but that depended on code in bSuite
 	}
 
-	public function suggest_search(){
-		@header('Content-Type: text/html; charset=' . get_option('blog_charset'));
 
-		$s = sanitize_title( trim( $_REQUEST['q'] ));
+
+	// output suggestions
+	function the_suggestions()
+	{
+		$suggestion = $this->get_suggestions( $_REQUEST['q'] , $_GET['tax'] );
+
+
+		@header('Content-Type: text/html; charset=' . get_option('blog_charset'));
+		echo implode( $suggestion , "\n" );
+
+		die;
+	}
+
+
+	// generate suggestions
+	function get_suggestions( $s = '' , $taxonomy = array() )
+	{
+
+		// get and validate the search string
+		$s = trim( $s );
 		if ( strlen( $s ) < 2 )
 			die; // require 2 chars for matching
 
-		if ( isset( $_GET['taxonomy'] )){
-			$taxonomy = explode(',', $_GET['tax'] );
-			$taxonomy = array_filter( array_map( 'sanitize_title', array_map( 'trim', $taxonomy )));
-		}else{
-			$taxonomy = $this->taxonomies_for_suggest;
+		// identify which taxonomies we're searching
+		if ( isset( $taxonomy ))
+		{
+			if( is_string( $taxonomy ))
+				$taxonomy = explode( ',' , $_GET['tax'] );
+
+			$taxonomy = array_filter( array_map( 'taxonomy_exists' , array_map( 'trim', $taxonomy )));
+		}
+		else
+		{
+			// @TODO: this used to be configurable in the dashboard.
+			$taxonomy = get_taxonomies( array( 'public' => true ));
 		}
 
+		// generate a key we can use to cache these results
 		$cachekey = md5( $s . implode( $taxonomy ));
-		if(!$suggestion = wp_cache_get( $cachekey , 'scrib_suggest' )){
-			global $wpdb;
 
-			$terms = $wpdb->get_results( "SELECT t.name, tt.taxonomy, ( ( 100 - t.len ) * tt.count ) AS hits
+		// get results from the cache or generate them fresh if necessary
+		if( ! $suggestion = wp_cache_get( $cachekey , 'scrib_suggest' ))
+		{
+			global $wpdb , $facets;
+
+			$terms = $wpdb->get_results( "
+				SELECT t.term_id , t.name , tt.taxonomy , ( ( 100 - t.len ) * tt.count ) AS hits
 				FROM
 				(
 					SELECT term_id, name, LENGTH(name) AS len
 					FROM $wpdb->terms
-					WHERE slug LIKE ('" . $s . "%')
+					WHERE slug LIKE ('" . sanitize_title( $s ) . "%')
 					ORDER BY len ASC
 					LIMIT 100
 				) t
@@ -100,45 +94,49 @@ if ( isset( $_GET['scrib_suggest'] ) )
 				LIMIT 25;
 			");
 
-			$posts = $wpdb->get_results( "SELECT ID, post_title
+			// get post titles beginning with the search term
+			$posts = $wpdb->get_results( $wpdb->prepare( "SELECT ID
 				FROM $wpdb->posts
-				WHERE post_title LIKE '" . $s . "%'
+				WHERE post_name LIKE %s
 				ORDER BY post_title ASC
 				LIMIT 25;
-			");
+			", sanitize_title( $s ) .'%' ));
 
+			// init the result vars
 			$searchfor = $suggestion = $beginswith = array();
-			$searchfor[] = 'Search for "<a href="'. $this->get_search_link( array( 's' => array( attribute_escape( $_REQUEST['q'] )))) .'">'. attribute_escape( $_REQUEST['q'] ) .'</a>"';
+
+			// create a default suggestion to do a keyword search for the term
+			$searchfor[] = 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"';
+
+			// create suggestions for the matched taxonomies
 			$template = '<span class="taxonomy_name">%%taxonomy%%</span> <a href="%%link%%">%%term%%</a>';
-			foreach( $terms as $term )
+			foreach( (array) $terms as $term )
 			{
-				if('hint' == $term->taxonomy){
-					$suggestion[] = str_replace(array('%%term%%','%%taxonomy%%','%%link%%'), array($term->name, $this->taxonomy_name['s'], $this->get_search_link(array('s' => array( $this->suggest_search_fixlong( $term->name ))))), $template);
-				}else{
-					$suggestion[] = str_replace(array('%%term%%','%%taxonomy%%','%%link%%'), array($term->name, $this->taxonomy_name[ $term->taxonomy ], $this->get_search_link(array($term->taxonomy => array( $this->suggest_search_fixlong( $term->name ))))), $template);
+				$suggestion[] = str_replace( 
+					array( '%%term%%','%%taxonomy%%','%%link%%') , 
+					array( 
+						$term->name , 
+						get_taxonomy( $term->taxonomy )->labels->singular_name , 
+						$facets->permalink( $facets->_tax_to_facet[ $term->taxonomy ] , get_term( $term->term_id , $term->taxonomy ) ) ,
+					) , 
+					$template 
+				);
 
-					$beginswith[ $term->taxonomy ] = $this->taxonomy_name[ $term->taxonomy ] .' begins with "<a href="'. $this->get_search_link( array( $term->taxonomy => array( $s .'*' ))) .'">'. attribute_escape( $_REQUEST['q'] ) .'</a>"';
- 					}
 			}
 
-			foreach( $posts as $post )
+			// create suggestions for each matched post
+			foreach( (array) $posts as $post )
 			{
-				$beginswith[ 'p'. $post->ID ] = 'Go to: <a href="'. get_permalink( $post->ID ) .'">'. attribute_escape( $post->post_title ) .'</a>';
+				$beginswith[] = 'Go to: <a href="'. get_permalink( $post->ID ) .'">'. attribute_escape( get_the_title( $post->ID )) .'</a>';
 			}
 
 
-			$suggestion = array_merge( $searchfor, array_slice( $suggestion, 0, 10 ), $beginswith );
-			wp_cache_set( $cachekey , $suggestion, 'scrib_suggest', 126000 );
+			$suggestion = array_merge( $searchfor , array_slice( $suggestion, 0, 10 ) , array_slice( $beginswith , 0, 10 ));
+//			wp_cache_set( $cachekey , $suggestion , 'scrib_suggest' , 126000 );
 		}
 
-		echo implode($suggestion, "\n");
-
-		die;
+		return $suggestion;
 	}
+}
 
-	public function suggest_search_fixlong( $suggestion ){
-		if( strlen( $suggestion )  > 54)
-			return( $suggestion . '*');
-		return( $suggestion );
-	}
-
+new Scrib_Suggest;

@@ -33,7 +33,7 @@ function scrib_register_default_facets()
 			array( 
 				'taxonomy' => $taxonomy->name ,
 				'query_var' => $taxonomy->query_var ,
-				'has_rewrite' => ( is_array( $taxonomy->rewrite ) ? TRUE : FALSE ),
+				'has_rewrite' => is_array( $taxonomy->rewrite ),
 				'priority' => 5,
 			)
 		);

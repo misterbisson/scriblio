@@ -20,7 +20,7 @@ class Facets
 
 	function is_browse()
 	{
-		return is_tax() || is_tag() || is_category();
+		return is_archive() || is_tax() || is_tag() || is_category();
 	}
 
 	function register_facet( $facet_name , $facet_class , $args = array() )

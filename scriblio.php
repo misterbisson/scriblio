@@ -12,6 +12,7 @@ Author URI: http://maisonbisson.com/blog/
 require_once( __DIR__ .'/plugin/class-facets.php');
 require_once( __DIR__ .'/plugin/class-facet-searchword.php');
 require_once( __DIR__ .'/plugin/class-facet-taxonomy.php');
+require_once( __DIR__ .'/plugin/class-facet-post-author.php');
 require_once( __DIR__ .'/plugin/widgets.php');
 require_once( __DIR__ .'/plugin/class-scrib-suggest.php');
 
@@ -40,6 +41,6 @@ function scrib_register_default_facets()
 	}
 
 	// register facets from the posts table
-//	scrib_register_facet( 'post_author' , 'Facet_Post' );
+	scrib_register_facet( 'post_author' , 'Facet_Post_Author' , array( 'priority' => 3 , 'has_rewrite' => TRUE ));
 }
 add_action( 'scrib_register_facets' , 'scrib_register_default_facets' );

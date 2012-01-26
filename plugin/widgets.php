@@ -6,63 +6,118 @@ class Scrib_Facets_Widget extends WP_Widget
 	function Scrib_Facets_Widget()
 	{
 		$this->WP_Widget( 'scriblio_facets', 'Scriblio Facets', array( 'description' => 'Displays facets related to the displayed set of posts' ));
+
+		add_filter( 'wijax-actions' , array( $this , 'wijax_actions' ) );
+	}
+
+	function wijax_actions( $actions )
+	{
+		global $mywijax;
+
+		$instances = get_option( 'widget_scriblio_facets' );
+
+		foreach( $instances as $k => $v )
+		{
+			if( ! is_int( $k ))
+				continue;
+
+			$actions[ $mywijax->encoded_name( 'scriblio_facets-'. $k ) ] = (object) array( 'key' => 'scriblio_facets-'. $k , 'type' => 'widget');
+		}
+
+		return $actions;
 	}
 
 	function widget( $args, $instance )
 	{
-		global $facets;
+		global $facets, $mywijax;
 		extract( $args );
 
 		$title = apply_filters( 'widget_title' , empty( $instance['title'] ) ? '' : $instance['title'] );
 		$orderby = ( in_array( $instance['orderby'], array( 'count', 'name', 'custom' )) ? $instance['orderby'] : 'name' );
 		$order = ( in_array( $instance['order'], array( 'ASC', 'DESC' )) ? $instance['order'] : 'ASC' );
 
-		// configure how it's displayed
-		$display_options = array(
-			'smallest' => floatval( $instance['format_font_small'] ), 
-			'largest' => floatval( $instance['format_font_large'] ),
-			'unit' => 'em',
-			'orderby' => $orderby,
-			'order' => $order,
-			'order_custom' => $instance['order_custom'],
-		);
+		// wijax requests get the whole thing
+		if( TRUE || is_wijax() )
+		{
 
-		// list and cloud specific display options
-		if( 'list' == $instance['format'] )
-		{
-			$display_options['format'] = 'list';
-		}
-		else
-		{
-			$display_options['format'] = 'flat';
-		}
-
-		// select what's displayed
-		if( 'corpus' == $instance['format_font_large'] )
-		{
-			$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
-		}
-		else if( is_singular() )
-		{
-			$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_post( get_the_ID() );
-		}
-		else if( is_search() || $facets->is_browse() )
-		{
-			$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_found_set();
-			if( empty( $facet_list ))
+			// configure how it's displayed
+			$display_options = array(
+				'smallest' => floatval( $instance['format_font_small'] ), 
+				'largest' => floatval( $instance['format_font_large'] ),
+				'unit' => 'em',
+				'orderby' => $orderby,
+				'order' => $order,
+				'order_custom' => $instance['order_custom'],
+			);
+	
+			// list and cloud specific display options
+			if( 'list' == $instance['format'] )
+			{
+				$display_options['format'] = 'list';
+			}
+			else
+			{
+				$display_options['format'] = 'flat';
+			}
+	
+			// select what's displayed
+			if( 'corpus' == $instance['format_font_large'] )
+			{
 				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
+			}
+			else if( is_singular() )
+			{
+				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_post( get_the_ID() );
+			}
+			else if( is_search() || $facets->is_browse() )
+			{
+				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_found_set();
+				if( empty( $facet_list ))
+					$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
+			}
+			else
+			{
+				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
+			}
+
+			// and now we wrap it all up for echo later
+			$content = convert_chars( wptexturize( $facets->generate_tag_cloud( $facet_list , $display_options )));
 		}
 		else
 		{
-			$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
+
+			$wijax_source = trailingslashit( home_url( '/wijax/' . $mywijax->encoded_name( $this->id )));
+
+			preg_match( '/<([\S]*)/' , $before_title , $title_element );
+			$title_element = trim( (string) $title_element[1] , '<>');
+
+			preg_match( '/class.*?=.*?(\'|")(.+?)(\'|")/' , $before_title , $title_class );
+			$title_class = (string) $title_class[2];
+
+			$varname_string = json_encode( array( 
+				'source' => $wijax_source ,
+				'varname' => $mywijax->varname( $wijax_source ) , 
+				'title_element' => $title_element ,
+				'title_class' => $title_class ,
+				'title_before' => rawurlencode( $before_title ),
+				'title_after' => rawurlencode( $after_title ),
+			));
+
+			$content = '
+				<span class="wijax-loading">
+					<img src="'. $mywijax->path_web .'/components/img/loading-gray.gif' .'" alt="loading external resource" />
+					<a href="'. $wijax_source .'" class="wijax-source wijax-onload" rel="nofollow"></a>
+					<span class="wijax-opts" style="display: none;">'. $varname_string .'</span>
+				</span>
+			';
 		}
 
 		echo $before_widget;
-		if( ! empty( $title ))
+		if(( ! is_wijax() ) && ( ! empty( $title )))
 		{
 			echo $before_title . $title . $after_title;
 		}
-		echo convert_chars( wptexturize( $facets->generate_tag_cloud( $facet_list , $display_options )));
+		echo $content;
 		echo $after_widget;
 	}
 

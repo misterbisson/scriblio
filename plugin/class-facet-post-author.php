@@ -193,6 +193,7 @@ class Facet_Post_Author implements Facet
 		if( empty( $terms ))
 			return;
 
+		// This only works for the first author 
 		return get_author_posts_url( (int) current( $terms )->term_id );
 	}
 }

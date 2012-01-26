@@ -42,7 +42,7 @@ class Facet_Post_Author implements Facet
 		$this->facets = $facets_object;
 
 		$this->label = $this->_post_to_label[ $name ];
-//		$this->labels = $taxonomy->labels;
+		$this->labels = $this->facets->build_labels( __('author') , __('authors') );
 		$this->query_var = $this->_post_to_queryvar[ $name ];
 
 		add_action( 'init' , array( $this , 'update_permastructs' ) , 10 );

@@ -286,7 +286,34 @@ class Facets
 
 		return FALSE;
 	}
-
+	
+	function build_labels( $sing , $plur , $singcap = '' , $plurcap = '' )
+	{
+		if( empty( $singcap ))
+			$singcap = ucwords( $sing );
+	
+		if( empty( $plurcap ))
+			$plurcap = ucwords( $plur );
+	
+		$labels = array(
+			'name' => $plurcap,
+			'singular_name' => $singcap,
+			'search_items' => 'Search '. $plur,
+			'popular_items' => 'Popular '. $plur,
+			'all_items' => 'All '. $plur,
+			'parent_item' => 'Parent '. $sing,
+			'parent_item_colon' => 'Parent '. $sing .':',
+			'edit_item' => 'Edit '. $sing,
+			'update_item' => 'Update '. $sing,
+			'add_new_item' => 'Add New '. $sing,
+			'new_item_name' => 'New '. $sing .' Name',
+			'separate_items_with_commas' => 'Separate '. $sing .' with commas',
+			'add_or_remove_items' => 'Add or remove '. $sing,
+			'choose_from_most_used' => 'Choose from the most used '. $sing,
+		);
+	
+		return (object) $labels;
+	}
 }
 $facets = new Facets;
 

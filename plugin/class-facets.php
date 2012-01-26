@@ -157,7 +157,8 @@ class Facets
 			// unset the priority facet from the vars so we don't get duplicate entries
 			unset( $vars->$priority_facet );
 
-			// generate the additional query vars
+			// generate the remaining query vars
+			// @TODO: we should pass this off to each taxonomy object to handle (so we can vary the glue and query vals as needed)
 			$new_vars = array();
 			foreach( (array) $vars as $facet => $terms )
 				$new_vars[ $this->facets->$facet->query_var ] = implode( '+' , array_keys( $terms ));

@@ -39,7 +39,7 @@ class Facet_Taxonomy implements Facet
 	{
 
 		// identify the terms in this query
-		foreach( array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|]/' , $query_terms ))) as $val )
+		foreach( array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|\/]/' , $query_terms ))) as $val )
 		{
 			if( $term = get_term_by( 'slug' , $val , $this->taxonomy ))
 				$this->selected_terms[ $term->slug ] = $term;

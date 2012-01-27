@@ -222,19 +222,9 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 		if( ! ( is_search() || $facets->is_browse() ))
 			return;
 
-		$subsmatch = array(
-			'[scrib_hit_count]',
-			'[scrib_search_suggestions]',
-		);
-
-		$subsreplace = array(
-			'',
-			'',
-		);
-
-		$title = $instance['title'];
-		$context_top = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['context-top'] ));
-		$context_bottom = str_replace( $subsmatch, $subsreplace, apply_filters( 'widget_text', $instance['context-bottom'] ));
+		$title = apply_filters( 'widget_title' , $instance['title'] );
+		$context_top = apply_filters( 'widget_text', $instance['context-top'] );
+		$context_bottom = apply_filters( 'widget_text', $instance['context-bottom'] );
 
 		echo $before_widget;
 

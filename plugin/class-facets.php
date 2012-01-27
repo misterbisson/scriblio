@@ -11,6 +11,9 @@ class Facets
 		add_action( 'init' , array( $this , 'init' ));
 		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
 		add_filter( 'posts_request',	array( $this, 'posts_request' ), 11 );
+
+		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
+		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ));
 	}
 
 	function init()
@@ -105,6 +108,20 @@ class Facets
 
 		$this->matching_post_ids = $wpdb->get_col( $this->matching_post_ids_sql );
 		return $this->matching_post_ids;
+	}
+
+	function _count_found_posts()
+	{
+		global $wp_query;
+		$this->count_found_posts = absint( $wp_query->found_posts );
+	}
+
+	function shortcode_hit_count( $arg )
+	{
+		// [scrib_hit_count ]
+
+		return( number_format( $this->count_found_posts, 0, _c('.|decimal separator'), _c(',|thousands separator') ));
+
 	}
 
 	function get_queryterms( $facet , $term , $additive = -1 )

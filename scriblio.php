@@ -15,6 +15,7 @@ require_once( __DIR__ .'/plugin/class-facet-taxonomy.php');
 require_once( __DIR__ .'/plugin/class-facet-post-author.php');
 require_once( __DIR__ .'/plugin/widgets.php');
 require_once( __DIR__ .'/plugin/class-scrib-suggest.php');
+require_once( __DIR__ .'/plugin/class-authority-posttype.php');
 
 // register default facets
 function scrib_register_default_facets()

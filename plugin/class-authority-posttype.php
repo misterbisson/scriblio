@@ -4,14 +4,81 @@ class Authority_Posttype {
 	var $id_base = 'scrib-authority';
 	var $post_type_name = 'scrib-authority';
 	var $post_meta_key = 'scrib-authority';
+	var $cache_ttl = 259183; // a prime number slightly less than 3 days
 
 	function __construct()
 	{
 		add_action( 'init' , array( $this, 'register_post_type' ) , 11 );
 		add_filter( 'template_redirect', array( $this, 'template_redirect' ) , 1 );
 		add_action( 'save_post', array( $this , 'save_post_meta' ));
+		add_action( 'set_object_terms', array( $this , 'set_object_terms' ) , 1, 6 );
 	}
 	
+	function get_term_by_ttid( $tt_id )
+	{
+		global $wpdb;
+
+		$term_id_and_tax = $wpdb->get_row( $wpdb->prepare( "SELECT term_id , taxonomy FROM $wpdb->term_taxonomy WHERE term_taxonomy_id = %d LIMIT 1" , $tt_id ) , OBJECT );
+
+		return get_term( (int) $term_id_and_tax->term_id , $term_id_and_tax->taxonomy );
+	}
+
+	function delete_term_authority_cache( $term )
+	{
+
+		// validate the input
+		if( ! isset( $term->term_taxonomy_id ))
+			return FALSE;
+
+		wp_cache_delete( $term->term_taxonomy_id , 'scrib_authority_ttid' );
+	}
+
+	function get_term_authority( $term )
+	{
+
+		// validate the input
+		if( ! isset( $term->term_id , $term->taxonomy , $term->term_taxonomy_id ))
+			return FALSE;
+
+		if( $return = wp_cache_get( $term->term_taxonomy_id , 'scrib_authority_ttid' ))
+			return $return;
+			
+		// query to find a matching authority record
+		$query = array(
+			'numberposts' => 1,
+			'post_type' => $this->post_type_name,
+			'tax_query' => array(
+				array(
+					'taxonomy' => $term->taxonomy,
+					'field' => 'id',
+					'terms' => $term->term_id,
+				)
+			)
+		);
+
+		$return = FALSE;
+		if( $authority = get_posts( $query ))
+		{
+			// get the authoritative term info
+			$authority_meta = $this->get_post_meta( $authority[0]->ID );
+
+			// initialize the return value
+			$return = array(
+				'primary_term' => '',
+				'alias_terms' => '',
+				'parent_terms' => '',
+				'child_terms' => '',
+			);
+
+			$return = array_intersect_key( (array) $authority_meta , $return );
+			$return['post_id'] = $authority[0]->ID;
+
+			wp_cache_set( $term->term_taxonomy_id , $return , 'scrib_authority_ttid' , $this->cache_ttl );
+		}
+
+		return $return;
+	}
+
 	function template_redirect()
 	{
 		global $wp_query;
@@ -22,31 +89,15 @@ class Authority_Posttype {
 		// get the details about the queried term
 		$queried_object = $wp_query->get_queried_object();
 
-		// query to find a matching authority record
-		$query = array(
-			'numberposts' => 1,
-			'post_type' => $this->post_type_name,
-			'tax_query' => array(
-				array(
-					'taxonomy' => $queried_object->taxonomy,
-					'field' => 'id',
-					'terms' => $queried_object->term_id,
-				)
-			)
-		);
-
 		// if we have an authority record, possibly redirect
-		if( $authority = get_posts( $query ))
+		if( $authority = $this->get_term_authority( $queried_object ))
 		{
-			// get the authoritative term info
-			$authority_meta = $this->get_post_meta( $authority[0]->ID );
-
 			// don't attempt to redirect requests for the authoritative term
-			if( $queried_object->term_taxonomy_id == $authority_meta['primary-term']->term_taxonomy_id )
+			if( $queried_object->term_taxonomy_id == $authority['primary_term']->term_taxonomy_id )
 				return;
 
 			// we're on an alias term, redirect
-			wp_redirect( get_term_link( (int) $authority_meta['primary-term']->term_id , $authority_meta['primary-term']->taxonomy ));
+			wp_redirect( get_term_link( (int) $authority['primary_term']->term_id , $authority['primary_term']->taxonomy ));
 			die;
 		}
 	}
@@ -100,14 +151,17 @@ class Authority_Posttype {
 		$object_terms = array();
 
 		// primary (authoritative) taxonomy term
-		$primary_term = get_term_by( 'slug' , $new_instance['primary-termname'] , $new_instance['primary-tax'] );
+		$primary_term = get_term_by( 'slug' , $new_instance['primary_termname'] , $new_instance['primary_tax'] );
 		if( isset( $primary_term->term_taxonomy_id ))
 		{
-			$instance['primary-term'] = $primary_term;
-			$instance['primary-tax'] = $primary_term->taxonomy;
-			$instance['primary-termname'] = $primary_term->name;
+			$instance['primary_term'] = $primary_term;
+			$instance['primary_tax'] = $primary_term->taxonomy;
+			$instance['primary_termname'] = $primary_term->name;
 
 			$object_terms[ $primary_term->taxonomy ][] = $primary_term->slug;
+
+			// clear the authority cache for this term
+			$this->delete_term_authority_cache( $primary_term );
 
 			// updating the post title is a pain in the ass, just look at what happens when we try to save it
 			$post = get_post( $post_id );
@@ -122,9 +176,9 @@ class Authority_Posttype {
 		}
 
 		// alias terms
-		$aliases_blob = array_map( 'trim' , (array) explode( ',' , $new_instance['alias-terms'] ));
+		$aliases_blob = array_map( 'trim' , (array) explode( ',' , $new_instance['alias_terms'] ));
 		if( count( (array) $aliases_blob ))
-			$instance['alias-terms'] = array();
+			$instance['alias_terms'] = array();
 		foreach( (array) $aliases_blob as $alias )
 		{
 			$parts = array_map( 'trim' , (array) explode( ':' , $alias ));
@@ -134,22 +188,25 @@ class Authority_Posttype {
 
 			if( $alias_term = get_term_by( 'slug' , $parts[1] , $parts[0] ))
 			{
-				$instance['alias-terms'][] = $alias_term;
+				$instance['alias_terms'][] = $alias_term;
 				$object_terms[ $alias_term->taxonomy ][] = $alias_term->slug;
+
+				// clear the authority cache for this term
+				$this->delete_term_authority_cache( $alias_term );
 			}
 			else
 			{
 				if(( $new_term = wp_insert_term( $parts[1] , $parts[0] )) && is_array( $new_term ))
 				{
 					$new_term = get_term_by( 'id' , $parts[1] , $new_term['term_id'] );
-					$instance['alias-terms'][] = $new_term;
+					$instance['alias_terms'][] = $new_term;
 					$object_terms[ $alias_term->taxonomy ][] = $new_term->slug;
 				}
 			}
 		}
 
 print_r( $instance );
-//$this->migrate_alias_terms( $instance['alias-terms'] , $instance['primary-term'] );
+//$this->migrate_alias_terms( $instance['alias_terms'] , $instance['primary_term'] );
 //die;
 
 		// save it
@@ -164,9 +221,9 @@ print_r( $instance );
 		$this->nonce_field();
 
 		$this->get_post_meta( $post->ID );
-		$this->control_taxonomies( 'primary-tax' );
+		$this->control_taxonomies( 'primary_tax' );
 ?>
-		<label class="screen-reader-text" for="<?php echo $this->get_field_id( 'primary-termname' ); ?>">Primary term</label><input type="text" name="<?php echo $this->get_field_name( 'primary-termname' ); ?>" tabindex="x" id="<?php echo $this->get_field_id( 'primary-termname' ); ?>" placeholder="Authoritative term" value="<?php echo $this->instance['primary-termname']; ?>"/>
+		<label class="screen-reader-text" for="<?php echo $this->get_field_id( 'primary_termname' ); ?>">Primary term</label><input type="text" name="<?php echo $this->get_field_name( 'primary_termname' ); ?>" tabindex="x" id="<?php echo $this->get_field_id( 'primary_termname' ); ?>" placeholder="Authoritative term" value="<?php echo $this->instance['primary_termname']; ?>"/>
 
 		<p>@TODO: in addition to automatically suggesting terms (and their taxonomy), we'll have to check that the term is not already associated with another authority record.</p>
 <?php
@@ -176,10 +233,10 @@ print_r( $instance );
 	{
 
 		$aliases = array();
-		foreach( $this->instance['alias-terms'] as $term )
+		foreach( $this->instance['alias_terms'] as $term )
 			$aliases[ $term->term_taxonomy_id ] = $term->taxonomy .':'. $term->slug;
 ?>
-		<label class="screen-reader-text" for="<?php echo $this->get_field_id( 'alias-terms' ); ?>">Alias terms</label><textarea rows="1" cols="40" name="<?php echo $this->get_field_name( 'alias-terms' ); ?>" id="<?php echo $this->get_field_id( 'alias-terms' ); ?>"><?php echo implode( ', ' , (array) $aliases ); ?></textarea>
+		<label class="screen-reader-text" for="<?php echo $this->get_field_id( 'alias_terms' ); ?>">Alias terms</label><textarea rows="1" cols="40" name="<?php echo $this->get_field_name( 'alias_terms' ); ?>" id="<?php echo $this->get_field_id( 'alias_terms' ); ?>"><?php echo implode( ', ' , (array) $aliases ); ?></textarea>
 
 <p>There's supposed to be a neat term entry area here that supports all taxonomies with predictive entry.</p>
 <p>An example set of alias terms for the term company:Apple Inc. might include company:Apple Computer, company:AAPL, company:Apple, tag:Apple Computer</p>
@@ -253,9 +310,46 @@ print_r( $instance );
 		);
 	}
 
+	function set_object_terms( $object_id, $_terms, $tt_ids, $_taxonomy, $_append, $_old_tt_ids )
+	{
 
+		// get and check the post
+		$post = get_post( $object_id );
+
+		if( ! isset( $post->post_type ) || $this->post_type_name == $post->post_type )
+			return;
+
+		// get and check the taxonomy info
+		$taxonomy_info = get_taxonomy( $taxonomy );
+
+		if( ! isset( $taxonomy_info->public ) || ! $taxonomy_info->public )
+			return;
+
+		foreach( $tt_ids as $tt_id )
+		{
+			$terms[] = $this->get_term_by_ttid( $tt_id );
+		}
+
+		// @TODO: filter set_object_terms http://adambrown.info/p/wp_hooks/hook/set_object_terms?version=3.3&file=wp-includes/taxonomy.php
+		// make a list of the term aliases and companions (broader terms) to add
+		// then hook to the shutdown action
+		// and add the terms then (prevents looping)
+		/*
+		get a list of authority records matching the terms
+		iterate through and make two lists: 
+			alias terms to add (including both aliases in the same taxonomy and broader terms in any taxonomy)
+			terms to remove (alias terms outside the taxonomy of the authority term are removed)
+		*/
+	}
+
+	// find terms that exist in two named taxonomies, update posts that have the old terms to have the new terms, then delete the old term
 	function migrate_parallel_terms( $old_tax , $new_tax )
 	{
+
+		/* 
+		@TODO: this needs to create authority records for the terms it migrates to prevent the problem from continuing 
+		*/
+
 		global $wpdb;
 
 		if( ! ( is_taxonomy( $old_tax ) && is_taxonomy( $new_tax )))

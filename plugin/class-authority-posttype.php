@@ -130,6 +130,45 @@ class Authority_Posttype {
 		return $this->instance;
 	}
 
+	function parse_terms_from_string( $text )
+	{
+		$terms = array();
+		$blob = array_map( 'trim' , (array) explode( ',' , $text ));
+		if( count( (array) $blob ))
+		{
+			foreach( (array) $blob as $blobette )
+			{
+				$parts = array_map( 'trim' , (array) explode( ':' , $blobette ));
+	
+				if( 'tag' == $parts[0] ) // parts[0] is the taxonomy
+					$parts[0] = 'post_tag';
+
+				// find or insert the term
+				if( $term = get_term_by( 'slug' , $parts[1] , $parts[0] ))
+				{
+					$terms[] = $term;
+				}
+				else
+				{
+					// attempt to re-use existing terms when creating terms in new taxonomies
+					if( $term_name = term_exists( $parts[1] ))
+						$term_name = (int) $term_name;
+					else
+						$term_name = $parts[1];
+
+					// insert the new term
+					if(( $_new_term = wp_insert_term( $term_name , $parts[0] )) && is_array( $_new_term ))
+					{
+						$new_term = $this->get_term_by_ttid( $_new_term['term_taxonomy_id'] );
+						$terms[] = $new_term;
+					}
+				}
+			}
+		}
+
+		return $terms;
+	}
+
 	function save_post_meta( $post_id )
 	{
 		// check that this isn't an autosave
@@ -178,33 +217,34 @@ class Authority_Posttype {
 		}
 
 		// alias terms
-		$aliases_blob = array_map( 'trim' , (array) explode( ',' , $new_instance['alias_terms'] ));
-		if( count( (array) $aliases_blob ))
-			$instance['alias_terms'] = array();
-		foreach( (array) $aliases_blob as $alias )
+		foreach( (array) $this->parse_terms_from_string( $new_instance['alias_terms'] ) as $term )
 		{
-			$parts = array_map( 'trim' , (array) explode( ':' , $alias ));
+				// don't insert the primary term as an alias, that's just silly
+				if( $term->term_taxonomy_id == $instance['primary_term']->term_taxonomy_id )
+					continue;
 
-			if( 'tag' == $parts[0] )
-				$parts[0] = 'post_tag';
+				$instance['alias_terms'][] = $term;
+				$object_terms[ $term->taxonomy ][] = $term->slug;
+		}
 
-			if( $alias_term = get_term_by( 'slug' , $parts[1] , $parts[0] ))
-			{
-				$instance['alias_terms'][] = $alias_term;
-				$object_terms[ $alias_term->taxonomy ][] = $alias_term->slug;
+		// parent terms
+		foreach( (array) $this->parse_terms_from_string( $new_instance['parent_terms'] ) as $term )
+		{
+				// don't insert the primary term as a parent, that's just silly
+				if( $term->term_taxonomy_id == $instance['primary_term']->term_taxonomy_id )
+					continue;
 
-				// clear the authority cache for this term
-				$this->delete_term_authority_cache( $alias_term );
-			}
-			else
-			{
-				if(( $_new_term = wp_insert_term( $parts[1] , $parts[0] )) && is_array( $_new_term ))
-				{
-					$new_term = $this->get_term_by_ttid( $_new_term['term_taxonomy_id'] );
-					$instance['alias_terms'][] = $new_term;
-					$object_terms[ $new_term->taxonomy ][] = $new_term->slug;
-				}
-			}
+				$instance['parent_terms'][] = $term;
+		}
+
+		// child terms
+		foreach( (array) $this->parse_terms_from_string( $new_instance['child_terms'] ) as $term )
+		{
+				// don't insert the primary term as a child, that's just silly
+				if( $term->term_taxonomy_id == $instance['primary_term']->term_taxonomy_id )
+					continue;
+
+				$instance['child_terms'][] = $term;
 		}
 
 //print_r( $instance );
@@ -214,6 +254,7 @@ class Authority_Posttype {
 		// save it
 		update_post_meta( $post_id , $this->post_meta_key , $instance );
 
+		// update the term relationships for this post (add the primary and alias terms)
 		foreach( (array) $object_terms as $k => $v )
 			wp_set_object_terms( $post_id , $v , $k , FALSE );
 	}
@@ -235,10 +276,10 @@ class Authority_Posttype {
 	{
 
 		$aliases = array();
-		foreach( $this->instance['alias_terms'] as $term )
+		foreach( (array) $this->instance['alias_terms'] as $term )
 			$aliases[ $term->term_taxonomy_id ] = $term->taxonomy .':'. $term->slug;
 ?>
-		<label class="screen-reader-text" for="<?php echo $this->get_field_id( 'alias_terms' ); ?>">Alias terms</label><textarea rows="1" cols="40" name="<?php echo $this->get_field_name( 'alias_terms' ); ?>" id="<?php echo $this->get_field_id( 'alias_terms' ); ?>"><?php echo implode( ', ' , (array) $aliases ); ?></textarea>
+		<label class="screen-reader-text" for="<?php echo $this->get_field_id( 'alias_terms' ); ?>">Alias terms</label><textarea rows="3" cols="50" name="<?php echo $this->get_field_name( 'alias_terms' ); ?>" id="<?php echo $this->get_field_id( 'alias_terms' ); ?>"><?php echo implode( ', ' , (array) $aliases ); ?></textarea>
 
 <p>There's supposed to be a neat term entry area here that supports all taxonomies with predictive entry.</p>
 <p>An example set of alias terms for the term company:Apple Inc. might include company:Apple Computer, company:AAPL, company:Apple, tag:Apple Computer</p>
@@ -248,7 +289,19 @@ class Authority_Posttype {
 
 	function metab_family_terms( $post )
 	{
+		$parents = array();
+		foreach( (array) $this->instance['parent_terms'] as $term )
+			$parents[ $term->term_taxonomy_id ] = $term->taxonomy .':'. $term->slug;
+
+		$children = array();
+		foreach( (array) $this->instance['child_terms'] as $term )
+			$children[ $term->term_taxonomy_id ] = $term->taxonomy .':'. $term->slug;
+
 ?>
+		<label for="<?php echo $this->get_field_id( 'parent_terms' ); ?>">Parent terms</label><textarea rows="3" cols="50" name="<?php echo $this->get_field_name( 'parent_terms' ); ?>" id="<?php echo $this->get_field_id( 'parent_terms' ); ?>"><?php echo implode( ', ' , (array) $parents ); ?></textarea>
+
+		<label for="<?php echo $this->get_field_id( 'child_terms' ); ?>">Child terms</label><textarea rows="3" cols="50" name="<?php echo $this->get_field_name( 'child_terms' ); ?>" id="<?php echo $this->get_field_id( 'child_terms' ); ?>"><?php echo implode( ', ' , (array) $children ); ?></textarea>
+
 <p>This area is where we'll relate this term to others that are broader or narrower.</p>
 <p>Broader terms for product:iPhone might include company:Apple Inc., product:iOS Devices, product:smartphones.</p>
 <p>Narrower terms for product:iPhone might include product:iPhone 4, product:iPhone 4S.</p>

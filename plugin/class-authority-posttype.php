@@ -40,7 +40,7 @@ class Authority_Posttype {
 		if( ! isset( $term->term_id , $term->taxonomy , $term->term_taxonomy_id ))
 			return FALSE;
 
-		if( $return = wp_cache_get( $term->term_taxonomy_id , 'scrib_authority_ttid' ))
+		if( $return = wp_cache_get( $term->term_taxonomy_id , 'scrib_authority_ttid____' ))
 			return $return;
 			
 		// query to find a matching authority record
@@ -56,7 +56,7 @@ class Authority_Posttype {
 			)
 		);
 
-		$return = FALSE;
+		// fetch the authority info
 		if( $authority = get_posts( $query ))
 		{
 			// get the authoritative term info
@@ -73,10 +73,12 @@ class Authority_Posttype {
 			$return = array_intersect_key( (array) $authority_meta , $return );
 			$return['post_id'] = $authority[0]->ID;
 
-			wp_cache_set( $term->term_taxonomy_id , $return , 'scrib_authority_ttid' , $this->cache_ttl );
+			wp_cache_set( $term->term_taxonomy_id , (object) $return , 'scrib_authority_ttid' , $this->cache_ttl );
+			return (object) $return;
 		}
 
-		return $return;
+		// no authority records
+		return FALSE;
 	}
 
 	function template_redirect()
@@ -93,11 +95,11 @@ class Authority_Posttype {
 		if( $authority = $this->get_term_authority( $queried_object ))
 		{
 			// don't attempt to redirect requests for the authoritative term
-			if( $queried_object->term_taxonomy_id == $authority['primary_term']->term_taxonomy_id )
+			if( $queried_object->term_taxonomy_id == $authority->primary_term->term_taxonomy_id )
 				return;
 
 			// we're on an alias term, redirect
-			wp_redirect( get_term_link( (int) $authority['primary_term']->term_id , $authority['primary_term']->taxonomy ));
+			wp_redirect( get_term_link( (int) $authority->primary_term->term_id , $authority->primary_term->taxonomy ));
 			die;
 		}
 	}
@@ -196,16 +198,16 @@ class Authority_Posttype {
 			}
 			else
 			{
-				if(( $new_term = wp_insert_term( $parts[1] , $parts[0] )) && is_array( $new_term ))
+				if(( $_new_term = wp_insert_term( $parts[1] , $parts[0] )) && is_array( $_new_term ))
 				{
-					$new_term = get_term_by( 'id' , $parts[1] , $new_term['term_id'] );
+					$new_term = $this->get_term_by_ttid( $_new_term['term_taxonomy_id'] );
 					$instance['alias_terms'][] = $new_term;
-					$object_terms[ $alias_term->taxonomy ][] = $new_term->slug;
+					$object_terms[ $new_term->taxonomy ][] = $new_term->slug;
 				}
 			}
 		}
 
-print_r( $instance );
+//print_r( $instance );
 //$this->migrate_alias_terms( $instance['alias_terms'] , $instance['primary_term'] );
 //die;
 
@@ -320,26 +322,73 @@ print_r( $instance );
 			return;
 
 		// get and check the taxonomy info
-		$taxonomy_info = get_taxonomy( $taxonomy );
+		$taxonomy_info = get_taxonomy( $_taxonomy );
 
 		if( ! isset( $taxonomy_info->public ) || ! $taxonomy_info->public )
 			return;
 
+		$new_object_terms = $terms_to_delete = array();
 		foreach( $tt_ids as $tt_id )
 		{
-			$terms[] = $this->get_term_by_ttid( $tt_id );
+			$term = $this->get_term_by_ttid( $tt_id );
+
+			if( $authority = $this->get_term_authority( $term ))
+			{
+				// add the preferred term to list of terms to add to the object
+				$new_object_terms[ $authority->primary_term->taxonomy ][] = (int) $authority->primary_term->term_id;
+
+				// if the current term is not in the same taxonomy as the preferred term, list it for removal from the object
+				if( $authority->primary_term->taxonomy != $term->taxonomy )
+					$delete_terms[] = $term->term_taxonomy_id;
+
+				// add any parent terms to the list as well
+				foreach( (array) $authority->parent_terms as $parent )
+					$new_object_terms[ $parent->taxonomy ][] = (int) $parent->term_id;
+			}
 		}
 
-		// @TODO: filter set_object_terms http://adambrown.info/p/wp_hooks/hook/set_object_terms?version=3.3&file=wp-includes/taxonomy.php
-		// make a list of the term aliases and companions (broader terms) to add
-		// then hook to the shutdown action
-		// and add the terms then (prevents looping)
-		/*
-		get a list of authority records matching the terms
-		iterate through and make two lists: 
-			alias terms to add (including both aliases in the same taxonomy and broader terms in any taxonomy)
-			terms to remove (alias terms outside the taxonomy of the authority term are removed)
-		*/
+if( count( $new_object_terms ))
+{
+	print_r( $new_object_terms );
+	print_r( array_map( array( $this , 'get_term_by_ttid' ) , $delete_terms ));
+//	die;
+}
+
+		// remove the alias terms that are not in primary taxonomy
+		// WP has no convenient method to delete a single term from an object, but this is what's used in wp-includes/taxonomy.php
+		if( count( $delete_terms ))
+		{
+/*
+			global $wpdb;
+			$in_delete_terms = "'". implode( "', '", $delete_terms ) ."'";
+			do_action( 'delete_term_relationships', $object_id, $delete_terms );
+			$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->term_relationships WHERE object_id = %d AND term_taxonomy_id IN ( $in_delete_terms )" , $object_id ));
+			do_action( 'deleted_term_relationships', $object_id, $delete_terms );
+			wp_update_term_count( $delete_terms , $taxonomy_info->name );
+*/
+		}
+
+		// add the alias and parent terms to the object
+		if( count( $new_object_terms ))
+		{
+			remove_action( 'set_object_terms', array( $this , 'set_object_terms' ) , 1, 6 );
+			foreach( (array) $new_object_terms as $k => $v )
+			{
+
+				$v = array_unique( $v );
+
+				// attempt to set the terms the right way
+				wp_set_object_terms( $object_id , $v , $k , TRUE );
+
+				// also insert the term into the $_POST in case WP hasn't already handled the 
+				if( isset( $_POST['tax_input'][ $k ] ))
+					$_POST['tax_input'][ $k ] .= implode( ',' , array_map( create_function( '$term' , 'return get_term( $term , '. $k .')->name ;') , $v ));
+			}
+			add_action( 'set_object_terms', array( $this , 'set_object_terms' ) , 1, 6 );
+
+//print_r( $_POST );
+//die;
+		}
 	}
 
 	// find terms that exist in two named taxonomies, update posts that have the old terms to have the new terms, then delete the old term

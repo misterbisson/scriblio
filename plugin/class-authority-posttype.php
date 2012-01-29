@@ -11,7 +11,7 @@ class Authority_Posttype {
 		add_action( 'init' , array( $this, 'register_post_type' ) , 11 );
 		add_filter( 'template_redirect', array( $this, 'template_redirect' ) , 1 );
 		add_action( 'save_post', array( $this , 'save_post_meta' ));
-		add_action( 'set_object_terms', array( $this , 'set_object_terms' ) , 1, 6 );
+		add_action( 'save_post', array( $this , 'enforce_authority_on_object' ) , 9 );
 	}
 	
 	function get_term_by_ttid( $tt_id )
@@ -312,26 +312,28 @@ class Authority_Posttype {
 		);
 	}
 
-	function set_object_terms( $object_id, $_terms, $tt_ids, $_taxonomy, $_append, $_old_tt_ids )
+	function enforce_authority_on_object( $object_id )
 	{
+		// nobody wants to set terms on a revision
+		if( $actual_post = wp_is_post_revision( $object_id ))
+			$object_id = $actual_post;
+
+		if( ! $object_id )
+			return;
 
 		// get and check the post
 		$post = get_post( $object_id );
 
+		// don't mess with authority posts
 		if( ! isset( $post->post_type ) || $this->post_type_name == $post->post_type )
 			return;
 
-		// get and check the taxonomy info
-		$taxonomy_info = get_taxonomy( $_taxonomy );
-
-		if( ! isset( $taxonomy_info->public ) || ! $taxonomy_info->public )
-			return;
+		// get the terms to work with
+		$terms = wp_get_object_terms( $object_id , get_taxonomies( array( 'public' => true )));
 
 		$new_object_terms = $terms_to_delete = array();
-		foreach( $tt_ids as $tt_id )
+		foreach( $terms as $term )
 		{
-			$term = $this->get_term_by_ttid( $tt_id );
-
 			if( $authority = $this->get_term_authority( $term ))
 			{
 				// add the preferred term to list of terms to add to the object
@@ -347,47 +349,28 @@ class Authority_Posttype {
 			}
 		}
 
-if( count( $new_object_terms ))
-{
-	print_r( $new_object_terms );
-	print_r( array_map( array( $this , 'get_term_by_ttid' ) , $delete_terms ));
-//	die;
-}
-
 		// remove the alias terms that are not in primary taxonomy
 		// WP has no convenient method to delete a single term from an object, but this is what's used in wp-includes/taxonomy.php
 		if( count( $delete_terms ))
 		{
-/*
 			global $wpdb;
 			$in_delete_terms = "'". implode( "', '", $delete_terms ) ."'";
 			do_action( 'delete_term_relationships', $object_id, $delete_terms );
 			$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->term_relationships WHERE object_id = %d AND term_taxonomy_id IN ( $in_delete_terms )" , $object_id ));
 			do_action( 'deleted_term_relationships', $object_id, $delete_terms );
 			wp_update_term_count( $delete_terms , $taxonomy_info->name );
-*/
 		}
 
 		// add the alias and parent terms to the object
 		if( count( $new_object_terms ))
 		{
-			remove_action( 'set_object_terms', array( $this , 'set_object_terms' ) , 1, 6 );
 			foreach( (array) $new_object_terms as $k => $v )
 			{
-
-				$v = array_unique( $v );
-
-				// attempt to set the terms the right way
 				wp_set_object_terms( $object_id , $v , $k , TRUE );
-
-				// also insert the term into the $_POST in case WP hasn't already handled the 
-				if( isset( $_POST['tax_input'][ $k ] ))
-					$_POST['tax_input'][ $k ] .= implode( ',' , array_map( create_function( '$term' , 'return get_term( $term , '. $k .')->name ;') , $v ));
 			}
-			add_action( 'set_object_terms', array( $this , 'set_object_terms' ) , 1, 6 );
 
-//print_r( $_POST );
-//die;
+			update_post_cache( $post );
+
 		}
 	}
 

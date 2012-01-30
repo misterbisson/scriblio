@@ -439,12 +439,14 @@ class Authority_Posttype {
 	function enforce_authority_on_corpus_ajax()
 	{
 		if( $_REQUEST['authority_post_id'] && $this->get_post_meta( (int) $_REQUEST['authority_post_id'] ))
-			$this->enforce_authority_on_corpus( (int) $_REQUEST['authority_post_id'] );
+			$result = $this->enforce_authority_on_corpus( (int) $_REQUEST['authority_post_id'] , 50 , (int) $_REQUEST['paged'] );
+
+		print_r( $result );
 
 		die;
 	}
 
-	function enforce_authority_on_corpus( $authority_post_id )
+	function enforce_authority_on_corpus( $authority_post_id , $posts_per_page = 50 , $paged = 0 )
 	{
 		$authority = $this->get_post_meta( $authority_post_id );
 
@@ -505,19 +507,19 @@ class Authority_Posttype {
 
 		// construct a complete query
 		$query = array(
-			'posts_per_page' => -1,
+			'posts_per_page' => (int) $posts_per_page,
+			'paged' => (int) $paged,
 			'post_type' => $post_types,
 			'tax_query' => $tax_query,
 			'fields' => 'ids',
 		);
 
-		// get all the posts
+		// get a batch of posts
 		$post_ids = get_posts( $query );
 
 		if( ! count( $post_ids ))
 			return FALSE;
 
-		echo "<ol>";
 		foreach( (array) $post_ids as $post_id )
 		{
 
@@ -534,11 +536,62 @@ class Authority_Posttype {
 			// actually delete any conflicting terms
 			if( $delete_object_tt_ids = array_intersect( $new_object_tt_ids , $delete_tt_ids ))
 				$this->delete_terms_from_object_id( $post_id , $delete_object_tt_ids );
-
-			// rudimentary logging
-			echo "<li>Updated <a href='". get_edit_post_link( $post_id ) ."'>". get_the_title( $post_id ) ."</a></li>";
 		}
-		echo "</ol>";
+
+		return( (object) array( 'post_ids' => $post_ids , 'processed_count' => ( 1 + $paged ) * $posts_per_page , 'next_paged' => ( count( $post_ids ) == $posts_per_page ? 1 + $paged : FALSE ) ));
+	}
+
+	function create_authority_record( $primary_term , $alias_terms )
+	{
+		// check primary term
+		if( ! term_exists( $primary_term ))
+			return FALSE;
+
+		// check that there's no prior authority
+		if( $this->get_term_authority( $primary_term ))
+			return $this->get_term_authority( $primary_term )->post_id;
+
+		$post = array(
+			'post_title]' => $primary_term->name,
+			'post_status' => 'publish',
+			'post_name' => $primary_term->slug,
+			'post_type' => $this->post_type_name,
+		);
+
+		$post_id = wp_insert_post( $post );
+
+		if( ! is_numeric( $post_id ))
+			return $post_id;
+
+		$instance = array();
+		
+		// primary term meta
+		$instance['primary_term'] = $primary_term;
+		$instance['primary_tax'] = $primary_term->taxonomy;
+		$instance['primary_termname'] = $primary_term->name;
+		$object_terms[ $term->taxonomy ][] = (int) $term->term_id;
+
+		// create the meta for the alias terms
+		foreach( $alias_terms as $term )
+		{
+			// it's totally not cool to insert the primary term as an alias
+			if( $term->term_taxonomy_id == $instance['primary_term']->term_taxonomy_id )
+				continue;
+
+			$instance['alias_terms'][] = $term;
+			$object_terms[ $term->taxonomy ][] = (int) $term->term_id;
+		}
+
+		// save it
+		update_post_meta( $post_id , $this->post_meta_key , $instance );
+
+		// update the term relationships for this post (add the primary and alias terms)
+		foreach( (array) $object_terms as $k => $v )
+			wp_set_object_terms( $post_id , $v , $k , FALSE );
+
+		$this->enforce_authority_on_corpus( $post_id , -1 );
+
+		return $post_id;
 	}
 
 	// find terms that exist in two named taxonomies, update posts that have the old terms to have the new terms, then delete the old term

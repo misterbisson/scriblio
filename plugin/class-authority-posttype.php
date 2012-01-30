@@ -141,14 +141,12 @@ class Authority_Posttype {
 				}
 				else
 				{
-					// attempt to re-use existing terms when creating terms in new taxonomies
-					if( $term_name = term_exists( $parts[1] ))
-						$term_name = (int) $term_name;
-					else
-						$term_name = $parts[1];
+					// Ack! It's impossible to associate an existing term with a new taxonomy!
+					// wp_insert_term() will always generate a new term with an ugly slug
+					// but wp_set_object_terms() does not behave that way when it encounters an existing term in a new taxonomy
 
 					// insert the new term
-					if(( $_new_term = wp_insert_term( $term_name , $parts[0] )) && is_array( $_new_term ))
+					if(( $_new_term = wp_insert_term( $parts[1] , $parts[0] )) && is_array( $_new_term ))
 					{
 						$new_term = $this->get_term_by_ttid( $_new_term['term_taxonomy_id'] );
 						$terms[] = $new_term;
@@ -234,6 +232,7 @@ class Authority_Posttype {
 		}
 
 		// alias terms
+		$instance['alias_terms'] = array();
 		foreach( (array) $this->parse_terms_from_string( $new_instance['alias_terms'] ) as $term )
 		{
 				// don't insert the primary term as an alias, that's just silly
@@ -246,6 +245,7 @@ class Authority_Posttype {
 		}
 
 		// parent terms
+		$instance['parent_terms'] = array();
 		foreach( (array) $this->parse_terms_from_string( $new_instance['parent_terms'] ) as $term )
 		{
 				// don't insert the primary term as a parent, that's just silly
@@ -256,6 +256,7 @@ class Authority_Posttype {
 		}
 
 		// child terms
+		$instance['child_terms'] = array();
 		foreach( (array) $this->parse_terms_from_string( $new_instance['child_terms'] ) as $term )
 		{
 				// don't insert the primary term as a child, that's just silly
@@ -557,8 +558,8 @@ class Authority_Posttype {
 		if( $this->get_term_authority( $primary_term ))
 			return $this->get_term_authority( $primary_term )->post_id;
 
-		$post = array(
-			'post_title]' => $primary_term->name,
+		$post = (object) array(
+			'post_title' => $primary_term->name,
 			'post_status' => 'publish',
 			'post_name' => $primary_term->slug,
 			'post_type' => $this->post_type_name,
@@ -612,6 +613,15 @@ class Authority_Posttype {
 		);
 
 		print_r( $result );
+
+		if( $result->next_paged )
+		{
+?>
+<script type="text/javascript">
+window.location = "<?php echo admin_url('admin-ajax.php?action=scrib_create_authority_records&old_tax='. $_REQUEST['old_tax'] .'&new_tax='. $_REQUEST['new_tax'] .'&paged='. $result->next_paged .'&posts_per_page='. (int) $_REQUEST['posts_per_page']); ?>";
+</script>
+<?php
+		}
 
 		die;
 	}

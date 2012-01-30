@@ -436,48 +436,6 @@ class Authority_Posttype {
 		}
 	}
 
-	// find terms that exist in two named taxonomies, update posts that have the old terms to have the new terms, then delete the old term
-	function migrate_parallel_terms( $old_tax , $new_tax )
-	{
-
-		/* 
-		@TODO: this needs to create authority records for the terms it migrates to prevent the problem from continuing 
-		*/
-
-		global $wpdb;
-
-		if( ! ( is_taxonomy( $old_tax ) && is_taxonomy( $new_tax )))
-			return FALSE;
-
-		$new_terms = $wpdb->get_col('SELECT term_id
-			FROM wp_7_term_taxonomy
-			WHERE taxonomy = "'. $new_tax .'"
-			ORDER BY term_id
-			'
-		);
-		
-		$old_terms = $wpdb->get_col('SELECT term_id
-			FROM wp_7_term_taxonomy
-			WHERE taxonomy = "'. $old_tax .'"
-			ORDER BY term_id
-			'
-		);
-
-		$intersection = array_intersect( $new_terms , $old_terms );
-
-		foreach( $intersection as $term_id )
-		{
-			echo "<ol>";
-			foreach( (array) get_objects_in_term( $term_id , $old_tax ) as $object_id )
-			{
-				wp_set_object_terms( $object_id , $new_tax , (int) $term_id , FALSE );
-				echo "<li>Updated <a href='". get_edit_post_link( $object_id ) ."'>$object_id</a> with $term_id</li>";
-			}
-			wp_delete_term( (int) $term_id , $old_tax );
-			echo "<li>Deleted $term_id from $old_tax</li></ol>";
-		}
-	}
-
 	function enforce_authority_on_corpus_ajax()
 	{
 		if( $_REQUEST['authority_post_id'] && $this->get_post_meta( (int) $_REQUEST['authority_post_id'] ))
@@ -583,33 +541,47 @@ class Authority_Posttype {
 		echo "</ol>";
 	}
 
-	function migrate_alias_terms( $_old_terms , $new_term )
+	// find terms that exist in two named taxonomies, update posts that have the old terms to have the new terms, then delete the old term
+	function migrate_parallel_terms( $old_tax , $new_tax )
 	{
 
-		// just confirm that the authority term exists
-		if( ! term_exists( (int) $new_term->term_id , $new_term->taxonomy ))
+		/* 
+		@TODO: this needs to create authority records for the terms it migrates to prevent the problem from continuing 
+		*/
+
+		global $wpdb;
+
+		if( ! ( is_taxonomy( $old_tax ) && is_taxonomy( $new_tax )))
 			return FALSE;
 
-		// check that the terms exist, and they're not the same as the authority term
-		foreach( $_old_terms as $term )
-		{
-			if( term_exists( (int) $term->term_id , $term->taxonomy ) && ! ( $term->term_taxonomy_id == $new_term->term_taxonomy_id ))
-				$old_terms[ $term->taxonomy ][] = (int) $term->term_id;
-		}
+		$new_terms = $wpdb->get_col('SELECT term_id
+			FROM wp_7_term_taxonomy
+			WHERE taxonomy = "'. $new_tax .'"
+			ORDER BY term_id
+			'
+		);
+		
+		$old_terms = $wpdb->get_col('SELECT term_id
+			FROM wp_7_term_taxonomy
+			WHERE taxonomy = "'. $old_tax .'"
+			ORDER BY term_id
+			'
+		);
 
-		// iterate over each term and get the matching post IDs
-		foreach( (array) $old_terms as $old_tax => $old_term_ids )
-			$post_ids = array_merge( (array) $post_ids , (array) get_objects_in_term( $old_term_ids , $old_tax ));
+		$intersection = array_intersect( $new_terms , $old_terms );
 
-		echo "<ol>";
-		foreach( (array) $post_ids as $post_id )
+		foreach( $intersection as $term_id )
 		{
-			wp_set_object_terms( $post_id , $new_term->taxonomy , (int) $new_term->term_id , TRUE );
-			echo "<li>Updated <a href='". get_edit_post_link( $post_id ) ."'>$post_id</a> with $new_term->term_id</li>";
+			echo "<ol>";
+			foreach( (array) get_objects_in_term( $term_id , $old_tax ) as $object_id )
+			{
+				wp_set_object_terms( $object_id , $new_tax , (int) $term_id , FALSE );
+				echo "<li>Updated <a href='". get_edit_post_link( $object_id ) ."'>$object_id</a> with $term_id</li>";
+			}
+			wp_delete_term( (int) $term_id , $old_tax );
+			echo "<li>Deleted $term_id from $old_tax</li></ol>";
 		}
-		echo "</ol>";
 	}
-
 
 }//end Authority_Posttype class
 new Authority_Posttype;

@@ -10,10 +10,26 @@ class Authority_Posttype {
 	{
 		add_action( 'init' , array( $this, 'register_post_type' ) , 11 );
 		add_filter( 'template_redirect', array( $this, 'template_redirect' ) , 1 );
+		add_action( 'wp_ajax_scrib_enforce_authority', array( $this, 'enforce_authority_on_corpus_ajax' ));
 		add_action( 'save_post', array( $this , 'save_post_meta' ));
 		add_action( 'save_post', array( $this , 'enforce_authority_on_object' ) , 9 );
 	}
-	
+
+	// WP has no convenient method to delete a single term from an object, but this is what's used in wp-includes/taxonomy.php
+	function delete_terms_from_object_id( $object_id , $delete_terms )
+	{
+		global $wpdb;
+		$in_delete_terms = "'". implode( "', '", $delete_terms ) ."'";
+		do_action( 'delete_term_relationships', $object_id, $delete_terms );
+		$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->term_relationships WHERE object_id = %d AND term_taxonomy_id IN ( $in_delete_terms )" , $object_id ));
+		do_action( 'deleted_term_relationships', $object_id, $delete_terms );
+		wp_update_term_count( $delete_terms , $taxonomy_info->name );
+
+		update_post_cache( get_post( $object_id ));
+
+		return;
+	}
+
 	function get_term_by_ttid( $tt_id )
 	{
 		global $wpdb;
@@ -104,32 +120,6 @@ class Authority_Posttype {
 		}
 	}
 
-	function nonce_field()
-	{
-		wp_nonce_field( plugin_basename( __FILE__ ) , $this->id_base .'-nonce' );
-	}
-
-	function verify_nonce()
-	{
-		return wp_verify_nonce( $_POST[ $this->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
-	}
-
-	function get_field_name( $field_name )
-	{
-		return $this->id_base . '[' . $field_name . ']';
-	}
-
-	function get_field_id( $field_name )
-	{
-		return $this->id_base . '-' . $field_name;
-	}
-
-	function get_post_meta( $post_id )
-	{
-		$this->instance = get_post_meta( $post_id , $this->post_meta_key , TRUE );
-		return $this->instance;
-	}
-
 	function parse_terms_from_string( $text )
 	{
 		$terms = array();
@@ -169,6 +159,32 @@ class Authority_Posttype {
 		return $terms;
 	}
 
+	function nonce_field()
+	{
+		wp_nonce_field( plugin_basename( __FILE__ ) , $this->id_base .'-nonce' );
+	}
+
+	function verify_nonce()
+	{
+		return wp_verify_nonce( $_POST[ $this->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
+	}
+
+	function get_field_name( $field_name )
+	{
+		return $this->id_base . '[' . $field_name . ']';
+	}
+
+	function get_field_id( $field_name )
+	{
+		return $this->id_base . '-' . $field_name;
+	}
+
+	function get_post_meta( $post_id )
+	{
+		$this->instance = get_post_meta( $post_id , $this->post_meta_key , TRUE );
+		return $this->instance;
+	}
+
 	function save_post_meta( $post_id )
 	{
 		// check that this isn't an autosave
@@ -199,7 +215,7 @@ class Authority_Posttype {
 			$instance['primary_tax'] = $primary_term->taxonomy;
 			$instance['primary_termname'] = $primary_term->name;
 
-			$object_terms[ $primary_term->taxonomy ][] = $primary_term->slug;
+			$object_terms[ $primary_term->taxonomy ][] = (int) $primary_term->term_id;
 
 			// clear the authority cache for this term
 			$this->delete_term_authority_cache( $primary_term );
@@ -224,7 +240,8 @@ class Authority_Posttype {
 					continue;
 
 				$instance['alias_terms'][] = $term;
-				$object_terms[ $term->taxonomy ][] = $term->slug;
+				$object_terms[ $term->taxonomy ][] = (int) $term->term_id;
+				$this->delete_term_authority_cache( $term );
 		}
 
 		// parent terms
@@ -403,16 +420,8 @@ class Authority_Posttype {
 		}
 
 		// remove the alias terms that are not in primary taxonomy
-		// WP has no convenient method to delete a single term from an object, but this is what's used in wp-includes/taxonomy.php
 		if( count( $delete_terms ))
-		{
-			global $wpdb;
-			$in_delete_terms = "'". implode( "', '", $delete_terms ) ."'";
-			do_action( 'delete_term_relationships', $object_id, $delete_terms );
-			$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->term_relationships WHERE object_id = %d AND term_taxonomy_id IN ( $in_delete_terms )" , $object_id ));
-			do_action( 'deleted_term_relationships', $object_id, $delete_terms );
-			wp_update_term_count( $delete_terms , $taxonomy_info->name );
-		}
+			$this->delete_terms_from_object_id( $object_id , $delete_terms );
 
 		// add the alias and parent terms to the object
 		if( count( $new_object_terms ))
@@ -467,6 +476,111 @@ class Authority_Posttype {
 			wp_delete_term( (int) $term_id , $old_tax );
 			echo "<li>Deleted $term_id from $old_tax</li></ol>";
 		}
+	}
+
+	function enforce_authority_on_corpus_ajax()
+	{
+		if( $_REQUEST['authority_post_id'] && $this->get_post_meta( (int) $_REQUEST['authority_post_id'] ))
+			$this->enforce_authority_on_corpus( (int) $_REQUEST['authority_post_id'] );
+
+		die;
+	}
+
+	function enforce_authority_on_corpus( $authority_post_id )
+	{
+		$authority = $this->get_post_meta( $authority_post_id );
+
+		// section of terms to add to each post
+		// create a list of terms to add to each post
+		$add_terms = array();
+
+		// add the primary term to all posts (yes, it's likely already attached to some posts)
+		$add_terms[ $authority['primary_term']->taxonomy ][] = (int) $authority['primary_term']->term_id;
+
+		// add parent terms to all posts (yes, they may already be attached to some posts)
+		foreach( $authority['parent_terms'] as $term )
+			$add_terms[ $term->taxonomy ][] = (int) $term->term_id;
+
+
+
+		// section of terms to delete from each post
+		// create a list of terms to delete from each post
+		$delete_terms = array();
+
+		// delete alias terms that are not in the same taxonomy as the primary term
+		foreach( $authority['alias_terms'] as $term )
+		{
+			if( $term->taxonomy != $authority['primary_term']->taxonomy )
+			{
+				$delete_taxs[ $term->taxonomy ] = $term->taxonomy;
+				$delete_tt_ids[] = (int) $term->term_taxonomy_id;
+			}
+		}
+
+
+
+		// Section of terms to search by
+		// create a list of terms to search for posts by
+		$search_terms = array();
+
+		// include the primary term among those used to fetch posts
+		$search_terms[ $authority['primary_term']->taxonomy ][] = (int) $authority['primary_term']->term_id;
+
+		// add alias terms in the list
+		foreach( $authority['alias_terms'] as $term )
+			$search_terms[ $term->taxonomy ][] = (int) $term->term_id;
+
+		// construct the partial taxonomy query for each named taxonomy
+		$tax_query = array( 'relation' => 'OR' );
+		foreach( $search_terms as $k => $v )
+		{
+			$tax_query[] = array(
+				'taxonomy' => $k,
+				'field' => 'id',
+				'terms' => $v,
+				'operator' => 'IN',
+			);
+		}
+
+		$post_types = get_post_types( array( 'public' => TRUE ));
+		unset( $post_types[ $this->post_type_name ] );
+
+		// construct a complete query
+		$query = array(
+			'posts_per_page' => -1,
+			'post_type' => $post_types,
+			'tax_query' => $tax_query,
+			'fields' => 'ids',
+		);
+
+		// get all the posts
+		$post_ids = get_posts( $query );
+
+		if( ! count( $post_ids ))
+			return FALSE;
+
+		echo "<ol>";
+		foreach( (array) $post_ids as $post_id )
+		{
+
+			// add all the terms, one taxonomy at a time
+			foreach( (array) $add_terms as $k => $v )
+				wp_set_object_terms( $post_id , $v , $k , TRUE );
+
+			// get currently attached terms in preparation for deleting some of them
+			$new_object_tt_ids = $delete_object_tt_ids = array();
+			$new_object_terms = wp_get_object_terms( $post_id , $delete_taxs );
+			foreach( $new_object_terms as $new_object_term )
+				$new_object_tt_ids[] = $new_object_term->term_taxonomy_id;
+
+			// actually delete any conflicting terms
+			if( $delete_object_tt_ids = array_intersect( $new_object_tt_ids , $delete_tt_ids ))
+				$this->delete_terms_from_object_id( $post_id , $delete_object_tt_ids );
+
+			// rudimentary logging
+			echo "<li>Updated <a href='". get_edit_post_link( $post_id ) ."'>". get_the_title( $post_id ) ."</a></li>";
+		}
+		echo "</ol>";
 	}
 
 	function migrate_alias_terms( $_old_terms , $new_term )

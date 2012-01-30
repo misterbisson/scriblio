@@ -11,6 +11,7 @@ class Authority_Posttype {
 		add_action( 'init' , array( $this, 'register_post_type' ) , 11 );
 		add_filter( 'template_redirect', array( $this, 'template_redirect' ) , 1 );
 		add_action( 'wp_ajax_scrib_enforce_authority', array( $this, 'enforce_authority_on_corpus_ajax' ));
+		add_action( 'wp_ajax_scrib_create_authority_records', array( $this, 'create_authority_records_ajax' ));
 		add_action( 'save_post', array( $this , 'save_post_meta' ));
 		add_action( 'save_post', array( $this , 'enforce_authority_on_object' ) , 9 );
 	}
@@ -439,7 +440,11 @@ class Authority_Posttype {
 	function enforce_authority_on_corpus_ajax()
 	{
 		if( $_REQUEST['authority_post_id'] && $this->get_post_meta( (int) $_REQUEST['authority_post_id'] ))
-			$result = $this->enforce_authority_on_corpus( (int) $_REQUEST['authority_post_id'] , 50 , (int) $_REQUEST['paged'] );
+			$result = $this->enforce_authority_on_corpus( 
+				(int) $_REQUEST['authority_post_id'] , 
+				( is_numeric( $_REQUEST['posts_per_page'] ) ? (int) $_REQUEST['posts_per_page'] : 50 ) ,
+				( is_numeric( $_REQUEST['paged'] ) ? (int) $_REQUEST['paged'] : 0 )
+		);
 
 		print_r( $result );
 
@@ -458,7 +463,7 @@ class Authority_Posttype {
 		$add_terms[ $authority['primary_term']->taxonomy ][] = (int) $authority['primary_term']->term_id;
 
 		// add parent terms to all posts (yes, they may already be attached to some posts)
-		foreach( $authority['parent_terms'] as $term )
+		foreach( (array) $authority['parent_terms'] as $term )
 			$add_terms[ $term->taxonomy ][] = (int) $term->term_id;
 
 
@@ -534,7 +539,7 @@ class Authority_Posttype {
 				$new_object_tt_ids[] = $new_object_term->term_taxonomy_id;
 
 			// actually delete any conflicting terms
-			if( $delete_object_tt_ids = array_intersect( $new_object_tt_ids , $delete_tt_ids ))
+			if( $delete_object_tt_ids = array_intersect( (array) $new_object_tt_ids , (array) $delete_tt_ids ))
 				$this->delete_terms_from_object_id( $post_id , $delete_object_tt_ids );
 		}
 
@@ -543,8 +548,9 @@ class Authority_Posttype {
 
 	function create_authority_record( $primary_term , $alias_terms )
 	{
+
 		// check primary term
-		if( ! term_exists( $primary_term ))
+		if( ! get_term( (int) $primary_term->term_id , $primary_term->taxonomy ))
 			return FALSE;
 
 		// check that there's no prior authority
@@ -589,31 +595,43 @@ class Authority_Posttype {
 		foreach( (array) $object_terms as $k => $v )
 			wp_set_object_terms( $post_id , $v , $k , FALSE );
 
-		$this->enforce_authority_on_corpus( $post_id , -1 );
-
 		return $post_id;
 	}
 
-	// find terms that exist in two named taxonomies, update posts that have the old terms to have the new terms, then delete the old term
-	function migrate_parallel_terms( $old_tax , $new_tax )
+	function create_authority_records_ajax()
 	{
+		// validate the taxonomies
+		if( ! ( is_taxonomy( $_REQUEST['old_tax'] ) && is_taxonomy( $_REQUEST['new_tax'] )))
+			return FALSE;
 
-		/* 
-		@TODO: this needs to create authority records for the terms it migrates to prevent the problem from continuing 
-		*/
+		$result = $this->create_authority_records( 
+			$_REQUEST['old_tax'] , 
+			$_REQUEST['new_tax'] , 
+			( is_numeric( $_REQUEST['posts_per_page'] ) ? (int) $_REQUEST['posts_per_page'] : 5 ) , 
+			( is_numeric( $_REQUEST['paged'] ) ? (int) $_REQUEST['paged'] : 0 )
+		);
 
+		print_r( $result );
+
+		die;
+	}
+
+	// find terms that exist in two named taxonomies, update posts that have the old terms to have the new terms, then delete the old term
+	function create_authority_records( $old_tax , $new_tax , $posts_per_page = 5 , $paged = 0)
+	{
 		global $wpdb;
 
+		// validate the taxonomies
 		if( ! ( is_taxonomy( $old_tax ) && is_taxonomy( $new_tax )))
 			return FALSE;
 
+		// get the new and old terms
 		$new_terms = $wpdb->get_col('SELECT term_id
 			FROM wp_7_term_taxonomy
 			WHERE taxonomy = "'. $new_tax .'"
 			ORDER BY term_id
 			'
 		);
-		
 		$old_terms = $wpdb->get_col('SELECT term_id
 			FROM wp_7_term_taxonomy
 			WHERE taxonomy = "'. $old_tax .'"
@@ -621,19 +639,22 @@ class Authority_Posttype {
 			'
 		);
 
+		// find parallel terms and get just a slice of them
 		$intersection = array_intersect( $new_terms , $old_terms );
+		$total_count = count( (array) $intersection );
+		$intersection = array_slice( $intersection , (int) $paged * (int) $posts_per_page , (int) $posts_per_page );
 
 		foreach( $intersection as $term_id )
 		{
-			echo "<ol>";
-			foreach( (array) get_objects_in_term( $term_id , $old_tax ) as $object_id )
-			{
-				wp_set_object_terms( $object_id , $new_tax , (int) $term_id , FALSE );
-				echo "<li>Updated <a href='". get_edit_post_link( $object_id ) ."'>$object_id</a> with $term_id</li>";
-			}
-			wp_delete_term( (int) $term_id , $old_tax );
-			echo "<li>Deleted $term_id from $old_tax</li></ol>";
+			$old_term = get_term( (int) $term_id , $old_tax );
+			$new_term = get_term( (int) $term_id , $new_tax );
+
+			$post_ids[] = $post_id = $this->create_authority_record( $new_term , array( $old_term ));
+
+			$this->enforce_authority_on_corpus( $post_id , -1 );
 		}
+
+		return( (object) array( 'post_ids' => $post_ids , 'total_count' => $total_count ,'processed_count' => ( 1 + $paged ) * $posts_per_page , 'next_paged' => ( count( $post_ids ) == $posts_per_page ? 1 + $paged : FALSE ) ));
 	}
 
 }//end Authority_Posttype class

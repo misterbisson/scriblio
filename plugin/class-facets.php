@@ -260,7 +260,7 @@ class Facets
 				break;
 
 			default :
-				$return = "<ul class='wp-tag-cloud'>\n". join( "\n", $a ) ."\n</ul>\n";
+				$return = "<ul class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ))) ."\n</ul>\n";
 		}
 
 		return $return;

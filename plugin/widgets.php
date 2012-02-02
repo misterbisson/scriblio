@@ -81,7 +81,7 @@ class Scrib_Facets_Widget extends WP_Widget
 			}
 
 			// and now we wrap it all up for echo later
-			$content = convert_chars( wptexturize( $facets->generate_tag_cloud( $facet_list , $display_options )));
+			$content = $facets->generate_tag_cloud( $facet_list , $display_options );
 		}
 		else
 		{

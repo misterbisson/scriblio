@@ -12,7 +12,7 @@ class Authority_Posttype {
 		add_filter( 'template_redirect', array( $this, 'template_redirect' ) , 1 );
 		add_action( 'wp_ajax_scrib_enforce_authority', array( $this, 'enforce_authority_on_corpus_ajax' ));
 		add_action( 'wp_ajax_scrib_create_authority_records', array( $this, 'create_authority_records_ajax' ));
-		add_action( 'save_post', array( $this , 'save_post_meta' ));
+		add_action( 'save_post', array( $this , 'save_post' ));
 		add_action( 'save_post', array( $this , 'enforce_authority_on_object' ) , 9 );
 	}
 
@@ -184,7 +184,54 @@ class Authority_Posttype {
 		return $this->instance;
 	}
 
-	function save_post_meta( $post_id )
+	function update_post_meta( $post_id , $meta )
+	{
+		// the terms we'll set on this object
+		$object_terms = array();
+
+		// primary (authoritative) taxonomy term
+		if( isset( $meta['primary_term']->taxonomy->term_id ))
+		{
+			$object_terms[ $meta['primary_term']->taxonomy ][] = (int) $meta['primary_term']->taxonomy->term_id;
+
+			// clear the authority cache for this term
+			$this->delete_term_authority_cache( $meta['primary_term'] );
+
+			// updating the post title is a pain in the ass, just look at what happens when we try to save it
+			$post = get_post( $post_id );
+			$post->post_title = $meta['primary_term']->name;
+			if( ! preg_match( '/^'. $meta['primary_term']->slug .'/', $post->post_name ))
+				$post->post_name = $meta['primary_term']->slug;
+
+			// remove the action before attempting to save the post, then reinstate it
+			remove_action( 'save_post', array( $this , 'save_post_meta' ));
+			wp_insert_post( $post );
+			add_action( 'save_post', array( $this , 'save_post_meta' ));
+		}
+
+		// alias terms
+		foreach( (array) $meta['alias_terms'] as $term )
+		{
+				// don't insert the primary term as an alias, that's just silly
+				if( $term->term_taxonomy_id == $instance['primary_term']->term_taxonomy_id )
+					continue;
+
+				$object_terms[ $term->taxonomy ][] = (int) $term->term_id;
+				$this->delete_term_authority_cache( $term );
+		}
+
+//print_r( $meta );
+//die;
+
+		// save it
+		update_post_meta( $post_id , $this->post_meta_key , $meta );
+
+		// update the term relationships for this post (add the primary and alias terms)
+		foreach( (array) $object_terms as $k => $v )
+			wp_set_object_terms( $post_id , $v , $k , FALSE );
+	}
+
+	function save_post( $post_id )
 	{
 		// check that this isn't an autosave
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
@@ -204,8 +251,6 @@ class Authority_Posttype {
 		// process the new data
 		$new_instance = stripslashes_deep( $_POST[ $this->id_base ] );
 
-		$object_terms = array();
-
 		// primary (authoritative) taxonomy term
 		$primary_term = get_term_by( 'slug' , $new_instance['primary_termname'] , $new_instance['primary_tax'] );
 		if( isset( $primary_term->term_taxonomy_id ))
@@ -214,33 +259,19 @@ class Authority_Posttype {
 			$instance['primary_tax'] = $primary_term->taxonomy;
 			$instance['primary_termname'] = $primary_term->name;
 
-			$object_terms[ $primary_term->taxonomy ][] = (int) $primary_term->term_id;
-
 			// clear the authority cache for this term
 			$this->delete_term_authority_cache( $primary_term );
-
-			// updating the post title is a pain in the ass, just look at what happens when we try to save it
-			$post = get_post( $post_id );
-			$post->post_title = $primary_term->name;
-			if( ! preg_match( '/^'. $primary_term->slug .'/', $post->post_name ))
-				$post->post_name = $primary_term->slug;
-
-			// remove the action before attempting to save the post, then reinstate it
-			remove_action( 'save_post', array( $this , 'save_post_meta' ));
-			wp_insert_post( $post );
-			add_action( 'save_post', array( $this , 'save_post_meta' ));
 		}
 
 		// alias terms
 		$instance['alias_terms'] = array();
 		foreach( (array) $this->parse_terms_from_string( $new_instance['alias_terms'] ) as $term )
 		{
-				// don't insert the primary term as an alias, that's just silly
+				// it's totally not cool to insert the primary term as an alias
 				if( $term->term_taxonomy_id == $instance['primary_term']->term_taxonomy_id )
 					continue;
 
 				$instance['alias_terms'][] = $term;
-				$object_terms[ $term->taxonomy ][] = (int) $term->term_id;
 				$this->delete_term_authority_cache( $term );
 		}
 
@@ -266,16 +297,8 @@ class Authority_Posttype {
 				$instance['child_terms'][] = $term;
 		}
 
-//print_r( $instance );
-//$this->migrate_alias_terms( $instance['alias_terms'] , $instance['primary_term'] );
-//die;
-
 		// save it
-		update_post_meta( $post_id , $this->post_meta_key , $instance );
-
-		// update the term relationships for this post (add the primary and alias terms)
-		foreach( (array) $object_terms as $k => $v )
-			wp_set_object_terms( $post_id , $v , $k , FALSE );
+		$this->update_post_meta( $post_id , $instance );
 	}
 
 	function metab_primary_term( $post )
@@ -330,9 +353,9 @@ class Authority_Posttype {
 	function metaboxes()
 	{
 		// add metaboxes
-		add_meta_box( 'scrib-authority-primary' , 'Authoritive Term' , array( $this , 'metab_primary_term' ) , 'scrib-authority' , 'normal', 'high' );
-		add_meta_box( 'scrib-authority-alias' , 'Alias Terms' , array( $this , 'metab_alias_terms' ) , 'scrib-authority' , 'normal', 'high' );
-		add_meta_box( 'scrib-authority-family' , 'Family Terms' , array( $this , 'metab_family_terms' ) , 'scrib-authority' , 'normal', 'high' );
+		add_meta_box( 'scrib-authority-primary' , 'Authoritive Term' , array( $this , 'metab_primary_term' ) , $this->post_type_name , 'normal', 'high' );
+		add_meta_box( 'scrib-authority-alias' , 'Alias Terms' , array( $this , 'metab_alias_terms' ) , $this->post_type_name , 'normal', 'high' );
+		add_meta_box( 'scrib-authority-family' , 'Family Terms' , array( $this , 'metab_family_terms' ) , $this->post_type_name , 'normal', 'high' );
 		// @TODO: need metaboxes for links and arbitrary values (ticker symbol, etc)
 
 		// remove the taxonomy metaboxes so we don't get confused
@@ -576,7 +599,6 @@ class Authority_Posttype {
 		$instance['primary_term'] = $primary_term;
 		$instance['primary_tax'] = $primary_term->taxonomy;
 		$instance['primary_termname'] = $primary_term->name;
-		$object_terms[ $term->taxonomy ][] = (int) $term->term_id;
 
 		// create the meta for the alias terms
 		foreach( $alias_terms as $term )
@@ -586,15 +608,10 @@ class Authority_Posttype {
 				continue;
 
 			$instance['alias_terms'][] = $term;
-			$object_terms[ $term->taxonomy ][] = (int) $term->term_id;
 		}
 
 		// save it
-		update_post_meta( $post_id , $this->post_meta_key , $instance );
-
-		// update the term relationships for this post (add the primary and alias terms)
-		foreach( (array) $object_terms as $k => $v )
-			wp_set_object_terms( $post_id , $v , $k , FALSE );
+		$this->update_post_meta( $post_id , $instance );
 
 		return $post_id;
 	}

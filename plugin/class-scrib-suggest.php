@@ -45,10 +45,18 @@ class Scrib_Suggest
 	// output suggestions
 	function the_suggestions()
 	{
-		$suggestion = $this->get_suggestions( $_REQUEST['q'] , $_GET['tax'] );
+		$suggestion = $this->get_suggestions( (string) $_REQUEST['q'] , (string) $_REQUEST['tax'] );
 
-		@header('Content-Type: text/html; charset=' . get_option('blog_charset'));
-		echo implode( (array) $suggestion , "\n" );
+		if( 'json' == $_REQUEST['output'] )
+		{
+			header('Content-type: text/javascript');
+			echo json_encode( (array) $suggestion['array'] );
+		}
+		else
+		{
+			@header('Content-Type: text/html; charset=' . get_option('blog_charset'));
+			echo implode( (array) $suggestion['string'] , "\n" );
+		}
 
 		die;
 	}
@@ -63,7 +71,7 @@ class Scrib_Suggest
 			return FALSE; // require 2 chars for matching
 
 		// identify which taxonomies we're searching
-		if ( isset( $taxonomy ))
+		if( ! empty( $taxonomy ))
 		{
 			if( is_string( $taxonomy ))
 				$taxonomy = explode( ',' , $_GET['tax'] );
@@ -84,6 +92,7 @@ class Scrib_Suggest
 		{
 			global $wpdb , $facets;
 
+			// get the matching terms
 			$terms = $wpdb->get_results( "
 				SELECT t.term_id , t.name , tt.taxonomy , tt.count , ( ( 100 - t.len ) * tt.count ) AS hits
 				FROM
@@ -112,16 +121,23 @@ class Scrib_Suggest
 			", sanitize_title( $s ) .'%' ));
 
 			// init the result vars
-			$searchfor = $suggestion = $beginswith = array();
+			$searchfor = $searchforj = $suggestion = $suggestionj = $beginswith = $beginswithj = array();
 
 			// create a default suggestion to do a keyword search for the term
 			$searchfor[] = 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"';
+			$searchforj[] = array(
+				'type' => 'search',
+				'term' => esc_html( $s ),
+				'url' => get_search_link( $s ),
+				'display' => 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"',
+			);
+
 
 			// create suggestions for the matched taxonomies
 			$template = '<span class="taxonomy_name">%%taxonomy%%</span> <a href="%%link%%" title="%%link_title%%">%%term%%</a>';
 			foreach( (array) $terms as $term )
 			{
-				$suggestion[] = str_replace( 
+				$temp = str_replace( 
 					array( '%%term%%','%%taxonomy%%','%%link%%','%%link_title%%') , 
 					array( 
 						$term->name , 
@@ -132,17 +148,37 @@ class Scrib_Suggest
 					$template 
 				);
 
+				$suggestion[] = $temp;
+				$suggestionj[] = array(
+					'type' => 'term',
+					'term' => $term->name,
+					'taxonomy' => $term->taxonomy,
+					'count' => $term->count,
+					'url' => $facets->permalink( $facets->_tax_to_facet[ $term->taxonomy ] , get_term( $term->term_id , $term->taxonomy ) ),
+					'display' => $temp,
+				);
+
 			}
 
 			// create suggestions for each matched post
 			foreach( (array) $posts as $post )
 			{
-				$beginswith[] = 'Go to: <a href="'. get_permalink( $post->ID ) .'">'. attribute_escape( get_the_title( $post->ID )) .'</a>';
+				$temp = 'Go to: <a href="'. get_permalink( $post->ID ) .'">'. attribute_escape( get_the_title( $post->ID )) .'</a>';
+
+				$beginswith[] = $temp;
+				$beginswithj[] = array(
+					'type' => 'post',
+					'term' => get_the_title( $post->ID ),
+					'url' => get_permalink( $post->ID ),
+					'display' => $temp,
+				);
 			}
 
-
-			$suggestion = array_merge( $searchfor , array_slice( $suggestion, 0, 10 ) , array_slice( $beginswith , 0, 10 ));
-//			wp_cache_set( $cachekey , $suggestion , 'scrib_suggest' , 126000 );
+			$suggestion = array( 
+				'array' => array_merge( $searchforj , array_slice( $suggestionj, 0, 10 ) , array_slice( $beginswithj , 0, 10 )) ,
+				'string' => array_merge( $searchfor , array_slice( $suggestion, 0, 10 ) , array_slice( $beginswith , 0, 10 )) ,
+			);
+			wp_cache_set( $cachekey , $suggestion , 'scrib_suggest' , 12600 );
 		}
 
 		return $suggestion;

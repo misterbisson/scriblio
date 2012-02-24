@@ -63,7 +63,7 @@ class Scrib_Suggest
 
 
 	// generate suggestions
-	function get_suggestions( $s = '' , $taxonomy = array() )
+	function get_suggestions( $s = '' , $_taxonomy = array() )
 	{
 		// get and validate the search string
 		$s = trim( $s );
@@ -71,12 +71,14 @@ class Scrib_Suggest
 			return FALSE; // require 2 chars for matching
 
 		// identify which taxonomies we're searching
-		if( ! empty( $taxonomy ))
+		if( ! empty( $_taxonomy ))
 		{
-			if( is_string( $taxonomy ))
-				$taxonomy = explode( ',' , $_GET['tax'] );
+			if( is_string( $_taxonomy ))
+				$taxonomy = explode( ',' , $_taxonomy );
+			else
+				$taxonomy = $_taxonomy;
 
-			$taxonomy = array_filter( array_map( 'taxonomy_exists' , array_map( 'trim', $taxonomy )));
+			$taxonomy = array_filter( array_map( 'trim', $taxonomy ) , 'taxonomy_exists' );
 		}
 		else
 		{
@@ -85,12 +87,15 @@ class Scrib_Suggest
 		}
 
 		// generate a key we can use to cache these results
-		$cachekey = md5( $s . implode( $taxonomy ));
+		$cachekey = md5( $s . implode( $taxonomy ) . (int) empty( $_taxonomy ) );
 
 		// get results from the cache or generate them fresh if necessary
 		if( ! $suggestion = wp_cache_get( $cachekey , 'scrib_suggest' ))
 		{
 			global $wpdb , $facets;
+
+			// init the result vars
+			$searchfor = $searchforj = $suggestion = $suggestionj = $beginswith = $beginswithj = array();
 
 			// get the matching terms
 			$terms = $wpdb->get_results( "
@@ -109,29 +114,6 @@ class Scrib_Suggest
 				ORDER BY hits DESC
 				LIMIT 25;
 			");
-
-			// get post titles beginning with the search term
-			$posts = $wpdb->get_results( $wpdb->prepare( "SELECT ID
-				FROM $wpdb->posts
-				WHERE 1=1
-				AND post_name LIKE %s
-				AND post_status = 'publish'
-				ORDER BY post_title ASC
-				LIMIT 25;
-			", sanitize_title( $s ) .'%' ));
-
-			// init the result vars
-			$searchfor = $searchforj = $suggestion = $suggestionj = $beginswith = $beginswithj = array();
-
-			// create a default suggestion to do a keyword search for the term
-			$searchfor[] = 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"';
-			$searchforj[] = array(
-				'type' => 'search',
-				'term' => esc_html( $s ),
-				'url' => get_search_link( $s ),
-				'display' => 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"',
-			);
-
 
 			// create suggestions for the matched taxonomies
 			$template = '<span class="taxonomy_name">%%taxonomy%%</span> <a href="%%link%%" title="%%link_title%%">%%term%%</a>';
@@ -160,18 +142,41 @@ class Scrib_Suggest
 
 			}
 
-			// create suggestions for each matched post
-			foreach( (array) $posts as $post )
+			// only do the other suggestions if we haven't specified taxonomies to search
+			if( empty( $_taxonomy ))
 			{
-				$temp = 'Go to: <a href="'. get_permalink( $post->ID ) .'">'. attribute_escape( get_the_title( $post->ID )) .'</a>';
-
-				$beginswith[] = $temp;
-				$beginswithj[] = array(
-					'type' => 'post',
-					'term' => get_the_title( $post->ID ),
-					'url' => get_permalink( $post->ID ),
-					'display' => $temp,
+				// create a default suggestion to do a keyword search for the term
+				$searchfor[] = 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"';
+				$searchforj[] = array(
+					'type' => 'search',
+					'term' => esc_html( $s ),
+					'url' => get_search_link( $s ),
+					'display' => 'Search for "<a href="'. get_search_link( $s ) .'">'. esc_html( $s ) .'</a>"',
 				);
+	
+				// get post titles beginning with the search term
+				$posts = $wpdb->get_results( $wpdb->prepare( "SELECT ID
+					FROM $wpdb->posts
+					WHERE 1=1
+					AND post_name LIKE %s
+					AND post_status = 'publish'
+					ORDER BY post_title ASC
+					LIMIT 25;
+				", sanitize_title( $s ) .'%' ));
+
+				// create suggestions for each matched post
+				foreach( (array) $posts as $post )
+				{
+					$temp = 'Go to: <a href="'. get_permalink( $post->ID ) .'">'. attribute_escape( get_the_title( $post->ID )) .'</a>';
+	
+					$beginswith[] = $temp;
+					$beginswithj[] = array(
+						'type' => 'post',
+						'term' => get_the_title( $post->ID ),
+						'url' => get_permalink( $post->ID ),
+						'display' => $temp,
+					);
+				}
 			}
 
 			$suggestion = array( 

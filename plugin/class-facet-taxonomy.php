@@ -194,4 +194,19 @@ class Facet_Taxonomy implements Facet
 			return $termlink;
 		}
 	}
+
+
+	// WP sometimes fails to update this count during regular operations, so this fixes that
+	// it's not actually called anywhere, though
+	function _update_term_counts()
+	{
+		$wpdb->get_results('
+			UPDATE '. $wpdb->term_taxonomy .' tt
+			SET tt.count = (
+				SELECT COUNT(*)
+				FROM '. $wpdb->term_relationships .' tr
+				WHERE tr.term_taxonomy_id = tt.term_taxonomy_id
+			)'
+		);
+	}
 }

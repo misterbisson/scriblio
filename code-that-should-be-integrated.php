@@ -1,16 +1,5 @@
 <?php
 
-// update the term taxonomy counts
-// WP sometimes fails to update this count during regular operations, so this fixes that
-$wpdb->get_results('
-	UPDATE '. $wpdb->term_taxonomy .' tt
-	SET tt.count = (
-		SELECT COUNT(*)
-		FROM '. $wpdb->term_relationships .' tr
-		WHERE tr.term_taxonomy_id = tt.term_taxonomy_id
-	)'
-);
-
 
 /*
 this code was added in Scriblio 2.9 r1 to support user-specified sort ordering, but never fully implemented

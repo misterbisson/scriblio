@@ -46,26 +46,14 @@ class Facet_Post_Author implements Facet
 		$this->label = $this->_post_to_label[ $name ];
 		$this->labels = $this->facets->build_labels( __('author') , __('authors') );
 		$this->query_var = $this->_post_to_queryvar[ $name ];
-
-		add_action( 'init' , array( $this , 'update_permastructs' ) , 10 );
-	}
-
-	function update_permastructs()
-	{
-		global $wp_rewrite;
-		$this->_permastructs['post_author'] = $wp_rewrite->get_author_permastruct();
 	}
 
 	function register_query_var()
 	{
-		global $wp;
-
 		if ( TRUE === $this->query_var )
 			$this->query_var = $this->name;
 
-		// @ TODO: check to see if the query var is registered before adding it again
 		$this->query_var = sanitize_title_with_dashes( $this->query_var );
-		$wp->add_query_var( $this->query_var );
 
 		return $this->query_var;
 	}

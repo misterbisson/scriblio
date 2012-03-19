@@ -56,7 +56,7 @@ class Facet_Taxonomy implements Facet
 		if( isset( $this->terms_in_corpus ))
 			return $this->terms_in_corpus;
 
-		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus' , 'scrib-facet-taxonomy' ))
+		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus-'. $this->taxonomy , 'scrib-facet-taxonomy' ))
 		{
 			$terms = get_terms( $this->taxonomy , array( 'number' => 1000 , 'orderby' => 'count' , 'order' => 'DESC' ));
 	
@@ -74,7 +74,7 @@ class Facet_Taxonomy implements Facet
 				);
 			}
 
-			wp_cache_set( 'terms-in-corpus', $this->terms_in_corpus, 'scrib-facet-taxonomy', $this->ttl );
+			wp_cache_set( 'terms-in-corpus-'. $this->taxonomy , $this->terms_in_corpus, 'scrib-facet-taxonomy', $this->ttl );
 		}
 
 		return $this->terms_in_corpus;

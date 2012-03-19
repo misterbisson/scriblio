@@ -35,6 +35,8 @@ class Facet_Post_Author implements Facet
 		'post_mime_type' => FALSE,
 	);
 
+	var $ttl = 600; // 10 minutes
+
 	function __construct( $name , $args , $facets_object )
 	{
 		$this->name = $name; // name should be exactly the name of the post field
@@ -93,25 +95,31 @@ class Facet_Post_Author implements Facet
 		if( isset( $this->terms_in_corpus ))
 			return $this->terms_in_corpus;
 
-		global $wpdb;
-
-		$terms = $wpdb->get_results('SELECT post_author , COUNT(*) AS hits FROM '. $wpdb->posts .' WHERE post_status = "publish" GROUP BY post_author LIMIT 1000' );
-
-		$this->terms_in_corpus = array();
-		foreach( $terms as $term )
+		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus' , 'scrib-facet-post-author' ))
 		{
-			$userdata = get_userdata( $term->post_author );
-			if( empty( $userdata->display_name ))
-				continue;
+	
+			global $wpdb;
+	
+			$terms = $wpdb->get_results('SELECT post_author , COUNT(*) AS hits FROM '. $wpdb->posts .' WHERE post_status = "publish" GROUP BY post_author LIMIT 1000' );
+	
+			$this->terms_in_corpus = array();
+			foreach( $terms as $term )
+			{
+				$userdata = get_userdata( $term->post_author );
+				if( empty( $userdata->display_name ))
+					continue;
+	
+				$this->terms_in_corpus[] = (object) array(
+					'facet' => $this->name,
+					'slug' => $userdata->user_nicename,
+					'name' => $userdata->display_name,
+					'description' => $userdata->user_description,
+					'term_id' => $term->post_author,
+					'count' => $term->hits,
+				);
+			}
 
-			$this->terms_in_corpus[] = (object) array(
-				'facet' => $this->name,
-				'slug' => $userdata->user_nicename,
-				'name' => $userdata->display_name,
-				'description' => $userdata->user_description,
-				'term_id' => $term->post_author,
-				'count' => $term->hits,
-			);
+			wp_cache_set( 'terms-in-corpus', $this->terms_in_corpus, 'scrib-facet-post-author', $this->ttl );
 		}
 
 		return $this->terms_in_corpus;
@@ -124,25 +132,33 @@ class Facet_Post_Author implements Facet
 
 		$matching_post_ids = $this->facets->get_matching_post_ids();
 
-		global $wpdb;
+		$cache_key = md5( serialize( $matching_post_ids ));
 
-		$terms = $wpdb->get_results('SELECT post_author , COUNT(*) AS hits FROM '. $wpdb->posts .' WHERE ID IN ('. implode( ',' , $matching_post_ids ) .') GROUP BY post_author LIMIT 1000' );
-
-		$this->terms_in_found_set = array();
-		foreach( $terms as $term )
+		if( ! $this->terms_in_found_set = wp_cache_get( $cache_key , 'scrib-facet-post-author' ))
 		{
-			$userdata = get_userdata( $term->post_author );
-			if( empty( $userdata->display_name ))
-				continue;
 
-			$this->terms_in_found_set[] = (object) array(
-				'facet' => $this->name,
-				'slug' => $userdata->user_nicename,
-				'name' => $userdata->display_name,
-				'description' => $userdata->user_description,
-				'term_id' => $term->post_author,
-				'count' => $term->hits,
-			);
+			global $wpdb;
+
+			$terms = $wpdb->get_results('SELECT post_author , COUNT(*) AS hits FROM '. $wpdb->posts .' WHERE ID IN ('. implode( ',' , $matching_post_ids ) .') GROUP BY post_author LIMIT 1000' );
+
+			$this->terms_in_found_set = array();
+			foreach( $terms as $term )
+			{
+				$userdata = get_userdata( $term->post_author );
+				if( empty( $userdata->display_name ))
+					continue;
+	
+				$this->terms_in_found_set[] = (object) array(
+					'facet' => $this->name,
+					'slug' => $userdata->user_nicename,
+					'name' => $userdata->display_name,
+					'description' => $userdata->user_description,
+					'term_id' => $term->post_author,
+					'count' => $term->hits,
+				);
+			}
+
+			wp_cache_set( $cache_key, $this->terms_in_found_set , 'scrib-facet-post-author', $this->ttl );
 		}
 
 		return $this->terms_in_found_set;

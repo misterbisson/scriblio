@@ -2,6 +2,9 @@
 
 class Facet_Taxonomy implements Facet
 {
+
+	var $ttl = 600; // 10 minutes
+
 	function __construct( $name , $args , $facets_object )
 	{
 		$this->name = $name;
@@ -53,20 +56,25 @@ class Facet_Taxonomy implements Facet
 		if( isset( $this->terms_in_corpus ))
 			return $this->terms_in_corpus;
 
-		$terms = get_terms( $this->taxonomy , array( 'number' => 1000 , 'orderby' => 'count' , 'order' => 'DESC' ));
-
-		$this->terms_in_corpus = array();
-		foreach( $terms as $term )
+		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus' , 'scrib-facet-taxonomy' ))
 		{
-			$this->terms_in_corpus[] = (object) array(
-				'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
-				'slug' => $term->slug,
-				'name' => $term->name,
-				'description' => $term->description,
-				'term_id' => $term->term_id,
-				'term_taxonomy_id' => $term->term_taxonomy_id,
-				'count' => $term->count,
-			);
+			$terms = get_terms( $this->taxonomy , array( 'number' => 1000 , 'orderby' => 'count' , 'order' => 'DESC' ));
+	
+			$this->terms_in_corpus = array();
+			foreach( $terms as $term )
+			{
+				$this->terms_in_corpus[] = (object) array(
+					'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
+					'slug' => $term->slug,
+					'name' => $term->name,
+					'description' => $term->description,
+					'term_id' => $term->term_id,
+					'term_taxonomy_id' => $term->term_taxonomy_id,
+					'count' => $term->count,
+				);
+			}
+
+			wp_cache_set( 'terms-in-corpus', $this->terms_in_corpus, 'scrib-facet-taxonomy', $this->ttl );
 		}
 
 		return $this->terms_in_corpus;
@@ -77,31 +85,38 @@ class Facet_Taxonomy implements Facet
 		if( is_array( $this->facets->_matching_tax_facets[ $this->name ] ))
 			return $this->facets->_matching_tax_facets[ $this->name ];
 
-		global $wpdb;
-
 		$matching_post_ids = $this->facets->get_matching_post_ids();
 
-		$facets_query = "SELECT b.term_id, c.term_taxonomy_id, b.slug, b.name, a.taxonomy, a.description, COUNT(c.term_taxonomy_id) AS `count`
-			FROM $wpdb->term_relationships c
-			INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
-			INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
-			WHERE c.object_id IN (". implode( ',' , $matching_post_ids ) .")
-			GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000";
+		$cache_key = md5( serialize( $matching_post_ids ));
 
-		$terms = $wpdb->get_results( $facets_query );
-		$this->facets->_matching_tax_facets = array();
-		foreach( $terms as $term )
+		if( ! $this->facets->_matching_tax_facets = wp_cache_get( $cache_key , 'scrib-facet-taxonomy' ))
 		{
+			global $wpdb;
 
-			$this->facets->_matching_tax_facets[ $this->facets->_tax_to_facet[ $term->taxonomy ]][] = (object) array(
-				'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
-				'slug' => $term->slug,
-				'name' => $term->name,
-				'count' => $term->count,
-				'description' => $term->description,
-				'term_id' => $term->term_id,
-				'term_taxonomy_id' => $term->term_taxonomy_id,
-			);
+			$facets_query = "SELECT b.term_id, c.term_taxonomy_id, b.slug, b.name, a.taxonomy, a.description, COUNT(c.term_taxonomy_id) AS `count`
+				FROM $wpdb->term_relationships c
+				INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
+				INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
+				WHERE c.object_id IN (". implode( ',' , $matching_post_ids ) .")
+				GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000";
+	
+			$terms = $wpdb->get_results( $facets_query );
+			$this->facets->_matching_tax_facets = array();
+			foreach( $terms as $term )
+			{
+	
+				$this->facets->_matching_tax_facets[ $this->facets->_tax_to_facet[ $term->taxonomy ]][] = (object) array(
+					'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
+					'slug' => $term->slug,
+					'name' => $term->name,
+					'count' => $term->count,
+					'description' => $term->description,
+					'term_id' => $term->term_id,
+					'term_taxonomy_id' => $term->term_taxonomy_id,
+				);
+			}
+
+			wp_cache_set( $cache_key, $this->facets->_matching_tax_facets , 'scrib-facet-taxonomy', $this->ttl );
 		}
 
 		return $this->facets->_matching_tax_facets[ $this->name ];

@@ -5,6 +5,7 @@ class Facets
 	var $_all_facets = array();
 	var $_query_vars = array();
 	var $_foundpostslimit = 1000;
+	var $ttl = 600; // 10 minutes
 
 	function __construct()
 	{
@@ -104,9 +105,17 @@ class Facets
 		if( is_array( $this->matching_post_ids ))
 			return $this->matching_post_ids;
 
-		global $wpdb;
+		$cache_key = md5( $this->matching_post_ids_sql );
 
-		$this->matching_post_ids = $wpdb->get_col( $this->matching_post_ids_sql );
+		if( ! $this->matching_post_ids = wp_cache_get( $cache_key , 'scrib-matching-post-ids' ))
+		{
+			global $wpdb;
+	
+			$this->matching_post_ids = $wpdb->get_col( $this->matching_post_ids_sql );
+
+			wp_cache_set( $cache_key , $this->matching_post_ids , 'scrib-matching-post-ids' , $this->ttl );
+		}
+
 		return $this->matching_post_ids;
 	}
 

@@ -15,6 +15,7 @@ class Facets
 
 		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
 		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ));
+		add_shortcode( 'facets' , array( $this, 'shortcode_facets' ));
 	}
 
 	function init()
@@ -132,6 +133,46 @@ class Facets
 		return( number_format( $this->count_found_posts, 0, _c('.|decimal separator'), _c(',|thousands separator') ));
 
 	}
+
+	function shortcode_facets( $arg )
+	{
+		// [facets ]
+
+		$arg = shortcode_atts( array(
+			'facet' => FALSE,
+			'font_small' => 1,
+			'font_large' => 1,
+			'number' => 25,
+			'name' => 'name',
+			'orderby' => 'name',
+			'order' => 'ASC',
+		), $arg );
+
+		if( ! is_object( $this->facets->{$arg['facet']} ))
+			return '';
+
+		$orderby = ( in_array( $arg['orderby'], array( 'count', 'name', 'custom' )) ? $arg['orderby'] : 'name' );
+		$order = ( in_array( $arg['order'], array( 'ASC', 'DESC' )) ? $arg['order'] : 'ASC' );
+
+		// configure how it's displayed
+		$display_options = array(
+			'format' => 'list', 
+			'smallest' => floatval( $arg['format_font_small'] ) ? floatval( $arg['format_font_small'] ) : 1, 
+			'largest' => floatval( $arg['format_font_large'] ) ? floatval( $arg['format_font_large'] ) : 1,
+			'number' => absint( $arg['number'] ) ? absint( $arg['number'] ) : 25,
+			'unit' => 'em',
+			'name' => ( in_array( $arg['name'], array( 'name', 'description' )) ? $arg['name'] : 'name' ),
+			'orderby' => $orderby,
+			'order' => $order,
+			'order_custom' => $arg['order_custom'],
+		);
+
+		$facet_list = $this->facets->{$arg['facet']}->get_terms_in_corpus();
+
+		// and now we wrap it all up for echo later
+		return $this->generate_tag_cloud( $facet_list , $display_options );
+	}
+
 
 	function get_queryterms( $facet , $term , $additive = -1 )
 	{

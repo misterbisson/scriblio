@@ -45,6 +45,7 @@ class Scrib_Facets_Widget extends WP_Widget
 				'smallest' => floatval( $instance['format_font_small'] ), 
 				'largest' => floatval( $instance['format_font_large'] ),
 				'unit' => 'em',
+				'number' => $instance['number'],
 				'orderby' => $orderby,
 				'order' => $order,
 				'order_custom' => $instance['order_custom'],
@@ -131,7 +132,7 @@ class Scrib_Facets_Widget extends WP_Widget
 		$instance['format'] = in_array( $new_instance['format'], array( 'list', 'cloud' )) ? $new_instance['format']: '';
 		$instance['format_font_small'] = floatval( '1' );
 		$instance['format_font_large'] = floatval( '2.25' );
-		$instance['count'] = absint( $new_instance['count'] );
+		$instance['number'] = absint( $new_instance['number'] );
 		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name', 'custom' )) ? $new_instance['orderby']: '';
 		$instance['order'] = ( 'count' == $instance['orderby'] ? 'DESC' : 'ASC' );
 
@@ -146,7 +147,7 @@ class Scrib_Facets_Widget extends WP_Widget
 				'title' => '', 
 				'facet' => FALSE,
 				'format' => 'cloud',
-				'count' => 25,
+				'number' => 25,
 				'orderby' => 'name',
 			)
 		);
@@ -172,7 +173,7 @@ class Scrib_Facets_Widget extends WP_Widget
 		</p>
 
 		<p>
-			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e('Number of terms to show:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('count'); ?>" name="<?php echo $this->get_field_name('count'); ?>" type="text" value="<?php echo absint( $instance['count'] ); ?>" />
+			<label for="<?php echo $this->get_field_id('number'); ?>"><?php _e('Number of terms to show:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('number'); ?>" name="<?php echo $this->get_field_name('number'); ?>" type="text" value="<?php echo absint( $instance['number'] ); ?>" />
 		</p>
 
 		<p>
@@ -290,3 +291,11 @@ function scrib_widgets_init()
 	register_widget( 'Scrib_Searcheditor_Widget' );
 }
 add_action( 'widgets_init' , 'scrib_widgets_init' , 1 );
+
+if( ! function_exists( 'is_wijax' ))
+{
+	function is_wijax()
+	{
+		return FALSE;
+	}
+}

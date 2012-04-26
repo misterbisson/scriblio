@@ -1,0 +1,20 @@
+ul.scrib_suggest_results {
+	display: none;
+	position: absolute;
+/*	height: 15em; */
+	width: 23em;
+	padding: 0.5em;
+	background: #fff;
+	border: 1px solid #ddd;
+/*	font-size: 0.7em; */
+	font-variant: normal;
+	text-align: left;
+	letter-spacing: 0;
+	color: #444;
+	overflow: auto;
+	z-index: 100
+}
+ul.scrib_suggest_results a {
+	color: blue;
+	text-decoration: underline;
+}

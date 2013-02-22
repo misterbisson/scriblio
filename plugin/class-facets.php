@@ -2,6 +2,7 @@
 
 class Facets
 {
+	public $facets;
 	var $_all_facets = array();
 	var $_query_vars = array();
 	var $_foundpostslimit = 1000;
@@ -16,6 +17,9 @@ class Facets
 		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
 		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ));
 		add_shortcode( 'facets' , array( $this, 'shortcode_facets' ));
+
+		// initialize a standard object to collect facet data
+		$this->facets = new stdClass;
 	}
 
 	function init()

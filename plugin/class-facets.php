@@ -298,7 +298,7 @@ class Facets
 		foreach ( $counts as $tag => $count )
 		{
 			$a[] = '<a href="'. $this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , 1 ) .'" class="tag-link'. ( $this->facets->{$tag_info[ $tag ]->facet}->selected( $tag_info[ $tag ] ) ? ' selected' : '' ) .
-				'" title="'. attribute_escape( sprintf( __('%d topics') , $count )) .'"'.
+				'" title="'. esc_attr( sprintf( __('%d topics') , $count )) .'"'.
 				( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ) .
 				'>'. wp_specialchars( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ) .'</a>' ;
 		}
@@ -341,14 +341,14 @@ class Facets
 				{
 					// build the query that excludes this search term
 					$exclude_url = $this->permalink( $facet , $term , 0 );
-					$exclude_link = '[<a href="'. $exclude_url .'" title="Retry this search without this term">x</a>]';
+					$exclude_link = '<span class="close"><span class="close-wrapper">[</span><a href="'. $exclude_url .'" title="Retry this search without this term">x</a><span class="close-wrapper">]</span></span>';
 
 					// build a query for this search term alone
 					$solo_url = $this->permalink( $facet , $term );
-					$solo_link = '<a href="'. $solo_url .'" title="Search only this term">'. convert_chars( wptexturize( $term->name )) .'</a>';
+					$solo_link = '<a href="'. $solo_url .'" class="term" title="Search only this term">'. convert_chars( wptexturize( $term->name )) .'</a>';
 
 					// put it all together
-					$return_string .= '<li><label>'. $this->facets->$facet->labels->singular_name .'</label>: '. $solo_link . ( ( 1 < $count_of_facets ) ? '&nbsp;'. $exclude_link : '' ) .'</li>';
+					$return_string .= '<li class="facet-container"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . ( ( 1 < $count_of_facets ) ? $exclude_link : '' ) .'</span></li>';
 				}
 			}
 

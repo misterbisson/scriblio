@@ -86,6 +86,12 @@ class Facet_Taxonomy implements Facet
 			return $this->facets->_matching_tax_facets[ $this->name ];
 
 		$matching_post_ids = $this->facets->get_matching_post_ids();
+		
+		// if there aren't any matching post ids, we don't need to query
+		if ( ! $matching_post_ids )
+		{
+			return array();
+		}//end if
 
 		$cache_key = md5( serialize( $matching_post_ids ));
 

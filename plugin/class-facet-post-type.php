@@ -77,7 +77,6 @@ class Facet_Post_Type implements Facet
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
 					'term_id'     => $val,
-					'count'       => $count->publish,
 				);
 			}
 		}
@@ -96,7 +95,7 @@ class Facet_Post_Type implements Facet
 		{
 			global $wpdb;
 	
-			$terms = $wpdb->get_results( 'SELECT post_type , COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY post_type LIMIT 1000' );
+			$terms = $wpdb->get_results( 'SELECT post_type, COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY post_type LIMIT 1000' );
 	
 			$this->terms_in_corpus = array();
 			foreach( $terms as $term )
@@ -108,15 +107,13 @@ class Facet_Post_Type implements Facet
 					continue;
 				}
 
-				$count = wp_count_posts( $term->post_type );
-
 				$this->terms_in_corpus[] = (object) array(
 					'facet'       => $this->name,
 					'slug'        => $term->post_type,
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
 					'term_id'     => $term->post_type,
-					'count'       => $count->publish,
+					'count'       => $terms->hits,
 				);
 			}
 
@@ -153,16 +150,14 @@ class Facet_Post_Type implements Facet
 				{
 					continue;
 				}
-				
-				$count = wp_count_posts( $term->post_type );
-				
+								
 				$this->terms_in_found_set[] = (object) array(
 					'facet'       => $this->name,
 					'slug'        => $term->post_type,
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
 					'term_id'     => $term->post_type,
-					'count'       => $count->publish,
+					'count'       => $terms->hits,
 				);
 			}
 

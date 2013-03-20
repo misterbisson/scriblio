@@ -218,7 +218,8 @@ class Facet_Post_Type implements Facet
 		{
 			return;
 		}
-				
+		
+		// This only works for the first post_type		
 		return get_post_type_archive_link( current( $terms )->term_id );
 	}
 }

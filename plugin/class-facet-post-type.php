@@ -69,13 +69,14 @@ class Facet_Post_Type implements Facet
 		{
 			if( $post_type = get_post_type_object( $val ) )
 			{
-				$this->terms_in_corpus[] = (object) array(
+				$count = wp_count_posts( $term->post_type );
+				
+				$this->selected_terms[] = (object) array(
 					'facet'       => $this->name,
 					'slug'        => $val,
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
 					'term_id'     => $val,
-					'count'       => wp_count_posts( $val ),
 				);
 			}
 		}
@@ -94,7 +95,7 @@ class Facet_Post_Type implements Facet
 		{
 			global $wpdb;
 	
-			$terms = $wpdb->get_results( 'SELECT post_type , COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY post_type LIMIT 1000' );
+			$terms = $wpdb->get_results( 'SELECT post_type, COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY post_type LIMIT 1000' );
 	
 			$this->terms_in_corpus = array();
 			foreach( $terms as $term )
@@ -112,7 +113,7 @@ class Facet_Post_Type implements Facet
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
 					'term_id'     => $term->post_type,
-					'count'       => wp_count_posts( $term->post_type ),
+					'count'       => $terms->hits,
 				);
 			}
 
@@ -149,14 +150,14 @@ class Facet_Post_Type implements Facet
 				{
 					continue;
 				}
-				
+								
 				$this->terms_in_found_set[] = (object) array(
 					'facet'       => $this->name,
 					'slug'        => $term->post_type,
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
 					'term_id'     => $term->post_type,
-					'count'       => wp_count_posts( $term->post_type ),
+					'count'       => $terms->hits,
 				);
 			}
 
@@ -179,6 +180,8 @@ class Facet_Post_Type implements Facet
 		}
 
 		$post_type = get_post_type_object( get_post( $post_id )->post_type );
+		
+		$count = wp_count_posts( $post_type );
 
 		$this->terms_in_post[] = (object) array(
 			'facet'       => $this->name,
@@ -186,7 +189,7 @@ class Facet_Post_Type implements Facet
 			'name'        => $post_type->labels->singular_name,
 			'description' => $post_type->description,
 			'term_id'     => $post_type,
-			'count'       => wp_count_posts( $post_type ),
+			'count'       => $count->publish,
 		);
 
 		return $this->terms_in_post;
@@ -215,7 +218,8 @@ class Facet_Post_Type implements Facet
 		{
 			return;
 		}
-				
+		
+		// This only works for the first post_type		
 		return get_post_type_archive_link( current( $terms )->term_id );
 	}
 }

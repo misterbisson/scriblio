@@ -197,7 +197,7 @@ class Facet_Taxonomy implements Facet
 
 			$termlink = home_url( user_trailingslashit( $termlink , 'category' ));
 
-			return $termlink;
+			return apply_filters( 'scriblio_term_link', $termlink, $terms, $this->taxonomy );
 		}
 	}
 

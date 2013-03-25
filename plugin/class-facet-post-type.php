@@ -68,9 +68,7 @@ class Facet_Post_Type implements Facet
 		foreach( array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|]/' , $query_terms ) ) ) as $val )
 		{
 			if( $post_type = get_post_type_object( $val ) )
-			{
-				$count = wp_count_posts( $term->post_type );
-				
+			{				
 				$this->selected_terms[$post_type->name] = (object) array(
 					'facet'       => $this->name,
 					'slug'        => $post_type->name,

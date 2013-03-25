@@ -71,12 +71,12 @@ class Facet_Post_Type implements Facet
 			{
 				$count = wp_count_posts( $term->post_type );
 				
-				$this->selected_terms[] = (object) array(
+				$this->selected_terms[$post_type->name] = (object) array(
 					'facet'       => $this->name,
-					'slug'        => $val,
+					'slug'        => $post_type->name,
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
-					'term_id'     => $val,
+					'term_id'     => $post_type->name,
 				);
 			}
 		}
@@ -109,11 +109,11 @@ class Facet_Post_Type implements Facet
 
 				$this->terms_in_corpus[] = (object) array(
 					'facet'       => $this->name,
-					'slug'        => $term->post_type,
+					'slug'        => $post_type->name,
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
-					'term_id'     => $term->post_type,
-					'count'       => $terms->hits,
+					'term_id'     => $post_type->name,
+					'count'       => $term->hits,
 				);
 			}
 
@@ -153,11 +153,11 @@ class Facet_Post_Type implements Facet
 								
 				$this->terms_in_found_set[] = (object) array(
 					'facet'       => $this->name,
-					'slug'        => $term->post_type,
+					'slug'        => $post_type->name,
 					'name'        => $post_type->labels->singular_name,
 					'description' => $post_type->description,
-					'term_id'     => $term->post_type,
-					'count'       => $terms->hits,
+					'term_id'     => $post_type->name,
+					'count'       => $term->hits,
 				);
 			}
 
@@ -185,10 +185,10 @@ class Facet_Post_Type implements Facet
 
 		$this->terms_in_post[] = (object) array(
 			'facet'       => $this->name,
-			'slug'        => $post_type,
+			'slug'        => $post_type->name,
 			'name'        => $post_type->labels->singular_name,
 			'description' => $post_type->description,
-			'term_id'     => $post_type,
+			'term_id'     => $post_type->name,
 			'count'       => $count->publish,
 		);
 

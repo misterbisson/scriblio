@@ -204,7 +204,7 @@ class Facets
 
 	function permalink( $facet , $term , $additive = -1 )
 	{
-		$vars = $this->get_queryterms( $facet , $term , $additive );
+		$vars = apply_filters( 'scriblio_permalink_terms', $this->get_queryterms( $facet , $term , $additive ) );
 
 		$count_of_facets = count( (array) $vars );
 

@@ -120,6 +120,12 @@ class Facet_Post_Author implements Facet
 
 		$matching_post_ids = $this->facets->get_matching_post_ids();
 
+		// if there aren't any matching post ids, we don't need to query
+		if ( ! $matching_post_ids )
+		{
+			return array();
+		}//end if
+
 		$cache_key = md5( serialize( $matching_post_ids ));
 
 		if( ! $this->terms_in_found_set = wp_cache_get( $cache_key , 'scrib-facet-post-author' ))

@@ -12,7 +12,7 @@ class Facets
 	{
 		add_action( 'init' , array( $this , 'init' ));
 		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
-		add_filter( 'posts_request',	array( $this, 'posts_request' ), 11 );
+		$this->add_filters();
 
 		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
 		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ));
@@ -82,6 +82,15 @@ class Facets
 //echo "</pre>";
 
 		return $query;
+	}
+
+	/**
+	 * add any filters used by this class. this allows the user to control
+	 * if the filters should be run again after specific WP_Query calls.
+	 */
+	public function add_filters()
+	{
+		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
 	}
 
 	public function posts_request( $query )

@@ -10,7 +10,8 @@ class Facets
 
 	function __construct()
 	{
-		add_action( 'init' , array( $this , 'init' ));
+		// initialize scriblio facets once things have settled (init is too soon for some plugins)
+		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1);
 		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
 		$this->add_filters();
 
@@ -22,7 +23,7 @@ class Facets
 		$this->facets = new stdClass;
 	}
 
-	function init()
+	function wp_loaded()
 	{
 		do_action( 'scrib_register_facets' );
 	}
@@ -41,7 +42,9 @@ class Facets
 
 		// instantiate the facet
 		if( class_exists( $facet_class ))
+		{
 			$this->facets->$facet_name = new $facet_class( $facet_name , $args , $this );
+		}
 		else
 			return FALSE;
 
@@ -306,10 +309,25 @@ class Facets
 		$a = array();
 		foreach ( $counts as $tag => $count )
 		{
-			$a[] = '<a href="'. $this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , 1 ) .'" class="tag-link'. ( $this->facets->{$tag_info[ $tag ]->facet}->selected( $tag_info[ $tag ] ) ? ' selected' : '' ) .
-				'" title="'. esc_attr( sprintf( __('%d topics') , $count )) .'"'.
-				( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ) .
-				'>'. wp_specialchars( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ) .'</a>' ;
+			$is_selected = $this->facets->{$tag_info[ $tag ]->facet}->selected( $tag_info[ $tag ] );
+
+			$data = array(
+				'url'         => $this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
+				'count'       => $count,
+				'selected'    => $is_selected,
+				'title'       => esc_attr( sprintf( __('%d topics') , $count )),
+				'size'        => ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit,
+				'description' => wp_specialchars( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
+			);
+			
+			$data['description'] = apply_filters( 'scriblio_facets_facet_description', $data['description'], $tag_info[ $tag ]->facet );
+
+			$a[] = '
+				<li ' . ( $data['selected'] ? 'class="selected"' : '' ) . '>
+					<a href="'. $data['url'] .'" class="tag-link'. ( $data['selected'] ? ' selected' : '' ) . '" title="'. $data['title'] .'"'.
+					( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . $size .';"' ) .
+					'>' . $data['description'] .' <span class="count">' . number_format( $data['count'] ) . '</span></a>
+				</li>' ;
 		}
 
 		switch( $format )
@@ -319,7 +337,7 @@ class Facets
 				break;
 
 			case 'list' :
-				$return = "<ul class='wp-tag-cloud'>\n\t<li>". join( "</li>\n\t<li>", $a ) ."</li>\n</ul>\n";
+				$return = "<ul class='wp-tag-cloud'>\n\t". join( "\n\t", $a ) ."\n</ul>\n";
 				break;
 
 			default :
@@ -344,20 +362,39 @@ class Facets
 			$facet_priority = array_intersect_key( $this->priority , (array) $this->selected_facets );
 			asort( $facet_priority );
 
+			$current_taxonomy = null;
+
 			foreach( (array) array_keys( $facet_priority ) as $facet )
 			{
 				foreach( $this->selected_facets->$facet as $k => $term )
 				{
+					$facet_classes = array();
+
+					if ( $current_taxonomy != $this->facets->$facet->labels->singular_name )
+					{
+						$current_taxonomy = $this->facets->$facet->labels->singular_name;
+
+						$facet_classes[] = 'first';
+					}//end if
+
 					// build the query that excludes this search term
-					$exclude_url = $this->permalink( $facet , $term , 0 );
+					if ( $count_of_facets > 1 )
+					{
+						$exclude_url = $this->permalink( $facet , $term , 0 );
+					}//end if
+					else
+					{
+						$exclude_url = home_url();
+					}//end else
+
 					$exclude_link = '<span class="close"><span class="close-wrapper">[</span><a href="'. $exclude_url .'" title="Retry this search without this term">x</a><span class="close-wrapper">]</span></span>';
 
 					// build a query for this search term alone
 					$solo_url = $this->permalink( $facet , $term );
-					$solo_link = '<a href="'. $solo_url .'" class="term" title="Search only this term">'. convert_chars( wptexturize( $term->name )) .'</a>';
+					$solo_link = '<a href="'. $solo_url .'" class="term" title="Search only this term">'. convert_chars( wptexturize( apply_filters( 'scriblio_facets_facet_description', $term->name, $facet ) )) .'</a>';
 
 					// put it all together
-					$return_string .= '<li class="facet-container"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . ( ( 1 < $count_of_facets ) ? $exclude_link : '' ) .'</span></li>';
+					$return_string .= '<li class="facet-container ' . implode( ' ', $facet_classes ) . '"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . $exclude_link .'</span></li>';
 				}
 			}
 

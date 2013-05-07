@@ -326,7 +326,7 @@ class Facets
 				<li ' . ( $data['selected'] ? 'class="selected"' : '' ) . '>
 					<a href="'. $data['url'] .'" class="tag-link'. ( $data['selected'] ? ' selected' : '' ) . '" title="'. $data['title'] .'"'.
 					( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . $size .';"' ) .
-					'>' . $data['description'] .' <span class="count">' . number_format( $data['count'] ) . '</span></a>
+					'>' . $data['description'] .'<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $data['count'] ) . '</span></a>
 				</li>' ;
 		}
 

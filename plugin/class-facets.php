@@ -13,7 +13,7 @@ class Facets
 		// initialize scriblio facets once things have settled (init is too soon for some plugins)
 		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1);
 		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
-		$this->add_filters();
+		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
 
 		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
 		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ));
@@ -88,12 +88,22 @@ class Facets
 	}
 
 	/**
-	 * add any filters used by this class. this allows the user to control
-	 * if the filters should be run again after specific WP_Query calls.
+	 * reset filters and actions used by scriblio. this allows the user to
+	 * control when the filters/actions should be run again after specific
+	 * WP_Query calls.
 	 */
-	public function add_filters()
+	public function reset()
 	{
+		// the parse_query action and posts_request filter
+		// remove themselves after they're called, so we need
+		// to add them again when we reset to apply them to the
+		// next WP_Query().
+		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
 		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
+
+		// clear out any previous matches
+		$this->_matching_tax_facets = array();
+		unset( $facets->matching_post_ids );
 	}
 
 	public function posts_request( $query )

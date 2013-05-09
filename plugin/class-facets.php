@@ -3,12 +3,12 @@
 class Facets
 {
 	public $facets;
-	var $_all_facets = array();
-	var $_query_vars = array();
-	var $_foundpostslimit = 1000;
-	var $ttl = 600; // 10 minutes
+	public $_all_facets = array();
+	public $_query_vars = array();
+	public $_foundpostslimit = 1000;
+	public $ttl = 600; // 10 minutes
 
-	function __construct()
+	public function __construct()
 	{
 		// initialize scriblio facets once things have settled (init is too soon for some plugins)
 		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1);
@@ -23,17 +23,17 @@ class Facets
 		$this->facets = new stdClass;
 	}
 
-	function wp_loaded()
+	public function wp_loaded()
 	{
 		do_action( 'scrib_register_facets' );
-	}
+	}//end wp_loaded
 
-	function is_browse()
+	public function is_browse()
 	{
 		return is_archive() || is_tax() || is_tag() || is_category();
 	}
 
-	function register_facet( $facet_name , $facet_class , $args = array() )
+	public function register_facet( $facet_name , $facet_class , $args = array() )
 	{
 		$args = wp_parse_args( $args, array(
 			'has_rewrite' => FALSE, 
@@ -61,7 +61,7 @@ class Facets
 		
 	}
 
-	function parse_query( $query )
+	public function parse_query( $query )
 	{
 
 		// remove the action so it only runs on the main query and the vars don't get reset
@@ -117,7 +117,7 @@ class Facets
 		return $query;
 	}
 
-	function get_matching_post_ids()
+	public function get_matching_post_ids()
 	{
 		if( is_array( $this->matching_post_ids ))
 			return $this->matching_post_ids;
@@ -136,13 +136,13 @@ class Facets
 		return $this->matching_post_ids;
 	}
 
-	function _count_found_posts()
+	public function _count_found_posts()
 	{
 		global $wp_query;
 		$this->count_found_posts = absint( $wp_query->found_posts );
 	}
 
-	function shortcode_hit_count( $arg )
+	public function shortcode_hit_count( $arg )
 	{
 		// [scrib_hit_count ]
 
@@ -150,7 +150,7 @@ class Facets
 
 	}
 
-	function shortcode_facets( $arg )
+	public function shortcode_facets( $arg )
 	{
 		// [facets ]
 
@@ -190,7 +190,7 @@ class Facets
 	}
 
 
-	function get_queryterms( $facet , $term , $additive = -1 )
+	public function get_queryterms( $facet , $term , $additive = -1 )
 	{
 		switch( (int) $additive )
 		{
@@ -214,7 +214,7 @@ class Facets
 		}
 	}
 
-	function permalink( $facet , $term , $additive = -1 )
+	public function permalink( $facet , $term , $additive = -1 )
 	{
 		$vars = apply_filters( 'scriblio_permalink_terms', $this->get_queryterms( $facet , $term , $additive ) );
 
@@ -251,7 +251,7 @@ class Facets
 	}
 
 
-	function generate_tag_cloud( $tags , $args = '' )
+	public function generate_tag_cloud( $tags , $args = '' )
 	{
 		global $wp_rewrite;
 
@@ -318,15 +318,22 @@ class Facets
 				'title'       => esc_attr( sprintf( __('%d topics') , $count )),
 				'size'        => ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit,
 				'description' => wp_specialchars( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
+				'slug'        => wp_specialchars( $tag_info[ $tag ]->slug ),
+				'taxonomy'    => wp_specialchars( $this->facets->{$tag_info[ $tag ]->facet}->taxonomy ),
 			);
-			
+
+			if ( 'post_tag' == $data['taxonomy'] )
+			{
+				$data['taxonomy'] = 'tag';
+			}//end if
+
 			$data['description'] = apply_filters( 'scriblio_facets_facet_description', $data['description'], $tag_info[ $tag ]->facet );
 
 			$a[] = '
-				<li ' . ( $data['selected'] ? 'class="selected"' : '' ) . '>
+				<li ' . ( $data['selected'] ? 'class="selected"' : '' ) . ' data-taxonomy="' . $data['taxonomy'] . '" data-term="' . $data['slug'] . '">
 					<a href="'. $data['url'] .'" class="tag-link'. ( $data['selected'] ? ' selected' : '' ) . '" title="'. $data['title'] .'"'.
 					( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . $size .';"' ) .
-					'>' . $data['description'] .'<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $data['count'] ) . '</span></a>
+					'>' . $data['description'] .' <span class="count">' . number_format( $data['count'] ) . '</span></a>
 				</li>' ;
 		}
 
@@ -347,7 +354,7 @@ class Facets
 		return $return;
 	}
 
-	function editsearch()
+	public function editsearch()
 	{
 		global $wpdb, $wp_query, $bsuite;
 
@@ -404,7 +411,7 @@ class Facets
 		return FALSE;
 	}
 	
-	function build_labels( $sing , $plur , $singcap = '' , $plurcap = '' )
+	public function build_labels( $sing , $plur , $singcap = '' , $plurcap = '' )
 	{
 		if( empty( $singcap ))
 			$singcap = ucwords( $sing );

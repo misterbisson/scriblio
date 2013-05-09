@@ -99,8 +99,7 @@ class Facets
 		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
 
 		// clear out any previous matches
-		global $facets;
-		$facets->_matching_tax_facets = array();
+		$this->_matching_tax_facets = array();
 		unset( $facets->matching_post_ids );
 	}
 

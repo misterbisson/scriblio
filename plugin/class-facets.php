@@ -103,7 +103,7 @@ class Facets
 
 		// clear out any previous matches
 		$this->_matching_tax_facets = array();
-		unset( $facets->matching_post_ids );
+		unset( $this->matching_post_ids );
 	}
 
 	public function posts_request( $query )

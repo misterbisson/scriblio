@@ -20,9 +20,6 @@ class Facets
 
 		// initialize a standard object to collect facet data
 		$this->facets = new stdClass;
-
-get_posts();
-
 	}
 
 	public function wp_loaded()
@@ -38,8 +35,8 @@ get_posts();
 	public function register_facet( $facet_name , $facet_class , $args = array() )
 	{
 		$args = wp_parse_args( $args, array(
-			'has_rewrite' => FALSE, 
-			'priority' => 5, 
+			'has_rewrite' => FALSE,
+			'priority' => 5,
 		));
 
 		// instantiate the facet
@@ -60,7 +57,7 @@ get_posts();
 		if( ( 9 > $args['priority'] ) && ( ! $args['has_rewrite'] ) )
 			$args['priority'] = 9;
 		$this->priority[ $facet_name ] = (int) $args['priority'];
-		
+
 	}
 
 	public function parse_query( $query )
@@ -145,7 +142,7 @@ get_posts();
 		if( ! $this->matching_post_ids = wp_cache_get( $cache_key , 'scrib-matching-post-ids' ))
 		{
 			global $wpdb;
-	
+
 			$this->matching_post_ids = $wpdb->get_col( $this->matching_post_ids_sql );
 
 			wp_cache_set( $cache_key , $this->matching_post_ids , 'scrib-matching-post-ids' , $this->ttl );
@@ -190,8 +187,8 @@ get_posts();
 
 		// configure how it's displayed
 		$display_options = array(
-			'format' => 'list', 
-			'smallest' => floatval( $arg['format_font_small'] ) ? floatval( $arg['format_font_small'] ) : 1, 
+			'format' => 'list',
+			'smallest' => floatval( $arg['format_font_small'] ) ? floatval( $arg['format_font_small'] ) : 1,
 			'largest' => floatval( $arg['format_font_large'] ) ? floatval( $arg['format_font_large'] ) : 1,
 			'number' => absint( $arg['number'] ) ? absint( $arg['number'] ) : 25,
 			'unit' => 'em',
@@ -274,14 +271,14 @@ get_posts();
 		global $wp_rewrite;
 
 		$args = wp_parse_args( $args, array(
-			'smallest' => 8, 
-			'largest' => 22, 
-			'unit' => 'pt', 
+			'smallest' => 8,
+			'largest' => 22,
+			'unit' => 'pt',
 			'number' => 45,
-			'name' => 'name', 
-			'format' => 'flat', 
-			'orderby' => 'name', 
-			'order' => 'ASC', 
+			'name' => 'name',
+			'format' => 'flat',
+			'orderby' => 'name',
+			'order' => 'ASC',
 		));
 		extract( $args );
 
@@ -427,15 +424,15 @@ get_posts();
 
 		return FALSE;
 	}
-	
+
 	public function build_labels( $sing , $plur , $singcap = '' , $plurcap = '' )
 	{
 		if( empty( $singcap ))
 			$singcap = ucwords( $sing );
-	
+
 		if( empty( $plurcap ))
 			$plurcap = ucwords( $plur );
-	
+
 		$labels = array(
 			'name' => $plurcap,
 			'singular_name' => $singcap,
@@ -452,7 +449,7 @@ get_posts();
 			'add_or_remove_items' => 'Add or remove '. $sing,
 			'choose_from_most_used' => 'Choose from the most used '. $sing,
 		);
-	
+
 		return (object) $labels;
 	}
 }

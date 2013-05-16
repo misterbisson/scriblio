@@ -13,14 +13,16 @@ class Facets
 		// initialize scriblio facets once things have settled (init is too soon for some plugins)
 		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1);
 		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
-		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
-
 		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
+
 		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ));
 		add_shortcode( 'facets' , array( $this, 'shortcode_facets' ));
 
 		// initialize a standard object to collect facet data
 		$this->facets = new stdClass;
+
+get_posts();
+
 	}
 
 	public function wp_loaded()
@@ -64,8 +66,17 @@ class Facets
 	public function parse_query( $query )
 	{
 
+		// don't continue if `suppress_filters` is set
+		if( isset( $query->query['suppress_filters'] ) && $query->query['suppress_filters'] )
+		{
+			return $query;
+		}
+
 		// remove the action so it only runs on the main query and the vars don't get reset
 		remove_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
+
+		// add the post_request filter so we can generate SQL for the facet/filter counts
+		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
 
 		// identify the selected search terms
 		$searched = array_intersect_key( $query->query , $this->_query_vars );
@@ -94,12 +105,9 @@ class Facets
 	 */
 	public function reset()
 	{
-		// the parse_query action and posts_request filter
-		// remove themselves after they're called, so we need
-		// to add them again when we reset to apply them to the
-		// next WP_Query().
+		// the parse_query removes itself after being called,
+		// so add it again when we reset to apply to the next WP_Query().
 		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
-		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
 
 		// clear out any previous matches
 		$this->_matching_tax_facets = array();

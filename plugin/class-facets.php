@@ -347,7 +347,7 @@ class Facets
 			$a[] = '
 				<li ' . ( $data['selected'] ? 'class="selected"' : '' ) . ' data-taxonomy="' . $data['taxonomy'] . '" data-term="' . $data['slug'] . '">
 				<a href="'. $data['url'] .'" class="tag-link'. ( $data['selected'] ? ' selected' : '' ) . '" title="'. $data['title'] .'"'.
-				( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . $size .';"' ) .
+				( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . $data['size'] .';"' ) .
 				'>' . trim( $data['description'] ) .'<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $data['count'] ) . '</span></a></li>';
 		}
 

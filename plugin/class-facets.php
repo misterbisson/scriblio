@@ -327,12 +327,14 @@ class Facets
 			$is_selected = $this->facets->{$tag_info[ $tag ]->facet}->selected( $tag_info[ $tag ] );
 
 			$data = array(
+				'element'     => 'span' ,
 				'url'         => $this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
 				'count'       => $count,
-				'selected'    => $is_selected,
+				'count_html'  => '',
+				'class'       => ( $is_selected ? 'selected' : '' ),
 				'title'       => esc_attr( sprintf( __('%d topics') , $count )),
-				'size'        => ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit,
-				'description' => wp_specialchars( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
+				'size_html'   => 'style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"',
+				'description' => wp_specialchars( trim( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ) ),
 				'slug'        => wp_specialchars( $tag_info[ $tag ]->slug ),
 				'taxonomy'    => wp_specialchars( $this->facets->{$tag_info[ $tag ]->facet}->taxonomy ),
 			);
@@ -344,11 +346,25 @@ class Facets
 
 			$data['description'] = apply_filters( 'scriblio_facets_facet_description', $data['description'], $tag_info[ $tag ]->facet );
 
-			$a[] = '
-				<li ' . ( $data['selected'] ? 'class="selected"' : '' ) . ' data-taxonomy="' . $data['taxonomy'] . '" data-term="' . $data['slug'] . '">
-				<a href="'. $data['url'] .'" class="tag-link'. ( $data['selected'] ? ' selected' : '' ) . '" title="'. $data['title'] .'"'.
-				( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . $size .';"' ) .
-				'>' . trim( $data['description'] ) .'<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $data['count'] ) . '</span></a></li>';
+			if ( 'list' == $format )
+			{
+				$data['element']    = 'li';
+				$data['count_html'] = '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>';
+				$data['size_html']  = '';
+			}//end if
+
+			$a[] = sprintf(
+				'<%1$s class="%2$s" data-taxonomy="%3$s" data-term="%4$s"><a href="%5$s" class="%2$s" title="%6$s"%7$s>%8$s%9$s</a></%1$s>',
+				$data['element'],
+				$data['class'],
+				$data['taxonomy'],
+				$data['slug'],
+				$data['url'],
+				$data['title'],
+				$data['size_html'],
+				$data['description'],
+				$data['count_html']
+			);
 		}
 
 		switch( $format )
@@ -358,7 +374,7 @@ class Facets
 				break;
 
 			case 'list' :
-				$return = "<ul class='wp-tag-cloud'>\n\t". join( "\n\t", $a ) ."\n</ul>\n";
+				$return = "<ul class='wp-tag-cloud'>\n\t". convert_chars( wptexturize( join( "\n\t", $a ))) ."\n</ul>\n";
 				break;
 
 			default :

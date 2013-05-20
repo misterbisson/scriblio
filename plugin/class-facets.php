@@ -326,19 +326,23 @@ class Facets
 		{
 			$is_selected = $this->facets->{ $tag_info[ $tag ]->facet }->selected( $tag_info[ $tag ] );
 
+			$term_name = apply_filters(
+				'scriblio_facets_facet_description',
+				trim( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
+				$tag_info[ $tag ]->facet
+			);
+
 			$a[] = sprintf(
-				'<%1$s class="%2$s" data-taxonomy="%3$s" data-term-url="%4$s"><a href="%5$s" class="%2$s" title="%6$s"%7$s>%8$s%9$s</a></%1$s>',
+				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s"><a href="%6$s" class="term-link %3$s" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
 				( 'list' == $format ? 'li' : 'span' ),
 				( $is_selected ? 'selected' : '' ),
+				esc_attr( $term_name ),
 				esc_attr( $this->facets->{ $tag_info[ $tag ]->facet }->label ),
 				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , -1 ),
 				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
 				esc_attr( sprintf( __('%d topics') , $count ) ),
 				( 'list' == $format ? '' : 'style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ),
-				wp_specialchars( apply_filters( 
-						'scriblio_facets_facet_description', 
-						trim( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ), $tag_info[ $tag ]->facet 
-				) ),
+				wp_specialchars( $term_name ),
 				( 'list' == $format ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' )
 			);
 		}
@@ -350,13 +354,13 @@ class Facets
 				break;
 
 			case 'list' :
-				$return = "<ul class='wp-tag-cloud'>\n\t". convert_chars( wptexturize( join( "\n\t", $a ))) ."\n</ul>\n";
+				$return = "<ul class='wp-tag-cloud'>\n\t". convert_chars( wptexturize( join( "\n\t", $a ) ) ) ."\n</ul>\n";
 				break;
 
 			case 'flat' :
 			case 'cloud' :
 			default :
-				$return = "<div class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ))) ."\n</div>\n";
+				$return = "<div class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ) ) ) ."\n</div>\n";
 		}
 
 		return $return;
@@ -367,7 +371,7 @@ class Facets
 		global $wpdb, $wp_query, $bsuite;
 
 		$return_string = '';
-		if( ! empty( $this->selected_facets ))
+		if( ! empty( $this->selected_facets ) )
 		{
 
 			// how many facets are currently selected?

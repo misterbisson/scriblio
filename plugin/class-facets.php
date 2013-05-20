@@ -326,19 +326,23 @@ class Facets
 		{
 			$is_selected = $this->facets->{ $tag_info[ $tag ]->facet }->selected( $tag_info[ $tag ] );
 
+			$term_name = apply_filters(
+				'scriblio_facets_facet_description',
+				trim( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
+				$tag_info[ $tag ]->facet
+			);
+
 			$a[] = sprintf(
-				'<%1$s class="%2$s" data-term="%8$s" data-taxonomy="%3$s" data-term-url="%4$s"><a href="%5$s" class="term-link %2$s" title="%6$s"%7$s>%8$s%9$s</a></%1$s>',
+				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s"><a href="%6$s" class="term-link %3$s" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
 				( 'list' == $format ? 'li' : 'span' ),
 				( $is_selected ? 'selected' : '' ),
+				esc_attr( $term_name ),
 				esc_attr( $this->facets->{ $tag_info[ $tag ]->facet }->label ),
 				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , -1 ),
 				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
 				esc_attr( sprintf( __('%d topics') , $count ) ),
 				( 'list' == $format ? '' : 'style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ),
-				wp_specialchars( apply_filters( 
-						'scriblio_facets_facet_description', 
-						trim( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ), $tag_info[ $tag ]->facet 
-				) ),
+				wp_specialchars( $term_name ),
 				( 'list' == $format ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' )
 			);
 		}

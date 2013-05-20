@@ -327,7 +327,7 @@ class Facets
 			$is_selected = $this->facets->{ $tag_info[ $tag ]->facet }->selected( $tag_info[ $tag ] );
 
 			$a[] = sprintf(
-				'<%1$s class="%2$s" data-taxonomy="%3$s" data-term-url="%4$s"><a href="%5$s" class="%2$s" title="%6$s"%7$s>%8$s%9$s</a></%1$s>',
+				'<%1$s class="%2$s" data-term="%8$s" data-taxonomy="%3$s" data-term-url="%4$s"><a href="%5$s" class="term-link %2$s" title="%6$s"%7$s>%8$s%9$s</a></%1$s>',
 				( 'list' == $format ? 'li' : 'span' ),
 				( $is_selected ? 'selected' : '' ),
 				esc_attr( $this->facets->{ $tag_info[ $tag ]->facet }->label ),
@@ -350,13 +350,13 @@ class Facets
 				break;
 
 			case 'list' :
-				$return = "<ul class='wp-tag-cloud'>\n\t". convert_chars( wptexturize( join( "\n\t", $a ))) ."\n</ul>\n";
+				$return = "<ul class='wp-tag-cloud'>\n\t". convert_chars( wptexturize( join( "\n\t", $a ) ) ) ."\n</ul>\n";
 				break;
 
 			case 'flat' :
 			case 'cloud' :
 			default :
-				$return = "<div class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ))) ."\n</div>\n";
+				$return = "<div class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ) ) ) ."\n</div>\n";
 		}
 
 		return $return;
@@ -367,7 +367,7 @@ class Facets
 		global $wpdb, $wp_query, $bsuite;
 
 		$return_string = '';
-		if( ! empty( $this->selected_facets ))
+		if( ! empty( $this->selected_facets ) )
 		{
 
 			// how many facets are currently selected?

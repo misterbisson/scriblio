@@ -64,16 +64,21 @@ class Facets
 	{
 
 		// don't continue if `suppress_filters` is set
-		if(
-			$query->is_single ||
-			( isset( $query->query['suppress_filters'] ) && $query->query['suppress_filters'] )
-		)
+		if( isset( $query->query['suppress_filters'] ) && $query->query['suppress_filters'] )
 		{
 			return $query;
 		}
 
 		// remove the action so it only runs on the main query and the vars don't get reset
 		remove_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
+
+		// don't continue if this is a single post request
+		// doing this after we do remove_action() so we 
+		// don't attempt to re-run this method for widgets or other WP_Query requests
+		if( $query->is_singular )
+		{
+			return $query;
+		}
 
 		// add the post_request filter so we can generate SQL for the facet/filter counts
 		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );

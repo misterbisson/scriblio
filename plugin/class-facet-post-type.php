@@ -93,7 +93,7 @@ class Facet_Post_Type implements Facet
 		{
 			global $wpdb;
 	
-			$terms = $wpdb->get_results( 'SELECT post_type, COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY post_type LIMIT 1000' );
+			$terms = $wpdb->get_results( 'SELECT post_type, COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY post_type LIMIT 1000 /* generated in Facet_Post_Type::get_terms_in_corpus() */' );
 	
 			$this->terms_in_corpus = array();
 			foreach( $terms as $term )
@@ -142,7 +142,7 @@ class Facet_Post_Type implements Facet
 		{
 			global $wpdb;
 
-			$terms = $wpdb->get_results( 'SELECT post_type , COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE ID IN (' . implode( ',' , $matching_post_ids ) . ') GROUP BY post_type LIMIT 1000' );
+			$terms = $wpdb->get_results( 'SELECT post_type , COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE ID IN (' . implode( ',' , $matching_post_ids ) . ') GROUP BY post_type LIMIT 1000 /* generated in Facet_Post_Type::get_terms_in_found_set() */' );
 
 			$this->terms_in_found_set = array();
 			

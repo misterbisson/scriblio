@@ -104,7 +104,8 @@ class Facet_Taxonomy implements Facet
 				INNER JOIN $wpdb->term_taxonomy a ON a.term_taxonomy_id = c.term_taxonomy_id
 				INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
 				WHERE c.object_id IN (". implode( ',' , $matching_post_ids ) .")
-				GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000";
+				GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000
+				/* generated in Facet_Taxonomy::get_terms_in_found_set() */";
 	
 			$terms = $wpdb->get_results( $facets_query );
 			$this->facets->_matching_tax_facets = array();
@@ -212,7 +213,7 @@ class Facet_Taxonomy implements Facet
 				SELECT COUNT(*)
 				FROM '. $wpdb->term_relationships .' tr
 				WHERE tr.term_taxonomy_id = tt.term_taxonomy_id
-			)'
+			) /* generated in Facet_Taxonomy::_update_term_counts() */'
 		);
 	}
 }

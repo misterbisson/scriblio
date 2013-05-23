@@ -64,7 +64,10 @@ class Facets
 	{
 
 		// don't continue if `suppress_filters` is set
-		if( isset( $query->query['suppress_filters'] ) && $query->query['suppress_filters'] )
+		if(
+			$query->is_single ||
+			( isset( $query->query['suppress_filters'] ) && $query->query['suppress_filters'] )
+		)
 		{
 			return $query;
 		}

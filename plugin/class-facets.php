@@ -72,16 +72,12 @@ class Facets
 		// remove the action so it only runs on the main query and the vars don't get reset
 		remove_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
 
-		// don't continue if this is a single post request
-		// doing this after we do remove_action() so we 
-		// don't attempt to re-run this method for widgets or other WP_Query requests
-		if( $query->is_singular )
+		// don't do a query to find all matching posts if this request is for a single post
+		if( ! $query->is_singular )
 		{
-			return $query;
+			// add the post_request filter so we can generate SQL for the facet/filter counts
+			add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
 		}
-
-		// add the post_request filter so we can generate SQL for the facet/filter counts
-		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
 
 		// identify the selected search terms
 		$searched = array_intersect_key( $query->query , $this->_query_vars );
@@ -152,8 +148,17 @@ class Facets
 
 	public function get_matching_post_ids()
 	{
-		if( is_array( $this->matching_post_ids ))
+		if( isset( $this->matching_post_ids ) )
+		{
 			return $this->matching_post_ids;
+		}
+
+		// short circuit if this is a single post
+		if( is_singular() )
+		{
+			$this->matching_post_ids = (array) get_queried_object_id();
+			return $this->matching_post_ids;
+		}
 
 		$cache_key = md5( $this->matching_post_ids_sql );
 
@@ -350,8 +355,10 @@ class Facets
 				$tag_info[ $tag ]->facet
 			);
 
+			$before_link = apply_filters( 'scriblio_facets_tag_cloud_pre_link', '', $tag_info[ $tag ]->facet, $count, $this->count_found_posts );
+
 			$a[] = sprintf(
-				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s"><a href="%6$s" class="term-link %3$s" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
+				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s">%11$s<a href="%6$s" class="term-link" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
 				( 'list' == $format ? 'li' : 'span' ),
 				( $is_selected ? 'selected' : '' ),
 				esc_attr( $term_name ),
@@ -361,7 +368,8 @@ class Facets
 				esc_attr( sprintf( __('%d topics') , $count ) ),
 				( 'list' == $format ? '' : 'style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ),
 				wp_specialchars( $term_name ),
-				( 'list' == $format ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' )
+				( 'list' == $format ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' ),
+				$before_link
 			);
 		}
 

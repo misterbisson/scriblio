@@ -44,8 +44,10 @@ class Facet_Taxonomy implements Facet
 		// identify the terms in this query
 		foreach( array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|\/]/' , $query_terms ))) as $val )
 		{
-			if( $term = get_term_by( 'slug' , $val , $this->taxonomy ))
+			if ( $term = get_term_by( 'slug' , $val , $this->taxonomy ) )
+			{
 				$this->selected_terms[ $term->slug ] = $term;
+			}
 		}
 
 		return $this->selected_terms;
@@ -59,7 +61,7 @@ class Facet_Taxonomy implements Facet
 		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus-'. $this->taxonomy , 'scrib-facet-taxonomy' ))
 		{
 			$terms = get_terms( $this->taxonomy , array( 'number' => 1000 , 'orderby' => 'count' , 'order' => 'DESC' ));
-	
+
 			$this->terms_in_corpus = array();
 			foreach( $terms as $term )
 			{
@@ -86,7 +88,7 @@ class Facet_Taxonomy implements Facet
 			return $this->facets->_matching_tax_facets[ $this->name ];
 
 		$matching_post_ids = $this->facets->get_matching_post_ids();
-		
+
 		// if there aren't any matching post ids, we don't need to query
 		if ( ! $matching_post_ids )
 		{
@@ -106,12 +108,12 @@ class Facet_Taxonomy implements Facet
 				WHERE c.object_id IN (". implode( ',' , $matching_post_ids ) .")
 				GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000
 				/* generated in Facet_Taxonomy::get_terms_in_found_set() */";
-	
+
 			$terms = $wpdb->get_results( $facets_query );
 			$this->facets->_matching_tax_facets = array();
 			foreach( $terms as $term )
 			{
-	
+
 				$this->facets->_matching_tax_facets[ $this->facets->_tax_to_facet[ $term->taxonomy ]][] = (object) array(
 					'facet' => $this->facets->_tax_to_facet[ $term->taxonomy ],
 					'slug' => $term->slug,
@@ -174,13 +176,13 @@ class Facet_Taxonomy implements Facet
 
 	function permalink( $terms )
 	{
-		if( 1 === count( $terms ))
+		if ( 1 === count( $terms ) )
 		{
-			return get_term_link( (int) current( $terms )->term_id , $this->taxonomy );
+			$termlink = get_term_link( (int) current( $terms )->term_id , $this->taxonomy );
 		}
 		else
 		{
-			// much of this section comes from get_term_link() in /wp-includes/taxonomy.php, 
+			// much of this section comes from get_term_link() in /wp-includes/taxonomy.php,
 			// but that code can't handle multiple terms in a single taxonomy
 
 			global $wp_rewrite;
@@ -189,7 +191,7 @@ class Facet_Taxonomy implements Facet
 			if ( empty($termlink) ) // dang, we're not using pretty permalinks
 			{
 				$t = get_taxonomy( $this->taxonomy );
-				$termlink = "?$t->query_var=". implode( '+' , array_keys( $terms ));
+				$termlink = "?$t->query_var=" . implode( '+' , array_keys( $terms ) );
 			}
 			else
 			{
@@ -197,9 +199,10 @@ class Facet_Taxonomy implements Facet
 			}
 
 			$termlink = home_url( user_trailingslashit( $termlink , 'category' ));
+		}// end else
 
-			return $termlink;
-		}
+		$termlink = apply_filters( 'scriblio_facet_taxonomy_permalink', $termlink, $terms, $this->taxonomy );
+		return $termlink;
 	}
 
 

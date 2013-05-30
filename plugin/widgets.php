@@ -81,6 +81,11 @@ class Scrib_Facets_Widget extends WP_Widget
 				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
 			}
 
+ 			if ( ! count( $facet_list ) )
+			{
+				return;
+			}//end if
+
 			// and now we wrap it all up for echo later
 			$content = $facets->generate_tag_cloud( $facet_list , $display_options );
 		}
@@ -224,8 +229,8 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 			return;
 
 		$title = apply_filters( 'widget_title' , $instance['title'] );
-		$context_top = apply_filters( 'widget_text', $instance['context-top'] );
-		$context_bottom = apply_filters( 'widget_text', $instance['context-bottom'] );
+		$context_top = do_shortcode( apply_filters( 'widget_text', $instance['context-top'] ) );
+		$context_bottom = do_shortcode( apply_filters( 'widget_text', $instance['context-bottom'] ) );
 
 		echo $before_widget;
 

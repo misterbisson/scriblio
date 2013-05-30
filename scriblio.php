@@ -29,10 +29,10 @@ function scrib_register_default_facets()
 	{
 		$taxonomy = get_taxonomy( $taxonomy );
 
-		scrib_register_facet( 
-			( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label )),
+		scrib_register_facet(
+			( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ),
 			'Facet_Taxonomy' ,
-			array( 
+			array(
 				'taxonomy' => $taxonomy->name ,
 				'query_var' => $taxonomy->query_var ,
 				'has_rewrite' => is_array( $taxonomy->rewrite ),
@@ -42,7 +42,7 @@ function scrib_register_default_facets()
 	}
 
 	// register facets from the posts table
-	scrib_register_facet( 'post_author' , 'Facet_Post_Author' , array( 'priority' => 3 , 'has_rewrite' => TRUE ));
+	scrib_register_facet( 'post_author' , 'Facet_Post_Author' , array( 'priority' => 3 , 'has_rewrite' => TRUE ) );
 	scrib_register_facet( 'post_type' , 'Facet_Post_Type' , array( 'priority' => 3 , 'has_rewrite' => TRUE ) );
 }
 add_action( 'scrib_register_facets' , 'scrib_register_default_facets' );

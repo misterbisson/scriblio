@@ -42,7 +42,7 @@ class Scrib_Facets_Widget extends WP_Widget
 
 			// configure how it's displayed
 			$display_options = array(
-				'smallest' => floatval( $instance['format_font_small'] ), 
+				'smallest' => floatval( $instance['format_font_small'] ),
 				'largest' => floatval( $instance['format_font_large'] ),
 				'unit' => 'em',
 				'number' => $instance['number'],
@@ -50,7 +50,7 @@ class Scrib_Facets_Widget extends WP_Widget
 				'order' => $order,
 				'order_custom' => $instance['order_custom'],
 			);
-	
+
 			// list and cloud specific display options
 			if( 'list' == $instance['format'] )
 			{
@@ -60,7 +60,7 @@ class Scrib_Facets_Widget extends WP_Widget
 			{
 				$display_options['format'] = 'flat';
 			}
-	
+
 			// select what's displayed
 			if( 'corpus' == $instance['format_font_large'] )
 			{
@@ -95,9 +95,9 @@ class Scrib_Facets_Widget extends WP_Widget
 			preg_match( '/class.*?=.*?(\'|")(.+?)(\'|")/' , $before_title , $title_class );
 			$title_class = (string) $title_class[2];
 
-			$varname_string = json_encode( array( 
+			$varname_string = json_encode( array(
 				'source' => $wijax_source ,
-				'varname' => $mywijax->varname( $wijax_source ) , 
+				'varname' => $mywijax->varname( $wijax_source ) ,
 				'title_element' => $title_element ,
 				'title_class' => $title_class ,
 				'title_before' => rawurlencode( $before_title ),
@@ -142,9 +142,9 @@ class Scrib_Facets_Widget extends WP_Widget
 	function form( $instance )
 	{
 		//Defaults
-		$instance = wp_parse_args( (array) $instance, 
-			array( 
-				'title' => '', 
+		$instance = wp_parse_args( (array) $instance,
+			array(
+				'title' => '',
 				'facet' => FALSE,
 				'format' => 'cloud',
 				'number' => 25,
@@ -194,10 +194,10 @@ class Scrib_Facets_Widget extends WP_Widget
 
 		$facet_list = array_keys( (array) $facets->facets );
 
-		// Sort templates by name  
+		// Sort templates by name
 		$names = array();
 		foreach( $facet_list as $info )
-			$names[] = $info['name']; 
+			$names[] = $info['name'];
 		array_multisort( $facet_list , $names );
 
 		foreach ( $facet_list as $facet )
@@ -232,10 +232,10 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 		if ( ! empty( $title ) )
 			echo $before_title . $title . $after_title;
 		if ( ! empty( $context_top ) )
-			echo '<div class="textwidget scrib_search_edit">' . $context_top . '</div>';
+			echo '<div class="textwidget scrib_search_edit context-top">' . $context_top . '</div>';
 		echo '<ul>'. $facets->editsearch() .'</ul>';
 		if ( ! empty( $context_bottom ) )
-			echo '<div class="textwidget scrib_search_edit">' . $context_bottom . '</div>';
+			echo '<div class="textwidget scrib_search_edit context-bottom">' . $context_bottom . '</div>';
 
 		echo $after_widget;
 	}
@@ -255,8 +255,8 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 	{
 
 		//Defaults
-		$instance = wp_parse_args( (array) $instance, 
-			array( 
+		$instance = wp_parse_args( (array) $instance,
+			array(
 				'title' => 'Searching Our Collection',
 				'context-top' => 'Your search found [scrib_hit_count] items with all of the following terms:',
 				'context-bottom' => 'Click [x] to remove a term, or use the facets in the sidebar to narrow your search.',

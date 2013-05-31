@@ -129,14 +129,14 @@ class Facets
 		// deregister this filter after it's run on the first/default query
 		remove_filter( 'posts_request', array( $this , 'posts_request' ), 11 );
 
-		$this->matching_post_ids_sql = str_replace( 
-			$wpdb->posts .'.* ', $wpdb->posts .'.ID ', 
-			str_replace( 
-				'SQL_CALC_FOUND_ROWS', '', 
-				preg_replace( 
-					'/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 
-					'LIMIT \1, '. $this->_foundpostslimit, 
-					$query 
+		$this->matching_post_ids_sql = str_replace(
+			$wpdb->posts .'.* ', $wpdb->posts .'.ID ',
+			str_replace(
+				'SQL_CALC_FOUND_ROWS', '',
+				preg_replace(
+					'/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i',
+					'LIMIT \1, '. $this->_foundpostslimit,
+					$query
 				)
 			)
 		) . ' /* generated in Facets::posts_request() */';
@@ -311,8 +311,8 @@ class Facets
 		$counts = array();
 		foreach ( (array) $tags as $tag )
 		{
-			$counts[ $tag->facet .':'. $tag->slug ] = $tag->count;
-			$tag_info[ $tag->facet .':'. $tag->slug ] = $tag;
+			$counts[ $tag->slug . ':' . $tag->facet ] = $tag->count;
+			$tag_info[ $tag->slug . ':' . $tag->facet ] = $tag;
 		}
 
 		if ( ! $counts )

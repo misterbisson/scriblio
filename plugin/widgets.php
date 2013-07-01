@@ -238,7 +238,7 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 			echo $before_title . $title . $after_title;
 		if ( ! empty( $context_top ) )
 			echo '<div class="textwidget scrib_search_edit context-top">' . $context_top . '</div>';
-		echo '<ul>'. $facets->editsearch() .'</ul>';
+		echo '<ul class="facets">'. $facets->editsearch() .'</ul>';
 		if ( ! empty( $context_bottom ) )
 			echo '<div class="textwidget scrib_search_edit context-bottom">' . $context_bottom . '</div>';
 
@@ -296,11 +296,3 @@ function scrib_widgets_init()
 	register_widget( 'Scrib_Searcheditor_Widget' );
 }
 add_action( 'widgets_init' , 'scrib_widgets_init' , 1 );
-
-if( ! function_exists( 'is_wijax' ))
-{
-	function is_wijax()
-	{
-		return FALSE;
-	}
-}

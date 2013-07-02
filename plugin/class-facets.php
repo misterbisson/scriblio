@@ -477,6 +477,7 @@ class Facets
 		return (object) $labels;
 	}
 }
+global $facets;
 $facets = new Facets;
 
 

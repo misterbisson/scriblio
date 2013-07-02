@@ -72,8 +72,12 @@ class Facets
 		// remove the action so it only runs on the main query and the vars don't get reset
 		remove_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
 
-		// add the post_request filter so we can generate SQL for the facet/filter counts
-		add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
+		// don't do a query to find all matching posts if this request is for a single post
+		if( ! $query->is_singular )
+		{
+			// add the post_request filter so we can generate SQL for the facet/filter counts
+			add_filter( 'posts_request', array( $this, 'posts_request' ), 11 );
+		}
 
 		// identify the selected search terms
 		$searched = array_intersect_key( $query->query , $this->_query_vars );
@@ -125,7 +129,17 @@ class Facets
 		// deregister this filter after it's run on the first/default query
 		remove_filter( 'posts_request', array( $this , 'posts_request' ), 11 );
 
-		$this->matching_post_ids_sql = str_replace( $wpdb->posts .'.* ', $wpdb->posts .'.ID ', str_replace( 'SQL_CALC_FOUND_ROWS', '', preg_replace( '/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i', 'LIMIT \1, '. $this->_foundpostslimit , $query )));
+		$this->matching_post_ids_sql = str_replace(
+			$wpdb->posts .'.* ', $wpdb->posts .'.ID ',
+			str_replace(
+				'SQL_CALC_FOUND_ROWS', '',
+				preg_replace(
+					'/LIMIT[^0-9]*([0-9]*)[^0-9]*([0-9]*)/i',
+					'LIMIT \1, '. $this->_foundpostslimit,
+					$query
+				)
+			)
+		) . ' /* generated in Facets::posts_request() */';
 
 //echo "<h2>$this->matching_post_ids_sql</h2>";
 
@@ -134,8 +148,17 @@ class Facets
 
 	public function get_matching_post_ids()
 	{
-		if( is_array( $this->matching_post_ids ))
+		if( isset( $this->matching_post_ids ) )
+		{
 			return $this->matching_post_ids;
+		}
+
+		// short circuit if this is a single post
+		if( is_singular() )
+		{
+			$this->matching_post_ids = (array) get_queried_object_id();
+			return $this->matching_post_ids;
+		}
 
 		$cache_key = md5( $this->matching_post_ids_sql );
 
@@ -288,8 +311,8 @@ class Facets
 		$counts = array();
 		foreach ( (array) $tags as $tag )
 		{
-			$counts[ $tag->facet .':'. $tag->slug ] = $tag->count;
-			$tag_info[ $tag->facet .':'. $tag->slug ] = $tag;
+			$counts[ $tag->slug . ':' . $tag->facet ] = $tag->count;
+			$tag_info[ $tag->slug . ':' . $tag->facet ] = $tag;
 		}
 
 		if ( ! $counts )
@@ -324,31 +347,30 @@ class Facets
 		$a = array();
 		foreach ( $counts as $tag => $count )
 		{
-			$is_selected = $this->facets->{$tag_info[ $tag ]->facet}->selected( $tag_info[ $tag ] );
+			$is_selected = $this->facets->{ $tag_info[ $tag ]->facet }->selected( $tag_info[ $tag ] );
 
-			$data = array(
-				'url'         => $this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
-				'count'       => $count,
-				'selected'    => $is_selected,
-				'title'       => esc_attr( sprintf( __('%d topics') , $count )),
-				'size'        => ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit,
-				'description' => wp_specialchars( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
-				'slug'        => wp_specialchars( $tag_info[ $tag ]->slug ),
-				'taxonomy'    => wp_specialchars( $this->facets->{$tag_info[ $tag ]->facet}->taxonomy ),
+			$term_name = apply_filters(
+				'scriblio_facets_facet_description',
+				trim( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
+				$tag_info[ $tag ]->facet
 			);
 
-			if ( 'post_tag' == $data['taxonomy'] )
-			{
-				$data['taxonomy'] = 'tag';
-			}//end if
+			$before_link = apply_filters( 'scriblio_facets_tag_cloud_pre_link', '', $tag_info[ $tag ]->facet, $count, $this->count_found_posts );
 
-			$data['description'] = apply_filters( 'scriblio_facets_facet_description', $data['description'], $tag_info[ $tag ]->facet );
-
-			$a[] = '
-				<li ' . ( $data['selected'] ? 'class="selected"' : '' ) . ' data-taxonomy="' . $data['taxonomy'] . '" data-term="' . $data['slug'] . '">
-				<a href="'. $data['url'] .'" class="tag-link'. ( $data['selected'] ? ' selected' : '' ) . '" title="'. $data['title'] .'"'.
-				( in_array( $format , array( 'array' , 'list' )) ? '' : ' style="font-size: ' . $size .';"' ) .
-				'>' . trim( $data['description'] ) .'<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $data['count'] ) . '</span></a></li>';
+			$a[] = sprintf(
+				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s">%11$s<a href="%6$s" class="term-link" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
+				( 'list' == $format ? 'li' : 'span' ),
+				( $is_selected ? 'selected' : '' ),
+				esc_attr( $term_name ),
+				esc_attr( $this->facets->{ $tag_info[ $tag ]->facet }->label ),
+				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , -1 ),
+				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
+				esc_attr( sprintf( __('%d topics') , $count ) ),
+				( 'list' == $format ? '' : 'style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ),
+				wp_specialchars( $term_name ),
+				( 'list' == $format ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' ),
+				$before_link
+			);
 		}
 
 		switch( $format )
@@ -358,11 +380,13 @@ class Facets
 				break;
 
 			case 'list' :
-				$return = "<ul class='wp-tag-cloud'>\n\t". join( "\n\t", $a ) ."\n</ul>\n";
+				$return = "<ul class='wp-tag-cloud'>\n\t". convert_chars( wptexturize( join( "\n\t", $a ) ) ) ."\n</ul>\n";
 				break;
 
+			case 'flat' :
+			case 'cloud' :
 			default :
-				$return = "<ul class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ))) ."\n</ul>\n";
+				$return = "<div class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ) ) ) ."\n</div>\n";
 		}
 
 		return $return;
@@ -373,7 +397,7 @@ class Facets
 		global $wpdb, $wp_query, $bsuite;
 
 		$return_string = '';
-		if( ! empty( $this->selected_facets ))
+		if( ! empty( $this->selected_facets ) )
 		{
 
 			// how many facets are currently selected?

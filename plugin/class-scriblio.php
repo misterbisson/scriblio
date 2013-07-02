@@ -3,7 +3,7 @@
 class Scriblio
 {
 	var $options = array(
-		'facets' => array(
+		'facet-components' => array(
 			'searchword'  => TRUE,
 			'taxonomy'    => TRUE,
 			'post-author' => TRUE,
@@ -11,11 +11,38 @@ class Scriblio
 		),
 		'widgets'       => TRUE,
 		'scrib-suggest' => TRUE,
+		'facets'        => array(
+			'searchword' => array(
+				'class'       => 'Facet_Searchword',
+				'priority'    => 0, 
+				'has_rewrite' => TRUE,
+			),
+			// This is a special facet
+			// If set to TRUE will register all public taxonomies
+			// If set to FALSE no taxonomy facets will be registered
+			// If an array of taxonomy names with priorities only indicated taxonomies will be registered:
+			// 'taxonomy' => array(
+			//     'post_tag' => 5,
+			//     'category' => 5,
+			// )
+			'taxonomy' => TRUE,
+			'taxonomy' => FALSE,
+			'post_author' => array(
+				'class'       => 'Facet_Post_Author',
+				'priority'    => 3, 
+				'has_rewrite' => TRUE,
+			),
+			'post_type' => array(
+				'class'       => 'Facet_Post_Type',
+				'priority'    => 3, 
+				'has_rewrite' => TRUE,
+			),
+		),
 	);
 	
 	public function __construct()
 	{
-		add_action( 'scrib_register_facets' , array( $this, 'register_default_facets' ) );
+		add_action( 'scrib_register_facets' , array( $this, 'register_facets' ) );
 		
 		// Activate the sub-components
 		$this->activate();			
@@ -37,7 +64,7 @@ class Scriblio
 		);
 
 		// Activate facets
-		foreach ( $this->options['facets'] as $facet => $activate )
+		foreach ( $this->options['facet-components'] as $facet => $activate )
 		{
 			if ( $activate )
 			{
@@ -57,34 +84,74 @@ class Scriblio
 	} // END activate
 	
 	/**
-	 * Register default facets
+	 * Register facets
 	 */
-	function register_default_facets()
+	function register_facets()
+	{	
+		foreach ( $this->options['facets'] as $facet => $options )
+		{
+			if ( 'taxonomy' != $facet )
+			{
+				scrib_register_facet(
+					$facet, 
+					$options['class'], 
+					array( 
+						'priority' => $options['priority'],
+						'has_rewrite' => $options['has_rewrite'],
+					) 
+				);
+			} // END if
+			else 
+			{
+				if ( is_array( $options ) )
+				{
+					foreach ( $options as $taxonomy_name => $priority )
+					{
+						$taxonomy = get_taxonomy( $taxonomy_name );
+						
+						if ( ! $taxonomy )
+						{
+							continue;
+						} // END if
+						
+						scrib_register_facet(
+							( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ),
+							'Facet_Taxonomy',
+							array(
+								'taxonomy'    => $taxonomy->name ,
+								'query_var'   => $taxonomy->query_var ,
+								'has_rewrite' => is_array( $taxonomy->rewrite ),
+								'priority'    => absint( $priority ),
+							)
+						);
+					} // END foreach
+				} // END if
+				elseif ( TRUE == $options )
+				{
+					$this->register_public_taxonomies();
+				} // END elseif
+			} // END else
+		} // END foreach
+	} // END register_facets
+	
+	public function register_public_taxonomies()
 	{
-		// register keyword search facet
-		scrib_register_facet( 'searchword' , 'Facet_Searchword' , array( 'priority' => 0 , 'has_rewrite' => TRUE ) );
-
-		// register public taxonomies as facets
-		foreach( (array) get_taxonomies( array( 'public' => true )) as $taxonomy )
+		foreach( (array) get_taxonomies( array( 'public' => TRUE ) ) as $taxonomy )
 		{
 			$taxonomy = get_taxonomy( $taxonomy );
 
 			scrib_register_facet(
 				( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ),
-				'Facet_Taxonomy' ,
+				'Facet_Taxonomy',
 				array(
-					'taxonomy' => $taxonomy->name ,
-					'query_var' => $taxonomy->query_var ,
+					'taxonomy'    => $taxonomy->name ,
+					'query_var'   => $taxonomy->query_var ,
 					'has_rewrite' => is_array( $taxonomy->rewrite ),
-					'priority' => 5,
+					'priority'    => 5,
 				)
 			);
 		} // END foreach
-
-		// register facets from the posts table
-		scrib_register_facet( 'post_author' , 'Facet_Post_Author' , array( 'priority' => 3 , 'has_rewrite' => TRUE ) );
-		scrib_register_facet( 'post_type' , 'Facet_Post_Type' , array( 'priority' => 3 , 'has_rewrite' => TRUE ) );
-	} // END register_default_facets
+	} // END register_public_taxonomies
 } // END Scriblio
 
 function scriblio()

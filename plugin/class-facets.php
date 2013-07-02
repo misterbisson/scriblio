@@ -164,10 +164,19 @@ class Facets
 
 		if( ! $this->matching_post_ids = wp_cache_get( $cache_key , 'scrib-matching-post-ids' ))
 		{
-			global $wpdb;
+			// apply a filter to allow other plugins to generate the list of
+			// matching post IDs. the filter _must_ return an empty array()
+			// if there are no results, otherwise execution will continue
+			// against MySQL below
+			$this->matching_post_ids = apply_filters( 'scriblio_pre_get_matching_post_ids', FALSE, $this->_foundpostslimit );
 
-			$this->matching_post_ids = $wpdb->get_col( $this->matching_post_ids_sql );
-
+			// if no filters are hooked above, the result will be FALSE and
+			// we'll look in MySQL to find the matching post IDs
+			if ( FALSE === $this->matching_post_ids)
+			{
+				global $wpdb;
+				$this->matching_post_ids = $wpdb->get_col( $this->matching_post_ids_sql );
+			}
 			wp_cache_set( $cache_key , $this->matching_post_ids , 'scrib-matching-post-ids' , $this->ttl );
 		}
 

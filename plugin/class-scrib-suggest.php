@@ -92,7 +92,7 @@ class Scrib_Suggest
 		// get results from the cache or generate them fresh if necessary
 		if( ! $suggestion = wp_cache_get( $cachekey , 'scrib_suggest' ))
 		{
-			global $wpdb , $facets;
+			global $wpdb, $facets;
 
 			// init the result vars
 			$searchfor = $searchforj = $suggestion = $suggestionj = $beginswith = $beginswithj = array();

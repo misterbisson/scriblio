@@ -11,21 +11,16 @@ class Facets
 	public function __construct()
 	{
 		// initialize scriblio facets once things have settled (init is too soon for some plugins)
-		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1);
-		add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
+		add_action( 'parse_query' , array( $this , 'parse_query' ), 1 );
 		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
 
-		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ));
-		add_shortcode( 'facets' , array( $this, 'shortcode_facets' ));
+		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ) );
+		add_shortcode( 'facets' , array( $this, 'shortcode_facets' ) );
 
 		// initialize a standard object to collect facet data
 		$this->facets = new stdClass;
 	}
 
-	public function wp_loaded()
-	{
-		do_action( 'scrib_register_facets' );
-	}//end wp_loaded
 
 	public function is_browse()
 	{
@@ -39,13 +34,28 @@ class Facets
 			'priority' => 5,
 		));
 
+		// if the class hasn't been loaded yet and it's an internal class, then load it
+		if ( ! class_exists( $facet_class ) )
+		{
+			// format the filesystem path to try to load this class file from
+			$class_path = __DIR__ . '/class-' . str_replace( '_', '-', sanitize_title_with_dashes( $facet_class ) ) . '.php';
+
+			// check if this class file is an internal class, try to load it
+			if ( file_exists( $class_path ) )
+			{
+				require_once $class_path;
+			}
+		}
+
 		// instantiate the facet
-		if( class_exists( $facet_class ))
+		if ( class_exists( $facet_class ) )
 		{
 			$this->facets->$facet_name = new $facet_class( $facet_name , $args , $this );
 		}
 		else
+		{
 			return FALSE;
+		}
 
 		// register the query var and associate it with this facet
 		$query_var = $this->facets->$facet_name->register_query_var();
@@ -486,7 +496,6 @@ class Facets
 		return (object) $labels;
 	}
 }
-$facets = new Facets;
 
 
 
@@ -510,12 +519,4 @@ interface Facet
 	function queryterm_remove( $term , $current );
 
 	function permalink( $terms );
-}
-
-
-
-function scrib_register_facet( $name , $type , $args = array() )
-{
-	global $facets;
-	$facets->register_facet( $name , $type , $args );
 }

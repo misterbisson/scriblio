@@ -10,8 +10,6 @@ class Scriblio
 			'widgets' => TRUE,
 		),
 		'register_default_facets' => TRUE,
-		'facets' => array(
-		),
 	);
 
 	// default facets (excluding taxonomy facets, which are identified on the `wp_loaded` action)
@@ -98,12 +96,16 @@ class Scriblio
 		{
 			$this->options['facets'] = $this->get_default_facets();
 		}
+		else
+		{
+			$this->options['facets'] = array();
+		}
 
 		// re-filter our options now that we know what our default facets are
 		$this->options = apply_filters(
 			'go_config',
-			$this->options,
-			'scriblio'
+			$this->options['facets'],
+			'scriblio-facets'
 		);
 
 		// load the facets we know about

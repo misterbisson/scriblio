@@ -101,8 +101,8 @@ class Scriblio
 			$this->options['facets'] = array();
 		}
 
-		// re-filter our options now that we know what our default facets are
-		$this->options = apply_filters(
+		// Filter the default facets
+		$this->options['facets'] = apply_filters(
 			'go_config',
 			$this->options['facets'],
 			'scriblio-facets'

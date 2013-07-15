@@ -2,157 +2,165 @@
 
 class Scriblio
 {
+	// the default options. The facets portion is empty until the `wp_loaded` action is run.
 	var $options = array(
-		'facet-components' => array(
-			'searchword'  => TRUE,
-			'taxonomy'    => TRUE,
-			'post-author' => TRUE,
-			'post-type'   => TRUE,
+		'components' => array(
+			'facets' => TRUE, // making this false does nothing, as it's required for the others
+			'suggest' => TRUE,
+			'widgets' => TRUE,
 		),
-		'widgets'       => TRUE,
-		'scrib-suggest' => TRUE,
-		'facets'        => array(
-			'searchword' => array(
-				'class'       => 'Facet_Searchword',
-				'priority'    => 0, 
+		'register_default_facets' => TRUE,
+		'facets' => array(
+		),
+	);
+
+	// default facets (excluding taxonomy facets, which are identified on the `wp_loaded` action)
+	// these are only loaded if the `register_default_facets` option is TRUE.
+	var $default_facets = array(
+		'searchword' => array(
+			'class' => 'Facet_Searchword',
+			'args' => array(
 				'has_rewrite' => TRUE,
+				'priority' => 0,
 			),
-			// This is a special facet
-			// If set to TRUE will register all public taxonomies
-			// If set to FALSE no taxonomy facets will be registered
-			// If an array of taxonomy names with priorities only indicated taxonomies will be registered:
-			// 'taxonomy' => array(
-			//     'post_tag' => 5,
-			//     'category' => 5,
-			// )
-			'taxonomy' => TRUE,
-			'taxonomy' => FALSE,
-			'post_author' => array(
-				'class'       => 'Facet_Post_Author',
-				'priority'    => 3, 
+		),
+		'post_author' => array(
+			'class' => 'Facet_Post_Author',
+			'args' => array(
 				'has_rewrite' => TRUE,
+				'priority' => 3,
 			),
-			'post_type' => array(
-				'class'       => 'Facet_Post_Type',
-				'priority'    => 3, 
+		),
+		'post_type' => array(
+			'class' => 'Facet_Post_Type',
+			'args' => array(
 				'has_rewrite' => TRUE,
+				'priority' => 3,
 			),
 		),
 	);
-	
+
 	public function __construct()
 	{
-		add_action( 'scrib_register_facets' , array( $this, 'register_facets' ) );
-		
-		// Activate the sub-components
-		$this->activate();			
-	} // END __construct
+		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1 );
 
-	/**
-	 * Activate Scriblio
-	 */
-	public function activate()
-	{
-		// Load main facets class
-		require_once( dirname( __FILE__ ) .'/class-facets.php' );
-
-		// get options with defaults
-		$this->options = apply_filters( 
-			'go_config', 
-			$this->options, 
+		// get options with defaults to figure out what components to activate
+		$this->options = apply_filters(
+			'go_config',
+			$this->options,
 			'scriblio'
 		);
 
-		// Activate facets
-		foreach ( $this->options['facet-components'] as $facet => $activate )
-		{
-			if ( $activate )
-			{
-				require_once( dirname( __FILE__ ) . '/class-facet-' . $facet . '.php' );
-			} // END if
-		} // END foreach
+		/*
+		** Load all the components based on the config
+		*/
 
-		if ( $this->options['widgets'] )
+		// Load main facets class
+		$this->facets();
+
+		// The widgets
+		if ( $this->options['components']['widgets'] )
 		{
-			require_once( dirname( __FILE__ ) .'/widgets.php' );
+			require_once __DIR__ . '/widgets.php';
 		} // END if
-		
-		if ( $this->options['scrib-suggest'] )
+
+		// The type-ahead suggest class
+		if ( $this->options['components']['suggest'] )
 		{
-			require_once( dirname( __FILE__ ) .'/class-scrib-suggest.php' );
+			require_once __DIR__ . '/class-scrib-suggest.php';
 		} // END if
+
 	} // END activate
-	
+
 	/**
-	 * Register facets
+	 * Singleton for the facets class
 	 */
-	function register_facets()
-	{	
-		foreach ( $this->options['facets'] as $facet => $options )
+	public function facets()
+	{
+		if( ! $this->facets )
 		{
-			if ( 'taxonomy' != $facet )
+			require_once __DIR__ . '/class-facets.php';
+
+			$this->facets = new Facets;
+		}
+
+		return $this->facets;
+	}//end facets
+
+	/**
+	 * Register our known facets, then do the scrib_register_facets action
+	 */
+	public function wp_loaded()
+	{
+
+		// if we're loading default facets, then figure out what they are
+		if ( $this->options['register_default_facets'] )
+		{
+			$this->options['facets'] = $this->get_default_facets();
+		}
+
+		// re-filter our options now that we know what our default facets are
+		$this->options = apply_filters(
+			'go_config',
+			$this->options,
+			'scriblio'
+		);
+
+		// load the facets we know about
+		if ( is_array( $this->options['facets'] ) )
+		{
+			foreach ( $this->options['facets'] as $facet => $options )
 			{
 				scrib_register_facet(
-					$facet, 
-					$options['class'], 
-					array( 
-						'priority' => $options['priority'],
-						'has_rewrite' => $options['has_rewrite'],
-					) 
+					$facet,
+					$options['class'],
+					$options['args']
 				);
-			} // END if
-			else 
-			{
-				if ( is_array( $options ) )
-				{
-					foreach ( $options as $taxonomy_name => $priority )
-					{
-						$taxonomy = get_taxonomy( $taxonomy_name );
-						
-						if ( ! $taxonomy )
-						{
-							continue;
-						} // END if
-						
-						scrib_register_facet(
-							( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ),
-							'Facet_Taxonomy',
-							array(
-								'taxonomy'    => $taxonomy->name ,
-								'query_var'   => $taxonomy->query_var ,
-								'has_rewrite' => is_array( $taxonomy->rewrite ),
-								'priority'    => absint( $priority ),
-							)
-						);
-					} // END foreach
-				} // END if
-				elseif ( TRUE == $options )
-				{
-					$this->register_public_taxonomies();
-				} // END elseif
-			} // END else
-		} // END foreach
-	} // END register_facets
-	
-	public function register_public_taxonomies()
+			}
+
+		}
+
+		// call the trigger so facets defined in other plugins can load
+		do_action( 'scrib_register_facets' );
+	}//end wp_loaded
+
+	/**
+	 * Get default facets
+	 */
+	function get_default_facets()
 	{
-		foreach( (array) get_taxonomies( array( 'public' => TRUE ) ) as $taxonomy )
+		$facets = $this->default_facets;
+
+		// register public taxonomies as facets
+		foreach ( (array) get_taxonomies( array( 'public' => TRUE ) ) as $taxonomy )
 		{
 			$taxonomy = get_taxonomy( $taxonomy );
 
-			scrib_register_facet(
-				( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ),
-				'Facet_Taxonomy',
-				array(
-					'taxonomy'    => $taxonomy->name ,
-					'query_var'   => $taxonomy->query_var ,
+			$facets[ ( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ) ] = array(
+				'class' => 'Facet_Taxonomy',
+				'args' => array(
+					'taxonomy' => $taxonomy->name ,
+					'query_var' => $taxonomy->query_var ,
 					'has_rewrite' => is_array( $taxonomy->rewrite ),
-					'priority'    => 5,
-				)
+					'priority' => 5,
+				),
 			);
-		} // END foreach
-	} // END register_public_taxonomies
+		}
+
+		return $facets;
+	}// END get_default_facets
+
+	/**
+	 * Register a single facet
+	 */
+	function register_facet( $name , $type , $args = array() )
+	{
+		$this->facets()->register_facet( $name , $type , $args );
+	}// END register_facet
+
 } // END Scriblio
+
+
 
 function scriblio()
 {
@@ -165,3 +173,28 @@ function scriblio()
 
 	return $scriblio;
 } // END scriblio
+
+
+
+function facets()
+{
+	_deprecated_function( __FUNCTION__, '3.2', 'scriblio()->facets()' );
+
+	global $facets;
+
+	if( ! $facets )
+	{
+		$facets = scriblio()->facets();
+	}
+
+	return $facets;
+} // END facets
+
+
+
+function scrib_register_facet( $name , $type , $args = array() )
+{
+	_deprecated_function( __FUNCTION__, '3.2', 'scriblio()->register_facet( $name , $type , $args )' );
+
+	scriblio()->register_facet( $name , $type , $args );
+}

@@ -29,7 +29,7 @@ class Scrib_Facets_Widget extends WP_Widget
 
 	function widget( $args, $instance )
 	{
-		global $facets, $mywijax;
+		global $mywijax;
 		extract( $args );
 
 		$title = apply_filters( 'widget_title' , empty( $instance['title'] ) ? '' : $instance['title'] );
@@ -64,21 +64,21 @@ class Scrib_Facets_Widget extends WP_Widget
 			// select what's displayed
 			if( 'corpus' == $instance['format_font_large'] )
 			{
-				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
+				$facet_list = scriblio()->facets()->facets->{$instance['facet']}->get_terms_in_corpus();
 			}
 			else if( is_singular() )
 			{
-				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_post( get_the_ID() );
+				$facet_list = scriblio()->facets()->facets->{$instance['facet']}->get_terms_in_post( get_the_ID() );
 			}
-			else if( is_search() || $facets->is_browse() )
+			else if( is_search() || scriblio()->facets()->is_browse() )
 			{
-				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_found_set();
+				$facet_list = scriblio()->facets()->facets->{$instance['facet']}->get_terms_in_found_set();
 				if( empty( $facet_list ))
-					$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
+					$facet_list = scriblio()->facets()->facets->{$instance['facet']}->get_terms_in_corpus();
 			}
 			else
 			{
-				$facet_list = $facets->facets->{$instance['facet']}->get_terms_in_corpus();
+				$facet_list = scriblio()->facets()->facets->{$instance['facet']}->get_terms_in_corpus();
 			}
 
  			if ( ! count( $facet_list ) )
@@ -87,7 +87,7 @@ class Scrib_Facets_Widget extends WP_Widget
 			}//end if
 
 			// and now we wrap it all up for echo later
-			$content = $facets->generate_tag_cloud( $facet_list , $display_options );
+			$content = scriblio()->facets()->generate_tag_cloud( $facet_list , $display_options );
 		}
 		else
 		{
@@ -129,11 +129,9 @@ class Scrib_Facets_Widget extends WP_Widget
 
 	function update( $new_instance, $old_instance )
 	{
-		global $facets;
-
 		$instance = $old_instance;
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
-		$instance['facet'] = in_array( $new_instance['facet'] , array_keys( (array) $facets->facets )) ? $new_instance['facet'] : FALSE;
+		$instance['facet'] = in_array( $new_instance['facet'] , array_keys( (array) scriblio()->facets()->facets )) ? $new_instance['facet'] : FALSE;
 		$instance['format'] = in_array( $new_instance['format'], array( 'list', 'cloud' )) ? $new_instance['format']: '';
 		$instance['format_font_small'] = floatval( '1' );
 		$instance['format_font_large'] = floatval( '2.25' );
@@ -195,9 +193,7 @@ class Scrib_Facets_Widget extends WP_Widget
 
 	function control_facets( $default = '' )
 	{
-		global $facets;
-
-		$facet_list = array_keys( (array) $facets->facets );
+		$facet_list = array_keys( (array) scriblio()->facets()->facets );
 
 		// Sort templates by name
 		$names = array();
@@ -206,8 +202,8 @@ class Scrib_Facets_Widget extends WP_Widget
 		array_multisort( $facet_list , $names );
 
 		foreach ( $facet_list as $facet )
-			if( ! isset( $facets->facets->$facet->exclude_from_widget ))
-				echo "\n\t<option value=\"". $facet .'" '. selected( $default , $facet , FALSE ) .'>'. ( isset( $facets->facets->$facet->label ) ? $facets->facets->$facet->label : $facet ) .'</option>';
+			if( ! isset( scriblio()->facets()->facets->$facet->exclude_from_widget ))
+				echo "\n\t<option value=\"". $facet .'" '. selected( $default , $facet , FALSE ) .'>'. ( isset( scriblio()->facets()->facets->$facet->label ) ? scriblio()->facets()->facets->$facet->label : $facet ) .'</option>';
 	}
 
 }// end Scrib_Facets_Widget
@@ -223,9 +219,9 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 	{
 		extract( $args );
 
-		global $wp_query, $facets;
+		global $wp_query;
 
-		if( ! ( is_search() || $facets->is_browse() ))
+			if( ! ( is_search() || scriblio()->facets()->is_browse() ))
 			return;
 
 		$title = apply_filters( 'widget_title' , $instance['title'] );
@@ -238,7 +234,7 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 			echo $before_title . $title . $after_title;
 		if ( ! empty( $context_top ) )
 			echo '<div class="textwidget scrib_search_edit context-top">' . $context_top . '</div>';
-		echo '<ul class="facets">'. $facets->editsearch() .'</ul>';
+		echo '<ul class="facets">'. scriblio()->facets()->editsearch() .'</ul>';
 		if ( ! empty( $context_bottom ) )
 			echo '<div class="textwidget scrib_search_edit context-bottom">' . $context_bottom . '</div>';
 

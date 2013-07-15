@@ -32,10 +32,8 @@ class Scrib
 
 	public function get_tag_link( $tag )
 	{
-		global $facets;
-
 		if( $term = get_term_by( 'slug' , $tag['slug'] , $tag['taxonomy'] ))
-			return $facets->permalink( $facets->_tax_to_facet[ $term->taxonomy ], $term );
+			return scriblio()->facets()->permalink( scriblio()->facets()->_tax_to_facet[ $term->taxonomy ], $term );
 		
 		return '';
 	}

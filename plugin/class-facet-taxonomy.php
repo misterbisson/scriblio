@@ -61,7 +61,7 @@ class Facet_Taxonomy implements Facet
 		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus-'. $this->taxonomy , 'scrib-facet-taxonomy' ))
 		{
 			$terms = get_terms( $this->taxonomy , array( 'number' => 1000 , 'orderby' => 'count' , 'order' => 'DESC' ));
-			$terms = apply_filters( 'scriblio_facet_taxonony_terms', $terms );
+			$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
 
 			$this->terms_in_corpus = array();
 			foreach( $terms as $term )
@@ -111,7 +111,7 @@ class Facet_Taxonomy implements Facet
 				/* generated in Facet_Taxonomy::get_terms_in_found_set() */";
 
 			$terms = $wpdb->get_results( $facets_query );
-			$terms = apply_filters( 'scriblio_facet_taxonony_terms', $terms );
+			$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
 			
 			$this->facets->_matching_tax_facets = array();
 			foreach( $terms as $term )
@@ -143,7 +143,7 @@ class Facet_Taxonomy implements Facet
 			return FALSE;
 
 		$terms = wp_get_object_terms( $post_id , $this->taxonomy );
-		$terms = apply_filters( 'scriblio_facet_taxonony_terms', $terms );
+		$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
 		
 		$terms_in_post = array();
 		foreach( $terms as $term )

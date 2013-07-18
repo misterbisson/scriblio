@@ -37,9 +37,6 @@ class Scriblio
 			),
 		),
 	);
-	
-
-	public $multi_faceted_search_cap = 'multi_faceted_search';
 
 	public function __construct()
 	{

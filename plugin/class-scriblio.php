@@ -3,7 +3,7 @@
 class Scriblio
 {
 	// the default options. The facets portion is empty until the `wp_loaded` action is run.
-	var $options = array(
+	public $options = array(
 		'components' => array(
 			'facets' => TRUE, // making this false does nothing, as it's required for the others
 			'suggest' => TRUE,
@@ -14,7 +14,7 @@ class Scriblio
 
 	// default facets (excluding taxonomy facets, which are identified on the `wp_loaded` action)
 	// these are only loaded if the `register_default_facets` option is TRUE.
-	var $default_facets = array(
+	public $default_facets = array(
 		'searchword' => array(
 			'class' => 'Facet_Searchword',
 			'args' => array(
@@ -41,6 +41,7 @@ class Scriblio
 	public function __construct()
 	{
 		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1 );
+		add_action( 'parse_query', array( $this, 'parse_query' ), 25 );
 
 		// get options with defaults to figure out what components to activate
 		$this->options = apply_filters(
@@ -159,7 +160,28 @@ class Scriblio
 	{
 		$this->facets()->register_facet( $name , $type , $args );
 	}// END register_facet
+	
 
+	/**
+	 * Hooked to the parse_request action
+	 * Multi faceted searches can be heavy you might want to restrict it to only certain users
+	 */
+	public function parse_query( $query )
+	{
+		// Check if we should restrict this user's ability to do multi faceted searches
+		$restrict_faceted_search = apply_filters( 'scriblio_restrict_faceted_search', FALSE );
+
+		if ( $restrict_faceted_search )
+		{
+			$facet_count = array_sum( (array) $this->facets()->selected_facets_counts );
+
+			// if we get in here, the user can't do faceted searching
+			if ( $facet_count > 1 )
+			{
+				auth_redirect();
+			}//end if
+		}//end if
+	}// end parse_query
 } // END Scriblio
 
 

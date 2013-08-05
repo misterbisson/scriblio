@@ -3,7 +3,8 @@
 class Facet_Taxonomy implements Facet
 {
 
-	var $ttl = 600; // 10 minutes
+	public $ttl = 600; // 10 minutes
+	public $version = 600; // 10 minutes
 
 	function __construct( $name , $args , $facets_object )
 	{
@@ -85,8 +86,10 @@ class Facet_Taxonomy implements Facet
 
 	function get_terms_in_found_set()
 	{
-		if( is_array( $this->facets->_matching_tax_facets[ $this->name ] ))
+		if( isset( $this->facets->_matching_tax_facets[ $this->name ] ) && is_array( $this->facets->_matching_tax_facets[ $this->name ] ) )
+		{
 			return $this->facets->_matching_tax_facets[ $this->name ];
+		}
 
 		$matching_post_ids = $this->facets->get_matching_post_ids();
 
@@ -96,10 +99,11 @@ class Facet_Taxonomy implements Facet
 			return array();
 		}//end if
 
-		$cache_key = md5( serialize( $matching_post_ids ));
+		$cache_key = md5( serialize( $matching_post_ids ) ) . $this->version;
 
-		if( ! $this->facets->_matching_tax_facets = wp_cache_get( $cache_key , 'scrib-facet-taxonomy' ))
+		if( ! $this->facets->_matching_tax_facets = wp_cache_get( $cache_key, 'scrib-facet-taxonomy' ))
 		{
+
 			global $wpdb;
 
 			$facets_query = "SELECT b.term_id, c.term_taxonomy_id, b.slug, b.name, a.taxonomy, a.description, COUNT(c.term_taxonomy_id) AS `count`
@@ -112,7 +116,7 @@ class Facet_Taxonomy implements Facet
 
 			$terms = $wpdb->get_results( $facets_query );
 			$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
-			
+
 			$this->facets->_matching_tax_facets = array();
 			foreach( $terms as $term )
 			{
@@ -131,7 +135,14 @@ class Facet_Taxonomy implements Facet
 			wp_cache_set( $cache_key, $this->facets->_matching_tax_facets , 'scrib-facet-taxonomy', $this->ttl );
 		}
 
-		return $this->facets->_matching_tax_facets[ $this->name ];
+		if( ! isset( $this->facets->_matching_tax_facets[ $this->name ] ) || ! is_array( $this->facets->_matching_tax_facets[ $this->name ] ) )
+		{
+			return FALSE;
+		}
+		else
+		{
+			return $this->facets->_matching_tax_facets[ $this->name ];
+		}
 	}
 
 	function get_terms_in_post( $post_id = FALSE )

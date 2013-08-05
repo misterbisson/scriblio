@@ -386,7 +386,7 @@ class Facets
 				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
 				esc_attr( sprintf( __('%d topics') , $count ) ),
 				( 'list' == $format ? '' : 'style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ),
-				wp_specialchars( $term_name ),
+				esc_html( $term_name ),
 				( 'list' == $format ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' ),
 				$before_link
 			);

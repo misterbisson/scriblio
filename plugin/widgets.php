@@ -48,7 +48,7 @@ class Scrib_Facets_Widget extends WP_Widget
 				'number' => $instance['number'],
 				'orderby' => $orderby,
 				'order' => $order,
-				'order_custom' => $instance['order_custom'],
+				//'order_custom' => $instance['order_custom'],
 			);
 
 			// list and cloud specific display options
@@ -73,8 +73,6 @@ class Scrib_Facets_Widget extends WP_Widget
 			else if( is_search() || scriblio()->facets()->is_browse() )
 			{
 				$facet_list = scriblio()->facets()->facets->{$instance['facet']}->get_terms_in_found_set();
-				if( empty( $facet_list ))
-					$facet_list = scriblio()->facets()->facets->{$instance['facet']}->get_terms_in_corpus();
 			}
 			else
 			{

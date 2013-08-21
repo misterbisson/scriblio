@@ -40,7 +40,7 @@ class Scriblio
 
 	public function __construct()
 	{
-		add_action( 'wp_loaded' , array( $this , 'wp_loaded' ), 1 );
+		add_action( 'wp_loaded', array( $this, 'wp_loaded' ), 1 );
 		add_action( 'parse_query', array( $this, 'parse_query' ), 25 );
 
 		// get options with defaults to figure out what components to activate
@@ -61,15 +61,15 @@ class Scriblio
 		if ( $this->options['components']['widgets'] )
 		{
 			require_once __DIR__ . '/widgets.php';
-		} // END if
+		} // end if
 
 		// The type-ahead suggest class
 		if ( $this->options['components']['suggest'] )
 		{
 			require_once __DIR__ . '/class-scrib-suggest.php';
-		} // END if
+		} // end if
 
-	} // END activate
+	} // end __construct
 
 	/**
 	 * Singleton for the facets class
@@ -114,14 +114,14 @@ class Scriblio
 		{
 			foreach ( $this->options['facets'] as $facet => $options )
 			{
-				scrib_register_facet(
+				scriblio()->register_facet(
 					$facet,
 					$options['class'],
 					$options['args']
 				);
 			}
 
-		}
+		}// end if
 
 		// call the trigger so facets defined in other plugins can load
 		do_action( 'scrib_register_facets' );
@@ -130,7 +130,7 @@ class Scriblio
 	/**
 	 * Get default facets
 	 */
-	function get_default_facets()
+	public function get_default_facets()
 	{
 		$facets = $this->default_facets;
 
@@ -142,25 +142,25 @@ class Scriblio
 			$facets[ ( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ) ] = array(
 				'class' => 'Facet_Taxonomy',
 				'args' => array(
-					'taxonomy' => $taxonomy->name ,
-					'query_var' => $taxonomy->query_var ,
+					'taxonomy' => $taxonomy->name,
+					'query_var' => $taxonomy->query_var,
 					'has_rewrite' => is_array( $taxonomy->rewrite ),
 					'priority' => 5,
 				),
 			);
-		}
+		}// end foreach
 
 		return $facets;
-	}// END get_default_facets
+	}// end get_default_facets
 
 	/**
 	 * Register a single facet
 	 */
-	function register_facet( $name , $type , $args = array() )
+	public function register_facet( $name, $type, $args = array() )
 	{
-		$this->facets()->register_facet( $name , $type , $args );
-	}// END register_facet
-	
+		$this->facets()->register_facet( $name, $type, $args );
+	}// end register_facet
+
 
 	/**
 	 * Hooked to the parse_request action
@@ -182,7 +182,7 @@ class Scriblio
 			}//end if
 		}//end if
 	}// end parse_query
-} // END Scriblio
+}// end class
 
 
 
@@ -196,7 +196,7 @@ function scriblio()
 	}
 
 	return $scriblio;
-} // END scriblio
+} // end scriblio
 
 
 
@@ -212,13 +212,13 @@ function facets()
 	}
 
 	return $facets;
-} // END facets
+} // end facets
 
 
 
-function scrib_register_facet( $name , $type , $args = array() )
+function scrib_register_facet( $name, $type, $args = array() )
 {
-	_deprecated_function( __FUNCTION__, '3.2', 'scriblio()->register_facet( $name , $type , $args )' );
+	_deprecated_function( __FUNCTION__, '3.2', 'scriblio()->register_facet( $name, $type, $args )' );
 
-	scriblio()->register_facet( $name , $type , $args );
+	scriblio()->register_facet( $name, $type, $args );
 }

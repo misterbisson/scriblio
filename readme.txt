@@ -1,5 +1,5 @@
 === Scriblio ===
-Contributors: misterbisson
+Contributors: misterbisson, borkweb, methnen
 Tags: scriblio, library, libraries, catalog, facets, faceting, search, searching, browse, browsing, metadata, taxonomy, taxonomies, custom taxonomies, custom post types
 Requires at least: 3.3
 Tested up to: 3.5.1

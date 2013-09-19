@@ -170,10 +170,14 @@ class Facets
 			return $this->matching_post_ids;
 		}
 
-		$cache_key = md5( $this->matching_post_ids_sql );
+		scriblio()->timer( 'get_matching_post_ids' );
 
+		$cache_key = md5( $this->matching_post_ids_sql );
+		$timer_notes = 'from cache';
 		if( ! $this->matching_post_ids = wp_cache_get( $cache_key , 'scrib-matching-post-ids' ))
 		{
+			$timer_notes = 'from filter';
+
 			// apply a filter to allow other plugins to generate the list of
 			// matching post IDs. the filter _must_ return an empty array()
 			// if there are no results, otherwise execution will continue
@@ -184,11 +188,15 @@ class Facets
 			// we'll look in MySQL to find the matching post IDs
 			if ( FALSE === $this->matching_post_ids)
 			{
+				$timer_notes = 'from query';
+
 				global $wpdb;
 				$this->matching_post_ids = $wpdb->get_col( $this->matching_post_ids_sql );
 			}
 			wp_cache_set( $cache_key , $this->matching_post_ids , 'scrib-matching-post-ids' , $this->ttl );
 		}
+
+		scriblio()->timer( 'get_matching_post_ids', $timer_notes );
 
 		return $this->matching_post_ids;
 	}
@@ -310,6 +318,8 @@ class Facets
 
 	public function generate_tag_cloud( $tags , $args = '' )
 	{
+		scriblio()->timer( 'generate_tag_cloud' );
+
 		global $wp_rewrite;
 
 		$args = wp_parse_args( $args, array(
@@ -407,6 +417,8 @@ class Facets
 			default :
 				$return = "<div class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ) ) ) ."\n</div>\n";
 		}
+
+		scriblio()->timer( 'generate_tag_cloud', $args );
 
 		return $return;
 	}

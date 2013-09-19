@@ -59,8 +59,13 @@ class Facet_Taxonomy implements Facet
 		if( isset( $this->terms_in_corpus ))
 			return $this->terms_in_corpus;
 
+		scriblio()->timer( 'facet_taxonomy::get_terms_in_corpus' );
+		$timer_notes = 'from cache';
+
 		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus-'. $this->taxonomy , 'scrib-facet-taxonomy' ))
 		{
+			$timer_notes = 'from query';
+
 			$terms = get_terms( $this->taxonomy , array( 'number' => 1000 , 'orderby' => 'count' , 'order' => 'DESC' ));
 			$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
 
@@ -81,6 +86,8 @@ class Facet_Taxonomy implements Facet
 			wp_cache_set( 'terms-in-corpus-'. $this->taxonomy , $this->terms_in_corpus, 'scrib-facet-taxonomy', $this->ttl );
 		}
 
+		scriblio()->timer( 'facet_taxonomy::get_terms_in_corpus', $timer_notes );
+
 		return $this->terms_in_corpus;
 	}
 
@@ -99,10 +106,13 @@ class Facet_Taxonomy implements Facet
 			return array();
 		}//end if
 
-		$cache_key = md5( serialize( $matching_post_ids ) ) . $this->version;
+		scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set' );
+		$timer_notes = 'from cache';
 
+		$cache_key = md5( serialize( $matching_post_ids ) ) . $this->version;
 		if( ! $this->facets->_matching_tax_facets = wp_cache_get( $cache_key, 'scrib-facet-taxonomy' ))
 		{
+			$timer_notes = 'from query';
 
 			global $wpdb;
 
@@ -115,7 +125,10 @@ class Facet_Taxonomy implements Facet
 				/* generated in Facet_Taxonomy::get_terms_in_found_set() */";
 
 			$terms = $wpdb->get_results( $facets_query );
+
+			scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set::scriblio_facet_taxonomy_terms' );
 			$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
+			scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set::scriblio_facet_taxonomy_terms', count( $terms ) . ' terms' );
 
 			$this->facets->_matching_tax_facets = array();
 			foreach( $terms as $term )
@@ -135,6 +148,8 @@ class Facet_Taxonomy implements Facet
 			wp_cache_set( $cache_key, $this->facets->_matching_tax_facets , 'scrib-facet-taxonomy', $this->ttl );
 		}
 
+		scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set', $timer_notes );
+
 		if( ! isset( $this->facets->_matching_tax_facets[ $this->name ] ) || ! is_array( $this->facets->_matching_tax_facets[ $this->name ] ) )
 		{
 			return FALSE;
@@ -153,9 +168,11 @@ class Facet_Taxonomy implements Facet
 		if( ! $post_id )
 			return FALSE;
 
+		scriblio()->timer( 'facet_taxonomy::get_terms_in_post' );
+
 		$terms = wp_get_object_terms( $post_id , $this->taxonomy );
 		$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
-		
+
 		$terms_in_post = array();
 		foreach( $terms as $term )
 		{
@@ -169,6 +186,8 @@ class Facet_Taxonomy implements Facet
 				'count' => $term->count,
 			);
 		}
+
+		scriblio()->timer( 'facet_taxonomy::get_terms_in_post' );
 
 		return $terms_in_post;
 	}

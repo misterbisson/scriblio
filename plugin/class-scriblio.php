@@ -2,6 +2,11 @@
 
 class Scriblio
 {
+	// init the timer vars
+	public $timer = array();
+	public $timer_start = array();
+	public $profiler = FALSE;
+
 	// the default options. The facets portion is empty until the `wp_loaded` action is run.
 	public $options = array(
 		'components' => array(
@@ -42,6 +47,7 @@ class Scriblio
 	{
 		add_action( 'wp_loaded', array( $this, 'wp_loaded' ), 1 );
 		add_action( 'parse_query', array( $this, 'parse_query' ), 25 );
+		add_action( 'wp_footer', array( $this, 'wp_footer' ), 1 );
 
 		// get options with defaults to figure out what components to activate
 		$this->options = apply_filters(
@@ -91,6 +97,12 @@ class Scriblio
 	 */
 	public function wp_loaded()
 	{
+
+		// turn on performance profiling if requested
+		if ( isset( $_REQUEST['scriblio-profiler'] ) && current_user_can( 'manage_options' ) )
+		{
+			$this->profiler = TRUE;
+		}
 
 		// if we're loading default facets, then figure out what they are
 		if ( $this->options['register_default_facets'] )
@@ -182,6 +194,65 @@ class Scriblio
 			}//end if
 		}//end if
 	}// end parse_query
+
+	public function wp_footer()
+	{
+
+		if ( ! $this->profiler )
+		{
+			return;
+		}
+
+		echo '<h2>Scriblio performance profile</h2>';
+		printf(
+			'<table><tr>
+				<td>%1$s</td>
+				<td>%2$s</td>
+				<td>%3$s</td>
+			</tr>',
+			'Event',
+			'Seconds',
+			'Notes'
+		);
+
+		foreach ( $this->timer as $group => $v )
+		{
+			foreach ( $v as $item )
+			{
+				printf(
+					'<tr>
+						<td>%1$s</td>
+						<td>%2$s</td>
+						<td><pre>%3$s</pre></td>
+					</tr>',
+					$group,
+					number_format( $item['time'], 4 ),
+					print_r( $item['notes'], TRUE )
+				);
+			}
+		}
+
+		echo '</table>';
+	}
+
+	public function timer( $name, $notes = '' )
+	{
+		if ( ! $this->profiler )
+		{
+			return;
+		}
+
+		if ( ! isset( $this->timer_start[ $name ] ) )
+		{
+			$this->timer_start[ $name ] = microtime( TRUE );
+			return 0;
+		}
+
+		$this->timer[ $name ][] = array(
+			'time' => microtime( TRUE ) - $this->timer_start[ $name ],
+			'notes' => $notes,
+		);
+	}
 }// end class
 
 

@@ -3,8 +3,8 @@
 class Facet_Taxonomy implements Facet
 {
 
-	public $ttl = 600; // 10 minutes
-	public $version = 600; // 10 minutes
+	public $version = 1;
+	public $ttl = 18013; // a little longer than 5 hours
 
 	function __construct( $name , $args , $facets_object )
 	{
@@ -109,8 +109,10 @@ class Facet_Taxonomy implements Facet
 		scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set' );
 		$timer_notes = 'from cache';
 
+var_dump( scriblio()->cachebuster );
+
 		$cache_key = md5( serialize( $matching_post_ids ) ) . $this->version;
-		if( ! $this->facets->_matching_tax_facets = wp_cache_get( $cache_key, 'scrib-facet-taxonomy' ))
+		if( ! $this->facets->_matching_tax_facets = wp_cache_get( $cache_key . ( scriblio()->cachebuster ? 'CACHEBUSTER' : '' ), 'scrib-facet-taxonomy' ))
 		{
 			$timer_notes = 'from query';
 

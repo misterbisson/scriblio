@@ -6,6 +6,7 @@ class Scriblio
 	public $timer = array();
 	public $timer_start = array();
 	public $profiler = FALSE;
+	public $cachebuster = FALSE;
 
 	// the default options. The facets portion is empty until the `wp_loaded` action is run.
 	public $options = array(
@@ -97,11 +98,16 @@ class Scriblio
 	 */
 	public function wp_loaded()
 	{
-
 		// turn on performance profiling if requested
 		if ( isset( $_REQUEST['scriblio-profiler'] ) && current_user_can( 'manage_options' ) )
 		{
 			$this->profiler = TRUE;
+		}
+
+		// cachebuster
+		if ( isset( $_REQUEST['scriblio-cachebuster'] ) && current_user_can( 'manage_options' ) )
+		{
+			$this->cachebuster = TRUE;
 		}
 
 		// if we're loading default facets, then figure out what they are

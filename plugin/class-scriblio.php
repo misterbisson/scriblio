@@ -237,21 +237,27 @@ class Scriblio
 
 	public function timer( $name, $notes = '' )
 	{
+		// only run if the performance profiler class var is TRUE
 		if ( ! $this->profiler )
 		{
 			return;
 		}
 
+		// start the timer the timer
 		if ( ! isset( $this->timer_start[ $name ] ) )
 		{
 			$this->timer_start[ $name ] = microtime( TRUE );
-			return 0;
+			return;
 		}
 
+		// end the timer
 		$this->timer[ $name ][] = array(
 			'time' => microtime( TRUE ) - $this->timer_start[ $name ],
 			'notes' => $notes,
 		);
+
+		// clear the old timer start
+		unset( $this->timer_start[ $name ] );
 	}
 }// end class
 

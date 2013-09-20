@@ -94,7 +94,12 @@ class Facets
 		$this->selected_facets = (object) array();
 		foreach( $searched as $k => $v )
 		{
-			$this->selected_facets->{$this->_query_vars[ $k ]} = $this->facets->{$this->_query_vars[ $k ]}->parse_query( $v , $query );
+			if ( is_array( $v ) )
+			{
+				continue;
+			}// end if
+
+			$this->selected_facets->{$this->_query_vars[ $k ]} = $this->facets->{$this->_query_vars[ $k ]}->parse_query( $v, $query );
 			$this->selected_facets_counts->{$this->_query_vars[ $k ]} = count( (array) $this->selected_facets->{$this->_query_vars[ $k ]} );
 		}
 
@@ -253,13 +258,13 @@ class Facets
 		{
 			case 1: // TRUE add this facet to the other facets in the previous query
 				$vars = clone $this->selected_facets;
-				$vars->{$facet} = $this->facets->$facet->queryterm_add( $term , $vars->{$facet} );
+				$vars->{$facet} = $this->facets->$facet->queryterm_add( $term, isset( $vars->{$facet} ) ? $vars->{$facet} : '' );
 				return $vars;
 				break;
 
 			case 0: // FALSE remove this term from the current query vars
 				$vars = clone $this->selected_facets;
-				$vars->$facet = $this->facets->$facet->queryterm_remove( $term , $vars->{$facet} );
+				$vars->$facet = $this->facets->$facet->queryterm_remove( $term, isset( $vars->{$facet} ) ? $vars->{$facet} : '' );
 				if( ! count( (array) $vars->$facet ))
 					unset( $vars->$facet );
 				return $vars;

@@ -3,7 +3,7 @@
 class Facet_Post_Type implements Facet
 {
 
-	var $_post_to_label = array( // pretty names
+	public $_post_to_label = array( // pretty names
 		'post_author' 	 => 'Author',
 		'post_status' 	 => 'Status',
 		'post_parent' 	 => 'Parent',
@@ -11,7 +11,7 @@ class Facet_Post_Type implements Facet
 		'post_mime_type' => 'MIME Type',
 	);
 
-	var $_post_to_queryvar = array(
+	public $_post_to_queryvar = array(
 		'post_author' 	 => 'author_name',
 		'post_status' 	 => 'post_status',
 		'post_parent' 	 => 'post_parent',
@@ -19,7 +19,7 @@ class Facet_Post_Type implements Facet
 		'post_mime_type' => 'post_mime_type',
 	);
 
-	var $_queryvar_to_post = array(
+	public $_queryvar_to_post = array(
 		'author_name' 	 => 'post_author',
 		'post_status' 	 => 'post_status',
 		'post_parent' 	 => 'post_parent',
@@ -27,7 +27,7 @@ class Facet_Post_Type implements Facet
 		'post_mime_type' => 'post_mime_type',
 	);
 
-	var $_permastructs = array(
+	public $_permastructs = array(
 		'post_author' 	 => FALSE,
 		'post_status' 	 => FALSE,
 		'post_parent' 	 => FALSE,
@@ -35,9 +35,9 @@ class Facet_Post_Type implements Facet
 		'post_mime_type' => FALSE,
 	);
 
-	var $ttl = 600; // 10 minutes
+	public $ttl = 600; // 10 minutes
 
-	function __construct( $name , $args , $facets_object )
+	public function __construct( $name , $args , $facets_object )
 	{
 		$post_type = get_post_type_object( 'post' );
 
@@ -50,7 +50,7 @@ class Facet_Post_Type implements Facet
 		$this->query_var = $this->_post_to_queryvar[ $name ];
 	}
 
-	function register_query_var()
+	public function register_query_var()
 	{
 		if ( TRUE === $this->query_var )
 		{
@@ -62,13 +62,14 @@ class Facet_Post_Type implements Facet
 		return $this->query_var;
 	}
 
-	function parse_query( $query_terms , $wp_query )
+	public function parse_query( $query_terms, $wp_query )
 	{
 		// identify the terms in this query
-		foreach( array_filter( array_map( 'trim' , (array) preg_split( '/[,\+\|]/' , $query_terms ) ) ) as $val )
+		$terms = array_filter( array_map( 'trim', (array) preg_split( '/[,\+\|]/', $query_terms ) ) );
+		foreach( $terms as $val )
 		{
 			if( $post_type = get_post_type_object( $val ) )
-			{				
+			{
 				$this->selected_terms[$post_type->name] = (object) array(
 					'facet'       => $this->name,
 					'slug'        => $post_type->name,
@@ -82,7 +83,7 @@ class Facet_Post_Type implements Facet
 		return $this->selected_terms;
 	}
 
-	function get_terms_in_corpus()
+	public function get_terms_in_corpus()
 	{
 		if( isset( $this->terms_in_corpus ) )
 		{
@@ -92,14 +93,14 @@ class Facet_Post_Type implements Facet
 		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus' , 'scrib-facet-post-type' ) )
 		{
 			global $wpdb;
-	
+
 			$terms = $wpdb->get_results( 'SELECT post_type, COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY post_type LIMIT 1000 /* generated in Facet_Post_Type::get_terms_in_corpus() */' );
-	
+
 			$this->terms_in_corpus = array();
 			foreach( $terms as $term )
 			{
 				$post_type = get_post_type_object( $term->post_type );
-				
+
 				if( empty( $post_type ) )
 				{
 					continue;
@@ -121,7 +122,7 @@ class Facet_Post_Type implements Facet
 		return $this->terms_in_corpus;
 	}
 
-	function get_terms_in_found_set()
+	public function get_terms_in_found_set()
 	{
 		if( isset( $this->terms_in_found_set ) )
 		{
@@ -145,16 +146,16 @@ class Facet_Post_Type implements Facet
 			$terms = $wpdb->get_results( 'SELECT post_type , COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE ID IN (' . implode( ',' , $matching_post_ids ) . ') GROUP BY post_type LIMIT 1000 /* generated in Facet_Post_Type::get_terms_in_found_set() */' );
 
 			$this->terms_in_found_set = array();
-			
+
 			foreach( $terms as $term )
 			{
 				$post_type = get_post_type_object( $term->post_type );
-								
+
 				if( empty( $post_type ))
 				{
 					continue;
 				}
-								
+
 				$this->terms_in_found_set[] = (object) array(
 					'facet'       => $this->name,
 					'slug'        => $post_type->name,
@@ -171,7 +172,7 @@ class Facet_Post_Type implements Facet
 		return $this->terms_in_found_set;
 	}
 
-	function get_terms_in_post( $post_id = FALSE )
+	public function get_terms_in_post( $post_id = FALSE )
 	{
 		if( ! $post_id )
 		{
@@ -184,7 +185,7 @@ class Facet_Post_Type implements Facet
 		}
 
 		$post_type = get_post_type_object( get_post( $post_id )->post_type );
-		
+
 		$count = wp_count_posts( $post_type );
 
 		$this->terms_in_post[] = (object) array(
@@ -199,31 +200,31 @@ class Facet_Post_Type implements Facet
 		return $this->terms_in_post;
 	}
 
-	function selected( $term )
+	public function selected( $term )
 	{
 		return( isset( $this->selected_terms[ ( is_object( $term ) ? $term->slug : $term ) ] ) );
 	}
 
-	function queryterm_add( $term , $current )
+	public function queryterm_add( $term, $current )
 	{
 		$current[ $term->slug ] = $term;
 		return $current;
 	}
 
-	function queryterm_remove( $term , $current )
+	public function queryterm_remove( $term, $current )
 	{
 		unset( $current[ $term->slug ] );
 		return $current;
 	}
 
-	function permalink( $terms )
+	public function permalink( $terms )
 	{
 		if( empty( $terms ))
 		{
 			return;
 		}
-		
-		// This only works for the first post_type		
+
+		// This only works for the first post_type
 		return get_post_type_archive_link( current( $terms )->term_id );
 	}
 }

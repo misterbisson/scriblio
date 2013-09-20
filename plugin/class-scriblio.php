@@ -38,6 +38,8 @@ class Scriblio
 		),
 	);
 
+	public $facets;
+
 	public function __construct()
 	{
 		add_action( 'wp_loaded', array( $this, 'wp_loaded' ), 1 );

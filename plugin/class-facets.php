@@ -456,6 +456,7 @@ class Facets
 						$current_taxonomy = $this->facets->$facet->labels->singular_name;
 
 						$facet_classes[] = 'first';
+						$return_string .= '<li class="facet-taxonomy">' . $current_taxonomy . '</li>';
 					}//end if
 
 					// build the query that excludes this search term

@@ -44,7 +44,7 @@ class Scriblio
 		),
 	);
 
-	public $facets;
+	public $facets = FALSE;
 
 	public function __construct()
 	{

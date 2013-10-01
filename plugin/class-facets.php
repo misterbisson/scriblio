@@ -92,6 +92,7 @@ class Facets
 		// identify the selected search terms
 		$searched = array_intersect_key( $query->query , $this->_query_vars );
 		$this->selected_facets = (object) array();
+		$this->selected_facets_counts = (object) array();
 		foreach( $searched as $k => $v )
 		{
 			if ( is_array( $v ) )

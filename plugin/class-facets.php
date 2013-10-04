@@ -217,8 +217,7 @@ class Facets
 	{
 		// [scrib_hit_count ]
 
-		return( number_format( $this->count_found_posts, 0, _c('.|decimal separator'), _c(',|thousands separator') ));
-
+		return( number_format( $this->count_found_posts, 0, _x('.', 'decimal separator'), _x(',', 'thousands separator') ) );
 	}
 
 	public function shortcode_facets( $arg )

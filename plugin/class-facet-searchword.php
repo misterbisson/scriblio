@@ -41,7 +41,7 @@ class Facet_Searchword implements Facet
 
 	function parse_query( $query_terms , $wp_query )
 	{
-		$term = trim( urldecode( $query_terms ));
+		$term = wp_kses( trim( urldecode( $query_terms ) ), array() );
 		$this->selected_terms[ $term ] = (object) array(
 			'facet' => $this->name,
 			'slug' => urlencode( $term ),

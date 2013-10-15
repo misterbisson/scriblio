@@ -473,7 +473,7 @@ class Facets
 
 					// build a query for this search term alone
 					$solo_url = $this->permalink( $facet , $term );
-					$solo_link = '<a href="'. $solo_url .'" class="term" title="Search only this term">'. convert_chars( wptexturize( apply_filters( 'scriblio_facets_facet_description', $term->name, $facet ) )) .'</a>';
+					$solo_link = '<a href="'. $solo_url .'" class="term" title="Search only this term">'. esc_html( convert_chars( wptexturize( apply_filters( 'scriblio_facets_facet_description', $term->name, $facet ) ) ) ) .'</a>';
 
 					// put it all together
 					$return_string .= '<li class="facet-container ' . implode( ' ', $facet_classes ) . '"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . $exclude_link .'</span></li>';

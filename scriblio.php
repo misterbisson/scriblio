@@ -2,7 +2,7 @@
 /*
 Plugin Name: Scriblio Search
 Plugin URI: http://about.scriblio.net/
-Version: 3.2
+Version: 3.3
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */

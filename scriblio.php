@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Scriblio Search
-Plugin URI: http://about.scriblio.net/
+Plugin URI: http://wordpress.org/plugins/scriblio/
 Version: 3.3
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/

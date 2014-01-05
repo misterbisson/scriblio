@@ -19,6 +19,10 @@ Scriblio includes live search suggestions that recommend search terms based on t
 
 Scriblio was originally built for libraries and once known as <a href="http://maisonbisson.com/blog/post/11133/">WPopac</a>. Early support was given by <a href="http://www.plymouth.edu/">Plymouth State University</a> and the <a href="http://www.mellon.org/">Andrew W. Mellon Foundation</a>.
 
+= Fork me! =
+
+This plugin is on Github: https://github.com/misterbisson/scriblio
+
 == Installation ==
 
 1. Download and activate the plugin.

@@ -391,6 +391,12 @@ class Facets
 
 			$before_link = apply_filters( 'scriblio_facets_tag_cloud_pre_link', '', $tag_info[ $tag ]->facet, $count, $this->count_found_posts );
 
+			if ( ! is_string( $before_link ) )
+			{
+				$before_link = '';
+				trigger_error( __FILE__ . ':' . __LINE__ .' filter expected a string, but got something else '. var_export( $before_link, TRUE ) .' referrer:' . $_SERVER['HTTP_REFERER'], E_USER_NOTICE );
+			}
+
 			$a[] = sprintf(
 				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s">%11$s<a href="%6$s" class="term-link" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
 				( 'list' == $format ? 'li' : 'span' ),

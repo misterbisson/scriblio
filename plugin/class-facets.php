@@ -314,7 +314,15 @@ class Facets
 			// @TODO: we should pass this off to each taxonomy object to handle (so we can vary the glue and query vals as needed)
 			$new_vars = array();
 			foreach( (array) $vars as $facet => $terms )
+			{
+
+				if ( ! is_array( $terms ) || ! count( $terms ) )
+				{
+					continue;
+				}
+
 				$new_vars[ $this->facets->$facet->query_var ] = implode( '+' , array_keys( $terms ));
+			}
 
 			return add_query_arg( $new_vars , $base );
 		}
@@ -391,6 +399,12 @@ class Facets
 
 			$before_link = apply_filters( 'scriblio_facets_tag_cloud_pre_link', '', $tag_info[ $tag ]->facet, $count, $this->count_found_posts );
 
+			if ( ! is_string( $before_link ) )
+			{
+				$before_link = '';
+				trigger_error( __FILE__ . ':' . __LINE__ .' filter expected a string, but got something else '. var_export( $before_link, TRUE ) .' referrer:' . $_SERVER['HTTP_REFERER'], E_USER_NOTICE );
+			}
+
 			$a[] = sprintf(
 				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s">%11$s<a href="%6$s" class="term-link" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
 				( 'list' == $format ? 'li' : 'span' ),
@@ -447,6 +461,12 @@ class Facets
 
 			foreach( (array) array_keys( $facet_priority ) as $facet )
 			{
+
+				if ( isset( $this->selected_facets->$facet ) )
+				{
+					continue;
+				}
+
 				foreach( $this->selected_facets->$facet as $k => $term )
 				{
 					$facet_classes = array();

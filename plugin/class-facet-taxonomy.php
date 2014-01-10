@@ -101,7 +101,7 @@ class Facet_Taxonomy implements Facet
 		$matching_post_ids = $this->facets->get_matching_post_ids();
 
 		// if there aren't any matching post ids, we don't need to query
-		if ( ! $matching_post_ids )
+		if ( ! is_array( $matching_post_ids ) || ! count( $matching_post_ids ) )
 		{
 			return array();
 		}//end if
@@ -152,7 +152,7 @@ class Facet_Taxonomy implements Facet
 
 		if( ! isset( $this->facets->_matching_tax_facets[ $this->name ] ) || ! is_array( $this->facets->_matching_tax_facets[ $this->name ] ) )
 		{
-			return FALSE;
+			return array();
 		}
 		else
 		{

@@ -152,7 +152,7 @@ class Facet_Taxonomy implements Facet
 
 		if( ! isset( $this->facets->_matching_tax_facets[ $this->name ] ) || ! is_array( $this->facets->_matching_tax_facets[ $this->name ] ) )
 		{
-			return FALSE;
+			return array();
 		}
 		else
 		{

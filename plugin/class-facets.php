@@ -314,7 +314,15 @@ class Facets
 			// @TODO: we should pass this off to each taxonomy object to handle (so we can vary the glue and query vals as needed)
 			$new_vars = array();
 			foreach( (array) $vars as $facet => $terms )
+			{
+
+				if ( ! is_array( $terms ) || ! count( $terms ) )
+				{
+					continue;
+				}
+
 				$new_vars[ $this->facets->$facet->query_var ] = implode( '+' , array_keys( $terms ));
+			}
 
 			return add_query_arg( $new_vars , $base );
 		}
@@ -453,6 +461,12 @@ class Facets
 
 			foreach( (array) array_keys( $facet_priority ) as $facet )
 			{
+
+				if ( isset( $this->selected_facets->$facet ) )
+				{
+					continue;
+				}
+
 				foreach( $this->selected_facets->$facet as $k => $term )
 				{
 					$facet_classes = array();

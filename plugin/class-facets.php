@@ -462,7 +462,7 @@ class Facets
 			foreach( (array) array_keys( $facet_priority ) as $facet )
 			{
 
-				if ( isset( $this->selected_facets->$facet ) )
+				if ( ! isset( $this->selected_facets->$facet ) )
 				{
 					continue;
 				}

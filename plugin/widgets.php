@@ -5,15 +5,13 @@ class Scrib_Facets_Widget extends WP_Widget
 
 	function Scrib_Facets_Widget()
 	{
-		$this->WP_Widget( 'scriblio_facets', 'Scriblio Facets', array( 'description' => 'Displays facets related to the displayed set of posts' ));
+		$this->WP_Widget( 'scriblio_facets', 'Scriblio Facets', array( 'description' => 'Displays facets related to the displayed set of posts' ) );
 
 		add_filter( 'wijax-actions', array( $this, 'wijax_actions' ) );
 	}
 
 	function wijax_actions( $actions )
 	{
-		global $mywijax;
-
 		$instances = get_option( 'widget_scriblio_facets' );
 
 		foreach( $instances as $k => $v )
@@ -23,7 +21,7 @@ class Scrib_Facets_Widget extends WP_Widget
 				continue;
 			}
 
-			$actions[ $mywijax->encoded_name( 'scriblio_facets-'. $k ) ] = (object) array( 'key' => 'scriblio_facets-'. $k, 'type' => 'widget' );
+			$actions[ bcms_wijax()->encoded_name( 'scriblio_facets-'. $k ) ] = (object) array( 'key' => 'scriblio_facets-'. $k, 'type' => 'widget' );
 		}
 
 		return $actions;
@@ -31,16 +29,13 @@ class Scrib_Facets_Widget extends WP_Widget
 
 	function widget( $args, $instance )
 	{
-		global $mywijax;
-
 		$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
-		$orderby = ( in_array( $instance['orderby'], array( 'count', 'name', 'custom' )) ? $instance['orderby'] : 'name' );
-		$order = ( in_array( $instance['order'], array( 'ASC', 'DESC' )) ? $instance['order'] : 'ASC' );
+		$orderby = ( in_array( $instance['orderby'], array( 'count', 'name', 'custom' ) ) ? $instance['orderby'] : 'name' );
+		$order = ( in_array( $instance['order'], array( 'ASC', 'DESC' ) ) ? $instance['order'] : 'ASC' );
 
 		// wijax requests get the whole thing
-		if( TRUE || is_wijax() )
+		if( ! function_exists( 'is_wijax' ) || is_wijax() )
 		{
-
 			// configure how it's displayed
 			$display_options = array(
 				'smallest' => floatval( $instance['format_font_small'] ),
@@ -90,8 +85,7 @@ class Scrib_Facets_Widget extends WP_Widget
 		}
 		else
 		{
-
-			$wijax_source = trailingslashit( home_url( '/wijax/' . $mywijax->encoded_name( $this->id )));
+			$wijax_source = trailingslashit( untrailingslashit( scriblio()->facets()->permalink() ) . '/wijax/' . bcms_wijax()->encoded_name( $this->id ) );
 
 			preg_match( '/<([\S]*)/', $args['before_title'], $title_element );
 			$title_element = trim( (string) $title_element[1], '<>' );
@@ -101,16 +95,16 @@ class Scrib_Facets_Widget extends WP_Widget
 
 			$varname_string = json_encode( array(
 				'source' => $wijax_source,
-				'varname' => $mywijax->varname( $wijax_source ),
+				'varname' => bcms_wijax()->varname( $wijax_source ),
 				'title_element' => $title_element,
 				'title_class' => $title_class,
 				'title_before' => rawurlencode( $args['before_title'] ),
 				'title_after' => rawurlencode( $args['after_title'] ),
-			));
+			) );
 
 			$content = '
 				<span class="wijax-loading">
-					<img src="'. $mywijax->path_web .'/components/img/loading-gray.gif' .'" alt="loading external resource" />
+					<img src="'. bcms_wijax()->path_web .'/img/loading-gray.gif' .'" alt="loading external resource" />
 					<a href="'. $wijax_source .'" class="wijax-source wijax-onload" rel="nofollow"></a>
 					<span class="wijax-opts" style="display: none;">'. $varname_string .'</span>
 				</span>
@@ -130,12 +124,12 @@ class Scrib_Facets_Widget extends WP_Widget
 	{
 		$instance = $old_instance;
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
-		$instance['facet'] = in_array( $new_instance['facet'], array_keys( (array) scriblio()->facets()->facets )) ? $new_instance['facet'] : FALSE;
-		$instance['format'] = in_array( $new_instance['format'], array( 'list', 'cloud' )) ? $new_instance['format']: '';
+		$instance['facet'] = in_array( $new_instance['facet'], array_keys( (array) scriblio()->facets()->facets ) ) ? $new_instance['facet'] : FALSE;
+		$instance['format'] = in_array( $new_instance['format'], array( 'list', 'cloud' ) ) ? $new_instance['format']: '';
 		$instance['format_font_small'] = floatval( '1' );
 		$instance['format_font_large'] = floatval( '2.25' );
 		$instance['number'] = absint( $new_instance['number'] );
-		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name', 'custom' )) ? $new_instance['orderby']: '';
+		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name', 'custom' ) ) ? $new_instance['orderby']: '';
 		$instance['order'] = ( 'count' == $instance['orderby'] ? 'DESC' : 'ASC' );
 
 		return $instance;
@@ -201,7 +195,7 @@ class Scrib_Facets_Widget extends WP_Widget
 		array_multisort( $facet_list, $names );
 
 		foreach ( $facet_list as $facet )
-			if( ! isset( scriblio()->facets()->facets->$facet->exclude_from_widget ))
+			if( ! isset( scriblio()->facets()->facets->$facet->exclude_from_widget ) )
 				echo "\n\t<option value=\"". $facet .'" '. selected( $default, $facet, FALSE ) .'>'. ( isset( scriblio()->facets()->facets->$facet->label ) ? scriblio()->facets()->facets->$facet->label : $facet ) .'</option>';
 	}
 
@@ -211,15 +205,17 @@ class Scrib_Searcheditor_Widget extends WP_Widget {
 
 	function Scrib_Searcheditor_Widget()
 	{
-		$this->WP_Widget( 'scrib_searcheditor', 'Scriblio Search Editor', array( 'description' => 'Edit search and browse criteria' ));
+		$this->WP_Widget( 'scrib_searcheditor', 'Scriblio Search Editor', array( 'description' => 'Edit search and browse criteria' ) );
 	}
 
 	function widget( $args, $instance )
 	{
 		global $wp_query;
 
-			if( ! ( is_search() || scriblio()->facets()->is_browse() ))
+		if( ! ( is_search() || scriblio()->facets()->is_browse() ) )
+		{
 			return;
+		}
 
 		$title = apply_filters( 'widget_title', $instance['title'] );
 		$context_top = do_shortcode( apply_filters( 'widget_text', $instance['context-top'] ) );

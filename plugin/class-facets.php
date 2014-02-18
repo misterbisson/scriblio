@@ -284,9 +284,18 @@ class Facets
 		}
 	}
 
-	public function permalink( $facet , $term , $additive = -1 )
+	public function permalink( $facet = NULL, $term = NULL, $additive = -1 )
 	{
-		$vars = apply_filters( 'scriblio_permalink_terms', $this->get_queryterms( $facet , $term , $additive ) );
+
+		if ( isset( $facet, $term ) )
+		{
+			$vars = $this->get_queryterms( $facet , $term , $additive );
+		}
+		else
+		{
+			$vars = clone $this->selected_facets;
+		}
+		$vars = apply_filters( 'scriblio_permalink_terms', $vars );
 
 		$count_of_facets = count( (array) $vars );
 

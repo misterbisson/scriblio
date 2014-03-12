@@ -34,7 +34,7 @@ class Scrib_Facets_Widget extends WP_Widget
 		$order = ( in_array( $instance['order'], array( 'ASC', 'DESC' ) ) ? $instance['order'] : 'ASC' );
 
 		// wijax requests get the whole thing
-		if( TRUE || ! function_exists( 'is_wijax' ) || is_wijax() )
+		if ( ! function_exists( 'is_wijax' ) || is_wijax() )
 		{
 			// configure how it's displayed
 			$display_options = array(
@@ -85,7 +85,15 @@ class Scrib_Facets_Widget extends WP_Widget
 		}
 		else
 		{
-			$wijax_source = trailingslashit( untrailingslashit( scriblio()->facets()->permalink() ) . '/wijax/' . bcms_wijax()->encoded_name( $this->id ) );
+			$url = scriblio()->facets()->permalink();
+			list( $url, $query_string ) = explode( '?', $url );
+
+			$wijax_source = trailingslashit( untrailingslashit( $url ) . '/wijax/' . bcms_wijax()->encoded_name( $this->id ) );
+
+			if ( $query_string )
+			{
+				$wijax_source .= "?{$query_string}";
+			}//end if
 
 			preg_match( '/<([\S]*)/', $args['before_title'], $title_element );
 			$title_element = trim( (string) $title_element[1], '<>' );

@@ -34,7 +34,7 @@ class Scrib_Facets_Widget extends WP_Widget
 		$order = ( in_array( $instance['order'], array( 'ASC', 'DESC' ) ) ? $instance['order'] : 'ASC' );
 
 		// wijax requests get the whole thing
-		if ( ! function_exists( 'is_wijax' ) || is_wijax() )
+		if ( TRUE || ! function_exists( 'is_wijax' ) || is_wijax() )
 		{
 			// configure how it's displayed
 			$display_options = array(

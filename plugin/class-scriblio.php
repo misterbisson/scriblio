@@ -275,12 +275,13 @@ class Scriblio
 	 */
 	public function permalink( $terms )
 	{
+		static $taxonomies = array();
+
 		if ( ! $terms )
 		{
 			return home_url();
 		}//end if
 
-		$taxonomies = array();
 		$facet_names = array();
 		$selected_terms = array();
 

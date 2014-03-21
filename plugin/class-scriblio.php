@@ -267,6 +267,44 @@ class Scriblio
 		// clear the old timer start
 		unset( $this->timer_start[ $name ] );
 	}
+
+	/**
+	 * generate a permalink given an array of terms
+	 *
+	 * @param $terms array Array of WP term objects
+	 */
+	public function get_terms_link( $terms )
+	{
+		if ( ! $terms )
+		{
+			return home_url();
+		}//end if
+
+		$facet_names = array();
+		$selected_terms = array();
+
+		foreach ( $terms as $term )
+		{
+			// if the facet for this taxonomy doesn't exist, let's skip it
+			if ( ! isset( $this->facets()->_tax_to_facet[ $term->taxonomy ] ) )
+			{
+				continue;
+			}//end if
+
+			$facet_name = $this->facets()->_tax_to_facet[ $term->taxonomy ];
+
+			if ( ! isset( $selected_terms[ $facet_name ] ) )
+			{
+				$selected_terms[ $facet_name ] = array();
+			}//end if
+
+			$selected_terms[ $facet_name ][ $term->slug ] = $term;
+		}//end foreach
+
+		$this->facets()->selected_facets = (object) $selected_terms;
+
+		return $this->facets()->permalink();
+	}//end permalink
 }// end class
 
 

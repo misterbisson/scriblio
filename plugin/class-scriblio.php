@@ -273,10 +273,8 @@ class Scriblio
 	 *
 	 * @param $terms array Array of WP term objects
 	 */
-	public function permalink( $terms )
+	public function get_terms_link( $terms )
 	{
-		static $taxonomies = array();
-
 		if ( ! $terms )
 		{
 			return home_url();
@@ -287,21 +285,13 @@ class Scriblio
 
 		foreach ( $terms as $term )
 		{
-			$taxonomy = $term->taxonomy;
-
-			if ( ! isset( $taxonomies[ $taxonomy ] ) )
-			{
-				$taxonomies[ $taxonomy ] = get_taxonomy( $taxonomy );
-				$taxonomies[ $taxonomy ]->facet_name = sanitize_title_with_dashes( $taxonomies[ $taxonomy ]->labels->name );
-			}//end if
-
-			$facet_name = $taxonomies[ $taxonomy ]->facet_name;
-
 			// if the facet for this taxonomy doesn't exist, let's skip it
-			if ( ! isset( $this->facets()->$facet_name ) )
+			if ( ! isset( $this->facets()->_tax_to_facet[ $term->taxonomy ] ) )
 			{
 				continue;
 			}//end if
+
+			$facet_name = $this->facets()->_tax_to_facet[ $term->taxonomy ];
 
 			if ( ! isset( $selected_terms[ $facet_name ] ) )
 			{

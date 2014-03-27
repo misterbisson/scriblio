@@ -280,8 +280,26 @@ class Scriblio
 			return home_url();
 		}//end if
 
-		$facet_names = array();
-		$selected_terms = array();
+		$selected_terms = $this->get_terms_as_facets( $terms );
+
+		$this->facets()->selected_facets = $selected_terms;
+
+		return $this->facets()->permalink();
+	}//end get_terms_link
+
+	/**
+	 * generate a collection of facets based on a collection of terms
+	 *
+	 * @param $terms array Array of WP term objects
+	 */
+	public function get_terms_as_facets( $terms )
+	{
+		if ( ! $terms )
+		{
+			return array();
+		}//end if
+
+		$facets = array();
 
 		foreach ( $terms as $term )
 		{
@@ -293,18 +311,16 @@ class Scriblio
 
 			$facet_name = $this->facets()->_tax_to_facet[ $term->taxonomy ];
 
-			if ( ! isset( $selected_terms[ $facet_name ] ) )
+			if ( ! isset( $facets[ $facet_name ] ) )
 			{
-				$selected_terms[ $facet_name ] = array();
+				$facets[ $facet_name ] = array();
 			}//end if
 
-			$selected_terms[ $facet_name ][ $term->slug ] = $term;
+			$facets[ $facet_name ][ $term->slug ] = $term;
 		}//end foreach
 
-		$this->facets()->selected_facets = (object) $selected_terms;
-
-		return $this->facets()->permalink();
-	}//end permalink
+		return (object) $facets;
+	}//end get_terms_as_facets
 }// end class
 
 

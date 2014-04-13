@@ -2,7 +2,7 @@
 Contributors: misterbisson, borkweb, methnen
 Tags: scriblio, library, libraries, catalog, facets, faceting, search, searching, browse, browsing, metadata, taxonomy, taxonomies, custom taxonomies, custom post types
 Requires at least: 3.3
-Tested up to: 3.8
+Tested up to: 3.8.2
 Stable tag: trunk
 
 Scriblio enables faceted searching and browsing of WordPress posts, pages, and custom post types. 

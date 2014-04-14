@@ -86,7 +86,11 @@ class Scrib_Facets_Widget extends WP_Widget
 		else
 		{
 			$url = scriblio()->facets()->permalink();
-			list( $url, $query_string ) = explode( '?', $url );
+			$query_string = '';
+			if ( strpos( $url, '?' ) )
+			{
+				list( $url, $query_string ) = explode( '?', $url );
+			}// end if
 
 			$wijax_source = trailingslashit( untrailingslashit( $url ) . '/wijax/' . bcms_wijax()->encoded_name( $this->id ) );
 

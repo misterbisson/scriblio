@@ -198,19 +198,19 @@ class Scrib_Facets_Widget extends WP_Widget
 <?php
 	}
 
-	function control_facets( $default = '' )
+	public function control_facets( $default = '' )
 	{
 		$facet_list = array_keys( (array) scriblio()->facets()->facets );
 
-		// Sort templates by name
-		$names = array();
-		foreach( $facet_list as $info )
-			$names[] = $info['name'];
-		array_multisort( $facet_list, $names );
+		sort( $facet_list );
 
 		foreach ( $facet_list as $facet )
-			if( ! isset( scriblio()->facets()->facets->$facet->exclude_from_widget ) )
-				echo "\n\t<option value=\"". $facet .'" '. selected( $default, $facet, FALSE ) .'>'. ( isset( scriblio()->facets()->facets->$facet->label ) ? scriblio()->facets()->facets->$facet->label : $facet ) .'</option>';
+		{
+			if ( ! isset( scriblio()->facets()->facets->$facet->exclude_from_widget ) )
+			{
+				echo "\n\t<option value=\"" . esc_attr( $facet ) . '" ' . selected( $default, $facet, FALSE ) . '>' . esc_html( isset( scriblio()->facets()->facets->$facet->label ) ? scriblio()->facets()->facets->$facet->label : $facet ) . '</option>';
+			}// end if
+		}// end foreach
 	}
 
 }// end Scrib_Facets_Widget

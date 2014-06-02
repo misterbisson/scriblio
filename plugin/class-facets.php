@@ -234,7 +234,7 @@ class Facets
 			'order' => 'ASC',
 		), $arg );
 
-		if( ! is_object( $this->facets->{$arg['facet']} ))
+		if ( ! is_object( $this->facets->{$arg['facet']} ) )
 			return '';
 
 		$orderby = ( in_array( $arg['orderby'], array( 'count', 'name', 'custom' )) ? $arg['orderby'] : 'name' );
@@ -338,7 +338,7 @@ class Facets
 	}
 
 
-	public function generate_tag_cloud( $tags , $args = '' )
+	public function generate_tag_cloud( $tags, $args = '' )
 	{
 		scriblio()->timer( 'generate_tag_cloud' );
 
@@ -353,8 +353,7 @@ class Facets
 			'format' => 'flat',
 			'orderby' => 'name',
 			'order' => 'ASC',
-		));
-		extract( $args );
+		) );
 
 		if ( ! $tags )
 			return;
@@ -370,20 +369,22 @@ class Facets
 			return;
 
 		asort( $counts );
-		if( $number > 0 )
-			$counts = array_slice( $counts , -$number , $number , TRUE );
+		if ( $args['number'] > 0 )
+		{
+			$counts = array_slice( $counts, -$args['number'], $args['number'], TRUE );
+		}//end if
 
 		$min_count = min( $counts );
 		$spread = max( $counts ) - $min_count;
 		if ( $spread <= 0 )
 			$spread = 1;
-		$font_spread = $largest - $smallest;
+		$font_spread = $args['largest'] - $args['smallest'];
 		if ( $font_spread <= 0 )
 			$font_spread = 1;
 		$font_step = $font_spread / $spread;
 
 		// SQL cannot save you; this is a second (potentially different) sort on a subset of data.
-		if( 'name' == $orderby ) // name sort
+		if ( 'name' == $args['orderby'] ) // name sort
 		{
 			uksort( $counts, 'strnatcasecmp' );
 		}
@@ -392,7 +393,7 @@ class Facets
 			asort( $counts );
 		}
 
-		if ( 'DESC' == $order )
+		if ( 'DESC' == $args['order'] )
 			$counts = array_reverse( $counts, true );
 
 		$a = array();
@@ -402,7 +403,7 @@ class Facets
 
 			$term_name = apply_filters(
 				'scriblio_facets_facet_description',
-				trim( $name == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
+				trim( $args['name'] == 'description' ? $tag_info[ $tag ]->description : $tag_info[ $tag ]->name ),
 				$tag_info[ $tag ]->facet
 			);
 
@@ -416,21 +417,21 @@ class Facets
 
 			$a[] = sprintf(
 				'<%1$s class="%2$s" data-term="%3$s" data-taxonomy="%4$s" data-term-url="%5$s">%11$s<a href="%6$s" class="term-link" title="%7$s"%8$s>%9$s%10$s</a></%1$s>',
-				( 'list' == $format ? 'li' : 'span' ),
+				( 'list' == $args['format'] ? 'li' : 'span' ),
 				( $is_selected ? 'selected' : '' ),
 				esc_attr( $term_name ),
 				esc_attr( $this->facets->{ $tag_info[ $tag ]->facet }->label ),
-				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , -1 ),
-				$this->permalink( $tag_info[ $tag ]->facet , $tag_info[ $tag ] , (int) ! $is_selected ),
-				esc_attr( sprintf( __('%d topics') , $count ) ),
-				( 'list' == $format ? '' : 'style="font-size: ' . ( $smallest + ( ( $count - $min_count ) * $font_step ) ) . $unit .';"' ),
+				$this->permalink( $tag_info[ $tag ]->facet, $tag_info[ $tag ], -1 ),
+				$this->permalink( $tag_info[ $tag ]->facet, $tag_info[ $tag ], (int) ! $is_selected ),
+				esc_attr( sprintf( __( '%d topics' ), $count ) ),
+				( 'list' == $args['format'] ? '' : 'style="font-size: ' . ( $args['smallest'] + ( ( $count - $min_count ) * $font_step ) ) . $args['unit'] .';"' ),
 				esc_html( $term_name ),
-				( 'list' == $format ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' ),
+				( 'list' == $args['format'] ? '<span class="count"><span class="meta-sep">&nbsp;</span>' . number_format( $count ) . '</span>' : '' ),
 				$before_link
 			);
-		}
+		}//end foreach
 
-		switch( $format )
+		switch ( $args['format'] )
 		{
 			case 'array' :
 				$return = &$a;
@@ -444,12 +445,12 @@ class Facets
 			case 'cloud' :
 			default :
 				$return = "<div class='wp-tag-cloud'>\n". convert_chars( wptexturize( join( "\n", $a ) ) ) ."\n</div>\n";
-		}
+		}//end switch
 
 		scriblio()->timer( 'generate_tag_cloud', $args );
 
 		return $return;
-	}
+	}//end generate_tag_cloud
 
 	public function editsearch()
 	{

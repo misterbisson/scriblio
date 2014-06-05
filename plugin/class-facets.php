@@ -105,7 +105,7 @@ class Facets
 
 		if ( 1 < array_sum( (array) $this->selected_facets_counts ) && TRUE == scriblio()->options['noindex_intersection_pages'] )
 		{
-			add_action( 'wp_head', array( $this, 'add_noindex_meta' ) );
+			add_action( 'wp_head', array( $this, 'wp_head_noindex' ) );
 		}
 //echo "<pre>";
 //global $wp_rewrite;
@@ -168,10 +168,10 @@ class Facets
 	/**
 	 * output meta tags
 	 */
-	public function add_noindex_meta()
+	public function wp_head_noindex()
 	{
 		echo '<meta name="robots" content="noindex, follow">';
-	} // end add_noindex_meta
+	} // end wp_head_noindex
 
 	public function get_matching_post_ids()
 	{

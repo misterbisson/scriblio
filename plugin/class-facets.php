@@ -72,7 +72,6 @@ class Facets
 
 	public function parse_query( $query )
 	{
-
 		// don't continue if `suppress_filters` is set
 		if( isset( $query->query['suppress_filters'] ) && $query->query['suppress_filters'] )
 		{
@@ -104,6 +103,14 @@ class Facets
 			$this->selected_facets_counts->{$this->_query_vars[ $k ]} = count( (array) $this->selected_facets->{$this->_query_vars[ $k ]} );
 		}
 
+		if (
+			isset ( scriblio()->options['noindex_intersection_pages'] ) &&
+			TRUE == scriblio()->options['noindex_intersection_pages'] &&
+			1 < array_sum( (array) $this->selected_facets_counts )
+		)
+		{
+			add_action( 'wp_head', array( $this, 'wp_head_noindex' ) );
+		}
 //echo "<pre>";
 //global $wp_rewrite;
 //print_r( $wp_rewrite );
@@ -161,6 +168,14 @@ class Facets
 
 		return $query;
 	}
+
+	/**
+	 * output meta tags
+	 */
+	public function wp_head_noindex()
+	{
+		echo '<meta name="robots" content="noindex, follow">';
+	} // end wp_head_noindex
 
 	public function get_matching_post_ids()
 	{

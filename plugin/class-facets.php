@@ -103,7 +103,11 @@ class Facets
 			$this->selected_facets_counts->{$this->_query_vars[ $k ]} = count( (array) $this->selected_facets->{$this->_query_vars[ $k ]} );
 		}
 
-		if ( 1 < array_sum( (array) $this->selected_facets_counts ) && TRUE == scriblio()->options['noindex_intersection_pages'] )
+		if (
+			isset ( scriblio()->options['noindex_intersection_pages'] ) &&
+			TRUE == scriblio()->options['noindex_intersection_pages'] &&
+			1 < array_sum( (array) $this->selected_facets_counts )
+		)
 		{
 			add_action( 'wp_head', array( $this, 'wp_head_noindex' ) );
 		}

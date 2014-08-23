@@ -67,7 +67,6 @@ class Facets
 		if( ( 9 > $args['priority'] ) && ( ! $args['has_rewrite'] ) )
 			$args['priority'] = 9;
 		$this->priority[ $facet_name ] = (int) $args['priority'];
-
 	}
 
 	public function parse_query( $query )
@@ -119,8 +118,66 @@ class Facets
 //print_r( $this->selected_facets );
 //echo "</pre>";
 
+		// detect if a keyword search could be converted to a facet search
+		if (
+			isset( scriblio()->options['redirect_keywords_to_tax_terms'] ) &&
+			scriblio()->options['redirect_keywords_to_tax_terms']
+		)
+		{
+			// if this is not a keyword search then bail
+			if ( ! isset( $this->facets->searchword ) )
+			{
+				return $query;
+			}
+
+			// do we have authority records for any of the search terms?
+			$terms = $this->facets->searchword->get_authoritative_terms( $this->selected_facets );
+
+			if ( empty( $terms ) )
+			{
+				return $query;
+			}
+
+			// convert the authority terms back to facets
+			$facets = scriblio()->get_terms_as_facets( $terms );
+
+			// pick out the facet with the highest priority (lowest number)
+			$facet_priority = array_intersect_key( $this->priority , (array) $facets );
+			asort( $facet_priority );
+
+			if ( empty( $facet_priority ) )
+			{
+				return NULL;
+			}
+
+			$new_facet = array_keys( $facet_priority )[0];
+
+			// merge $new_facet with our selected facets. we work with an
+			// object so we can reference the new facet as a variable
+			if ( isset( $this->selected_facets->$new_facet ) )
+			{
+				$new_facet_obj = (object) $this->selected_facets->$new_facet;
+			}
+			else
+			{
+				$new_facet_obj = new stdClass;
+			}
+
+			foreach ( $facets->$new_facet as $key => $val )
+			{
+				$new_facet_obj->$key = $val;
+			}//END foreach
+
+			// update our selected facets
+			unset( $this->selected_facets->searchword );
+			$this->selected_facets->$new_facet = (array) $new_facet_obj;
+
+			wp_redirect( $this->permalink(), 301 );
+			die;
+		}//END if
+
 		return $query;
-	}
+	}//END parse_query
 
 	/**
 	 * reset filters and actions used by scriblio. this allows the user to

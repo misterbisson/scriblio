@@ -158,8 +158,6 @@ class Scriblio
 		// register public taxonomies as facets
 		foreach ( (array) get_taxonomies( array( 'public' => TRUE ) ) as $taxonomy )
 		{
-			$priority = isset( $this->options['default_facet_priorities'][ $taxonomy ] ) ? $this->options['default_facet_priorities'][ $taxonomy ] : 5;
-
 			$taxonomy = get_taxonomy( $taxonomy );
 
 			$facets[ ( empty( $taxonomy->label ) ? $taxonomy->name : sanitize_title_with_dashes( $taxonomy->label ) ) ] = array(
@@ -168,7 +166,7 @@ class Scriblio
 					'taxonomy' => $taxonomy->name,
 					'query_var' => $taxonomy->query_var,
 					'has_rewrite' => is_array( $taxonomy->rewrite ),
-					'priority' => $priority,
+					'priority' => 5,
 				),
 			);
 		}// end foreach

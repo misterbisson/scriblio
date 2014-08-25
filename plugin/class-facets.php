@@ -121,10 +121,12 @@ class Facets
 		// detect if a keyword search could be converted to a facet search
 		if (
 			isset( scriblio()->options['redirect_searchword_to_taxonomy'] ) &&
-			scriblio()->options['redirect_searchword_to_taxonomy']
+			scriblio()->options['redirect_searchword_to_taxonomy'] &&
+			isset( $this->facets->searchword ) &&
+			isset( $this->selected_facets->searchword )
 		)
 		{
-			if ( list( $new_facet, $new_facet_obj ) = $this->can_redirect_keyword_search() )
+			if ( list( $new_facet, $new_facet_obj ) = $this->facets->searchword->to_taxonomy() )
 			{
 				// set up our selected facets to convert a keyword query
 				// (searchword facet) to a faceted term query for permalink()
@@ -576,91 +578,6 @@ class Facets
 
 		return (object) $labels;
 	}
-
-	/**
-	 * Check if we can redirect a keyword search to a faceted term search.
-	 * If so we'll set up our selected facets.
-	 *
-	 * @return mixed an array with two elements of [ new_facet_name, new_facet]
-	 *  if the current search is a keyword search and can be converted to a
-	 *  faceted term search, or FALSE if not.
-	 */
-	public function can_redirect_keyword_search()
-	{
-		// if searchword facet isn't instantiated then bail
-		if ( ! isset( $this->facets->searchword ) )
-		{
-			return FALSE;
-		}
-
-		if ( ! isset( $this->selected_facets->searchword ) )
-		{
-			return FALSE; // not a keyword search
-		}
-
-		// there should only be one term since don't break up the search
-		// terms in the search text box
-		$search_term = sanitize_title_with_dashes( array_keys( $this->selected_facets->searchword )[0] );
-
-		// check if we have cached facets for $search_term
-		$facets = wp_cache_get( $search_term, 'scriblio-facet' );
-
-		if ( FALSE === $facets )
-		{
-			// do we have authority records for any of the search terms?
-			$terms = $this->facets->searchword->get_authoritative_terms( $search_term );
-			if ( empty( $terms ) )
-			{
-				// cache negative results too
-				wp_cache_set( $search_term, array(), 'scriblio-facet', scriblio()->options['converted_facet_cache_ttl'] );
-				return FALSE;
-			}
-
-			// convert the authority terms back to facets
-			$facets = scriblio()->get_terms_as_facets( $terms );
-
-			// cache the results, even if they're empty
-			wp_cache_set( $search_term, $facets, 'scriblio-facet', scriblio()->options['converted_facet_cache_ttl'] );
-		}//END if
-		elseif ( empty( $facets ) )
-		{
-			return FALSE; // cache result is empty too
-		}
-
-		// pick out the facet with the highest priority (lowest number)
-		$facet_priority = array_intersect_key( $this->priority , (array) $facets );
-		asort( $facet_priority );
-
-		if ( empty( $facet_priority ) )
-		{
-			return FALSE;
-		}
-
-		// facet name with the highest priority
-		$new_facet = array_keys( $facet_priority )[0];
-
-		// merge $new_facet with existing selected facets. 
-		if ( isset( $this->selected_facets->$new_facet ) )
-		{
-			// we need to cast the facet to an object so we can reference
-			// its keys by a variable
-			$new_facet_obj = (object) $this->selected_facets->$new_facet;
-		}
-		else
-		{
-			$new_facet_obj = new stdClass;
-		}
-
-		// copy over the query terms to the new facet
-		foreach ( $facets->$new_facet as $key => $val )
-		{
-			$new_facet_obj->$key = $val;
-		}//END foreach
-
-		$results = array( $new_facet, (array) $new_facet_obj );
-
-		return $results;
-	}//END can_redirect_keyword_search
 }
 
 

@@ -16,6 +16,7 @@ class Scriblio
 			'widgets' => TRUE,
 		),
 		'register_default_facets' => TRUE,
+		'converted_facet_cache_ttl' => 604807, // ~7 days
 	);
 
 	// default facets (excluding taxonomy facets, which are identified on the `wp_loaded` action)

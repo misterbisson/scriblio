@@ -92,26 +92,12 @@ class Facet_Searchword implements Facet
 	}
 
 	/**
-	 * @param object $facets the facets selected for the query
+	 * @param string $search_term the keyword search term
 	 * @return object authoritative term objects from $facets, or NULL if
 	 *  there're no authoritative terms in $facets
 	 */
-	public function get_authoritative_terms( $facets )
+	public function get_authoritative_terms( $search_term )
 	{
-		if ( ! isset( $facets->searchword ) )
-		{
-			return NULL; // nothing for us here
-		}
-
-		// there should only be one of these
-		$search_terms = array_keys( $facets->searchword );
-		if ( empty( $search_terms ) )
-		{
-			return NULL;
-		}
-
-		$search_term = sanitize_title_with_dashes( $search_terms[0] );
-
 		if ( ! term_exists( $search_term ) )
 		{
 			return NULL;

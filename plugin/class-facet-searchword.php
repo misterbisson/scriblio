@@ -92,7 +92,7 @@ class Facet_Searchword implements Facet
 	}
 
 	/**
-	 * @param string $search_term the keyword search term
+	 * @param string $search_term the keyword search term slug
 	 * @return object authoritative term objects from $facets, or NULL if
 	 *  there're no authoritative terms in $facets
 	 */
@@ -102,9 +102,21 @@ class Facet_Searchword implements Facet
 		{
 			return NULL;
 		}
-		
+
 		// get all taxonomy terms that match $search_term, as term objects
-		$terms = $this->get_taxonomy_terms( $search_term );
+		global $wpdb;
+
+		$terms = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT t.term_id, t.name, t.slug, t.term_group,
+					tt.term_taxonomy_id, tt.taxonomy, tt.description,
+					tt.parent, tt.count
+				FROM ' . $wpdb->terms . ' t JOIN ' . $wpdb->term_taxonomy . ' tt
+					ON t.term_id = tt.term_id
+				WHERE t.slug = %s',
+				$search_term
+			)
+		);
 
 		if ( empty( $terms ) )
 		{
@@ -114,27 +126,4 @@ class Facet_Searchword implements Facet
 		// scriblio-authority is hooked to this filter 
 		return apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
 	}//END get_authoritative_terms
-
-	/**
-	 * find all term objects (with taxonomy) having the slug $term_slug
-	 *
-	 * @param string $term_slug the term to find taxonomies for
-	 * @return array list of taxonomies $term is in. this could be empty.
-	 */
-	public function get_taxonomy_terms( $term_slug )
-	{
-		global $wpdb;
-
-		return $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT t.term_id, t.name, t.slug, t.term_group,
-					tt.term_taxonomy_id, tt.taxonomy, tt.description,
-					tt.parent, tt.count
-				FROM ' . $wpdb->terms . ' t JOIN ' . $wpdb->term_taxonomy . ' tt
-					ON t.term_id = tt.term_id
-				WHERE t.slug = %s',
-				$term_slug
-			)
-		);
-	}//END get_term_taxonomies
 }//END class

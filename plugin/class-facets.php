@@ -120,8 +120,8 @@ class Facets
 
 		// detect if a keyword search could be converted to a facet search
 		if (
-			isset( scriblio()->options['redirect_keywords_to_tax_terms'] ) &&
-			scriblio()->options['redirect_keywords_to_tax_terms']
+			isset( scriblio()->options['redirect_searchword_to_taxonomy'] ) &&
+			scriblio()->options['redirect_searchword_to_taxonomy']
 		)
 		{
 			if ( list( $new_facet, $new_facet_obj ) = $this->can_redirect_keyword_search() )

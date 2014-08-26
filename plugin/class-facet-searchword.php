@@ -119,6 +119,10 @@ class Facet_Searchword implements Facet
 			// get all terms with slug $search_slug
 			$terms = $this->get_taxonomy_terms( $search_slug );
 
+			// sort the terms by count since we passed them through the
+			// 'scriblio_facet_taxonomy_terms' filter
+			usort( $terms, array( $this, 'compare_count_desc' ) );
+
 			if ( empty( $terms ) )
 			{
 				// cache negative results too
@@ -126,20 +130,30 @@ class Facet_Searchword implements Facet
 				return FALSE;
 			}
 
-			// convert the terms back to facets
-			$facets = scriblio()->get_terms_as_facets( $terms );
+			// iterate over $terms, which are now in descending count order,
+			// until we get a facet.
+			foreach ( $terms as $term )
+			{
+				$facets = scriblio()->get_terms_as_facets( array( $term ) );
+				if ( ! empty( $facets ) )
+				{
+					break;
+				}
+			}//END foreach
 
-			// cache the results, even if they're empty
+			// cache the results. $facets should contain just one term,
+			// or it could be empty
 			wp_cache_set( $search_slug, $facets, $this->cache_group, scriblio()->options[ $this->cache_ttl_config_key ] );
 		}//END if
 
-		// get facet/taxonomy name with the term with the highest count
-		if ( ! $new_facet_name = $this->get_most_popular_facet( $facets ) )
+		if ( empty( $facets ) )
 		{
-			return FALSE;
+			return FALSE; // still got nothing
 		}
 
-		// merge $new_facet with existing, selected facets. 
+		$new_facet_name = array_keys( (array) $facets )[0];
+
+		// merge $new_facet with the existing, selected facets
 		if ( isset( $this->facets->selected_facets->$new_facet_name ) )
 		{
 			// we need to cast the facet to an object so we can reference
@@ -183,7 +197,8 @@ class Facet_Searchword implements Facet
 				FROM ' . $wpdb->terms . ' t 
 					JOIN ' . $wpdb->term_taxonomy . ' tt
 						ON t.term_id = tt.term_id
-				WHERE t.slug = %s',
+				WHERE t.slug = %s
+				ORDER BY tt.count DESC',
 				$search_slug
 			)
 		);
@@ -198,30 +213,10 @@ class Facet_Searchword implements Facet
 	}//END get_taxonomy_terms
 
 	/**
-	 * find the facet with the term that has the highest count
-	 *
-	 * @param array $facets a list of facets to scan through
-	 * @return mixed name of the facet with the most-used term, or NULL
-	 *  if there is no term to work with.
+	 * compare two terms by their counts, in reverse order
 	 */
-	public function get_most_popular_facet( $facets )
+	public function compare_count_desc( $term_a, $term_b )
 	{
-		$winner = NULL;
-		$max_count = -1;
-
-		foreach ( $facets as $facet_name => $terms )
-		{
-			foreach ( $terms as $term_slug => $term )
-			{
-				if ( $max_count < $term->count )
-				{
-					$winner = $facet_name;
-					$max_count = $term->count;
-					continue;
-				}
-			}//END foreach
-		}//END foreach
-
-		return $winner;
-	}//END get_most_popular_facet
+		return ( $term_a->count < $term_b->count );
+	}//END compare_count_desc
 }//END class

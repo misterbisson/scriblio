@@ -2,9 +2,11 @@
 
 class Facet_Searchword implements Facet
 {
-
 	var $query_var = 's';
 	var $exclude_from_widget = TRUE;
+
+	private $cache_ttl_config_key = 'searchword_to_taxonomy_cache_ttl';
+	private $cache_group = 'scriblio-searchword-to-taxonomy';
 
 	function __construct( $name , $args , $facets_object )
 	{
@@ -99,18 +101,20 @@ class Facet_Searchword implements Facet
 	 */
 	public function to_taxonomy()
 	{
-		// there should only be one term since don't break up the search
-		// terms in the search text box
+		// there should only be one term since we don't break up the search
+		// string from the search textbox
 		$search_slug = sanitize_title_with_dashes( array_keys( $this->facets->selected_facets->searchword )[0] );
 
 		// check if we have cached facets for $search_slug
-		$facets = wp_cache_get( $search_slug, 'scriblio-searchword-to-taxonomy' );
+		$facets = wp_cache_get( $search_slug, $this->cache_group );
 
 		if ( ( FALSE !== $facets ) && empty( $facets ) )
 		{
 			return FALSE; // empty cached result
 		}
-		elseif ( FALSE === $facets )
+
+		// not found in our cache
+		if ( FALSE === $facets )
 		{
 			// get all terms with slug $search_slug
 			$terms = $this->get_taxonomy_terms( $search_slug );
@@ -118,7 +122,7 @@ class Facet_Searchword implements Facet
 			if ( empty( $terms ) )
 			{
 				// cache negative results too
-				wp_cache_set( $search_slug, array(), 'scriblio-searchword-to-taxonomy', scriblio()->options['converted_facet_cache_ttl'] );
+				wp_cache_set( $search_slug, array(), $this->cache_group, scriblio()->options[ $this->cache_ttl_config_key ] );
 				return FALSE;
 			}
 
@@ -126,10 +130,10 @@ class Facet_Searchword implements Facet
 			$facets = scriblio()->get_terms_as_facets( $terms );
 
 			// cache the results, even if they're empty
-			wp_cache_set( $search_slug, $facets, 'scriblio-searchword-to-taxonomy', scriblio()->options['converted_facet_cache_ttl'] );
+			wp_cache_set( $search_slug, $facets, $this->cache_group, scriblio()->options[ $this->cache_ttl_config_key ] );
 		}//END if
 
-		// get facet/taxonmy name with the term with the highest count
+		// get facet/taxonomy name with the term with the highest count
 		if ( ! $new_facet_name = $this->get_most_popular_facet( $facets ) )
 		{
 			return FALSE;

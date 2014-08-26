@@ -21,7 +21,6 @@ class Facets
 		$this->facets = new stdClass;
 	}
 
-
 	public function is_browse()
 	{
 		return is_archive() || is_tax() || is_tag() || is_category();
@@ -602,4 +601,4 @@ interface Facet
 	function queryterm_remove( $term , $current );
 
 	function permalink( $terms );
-}
+}//END interface

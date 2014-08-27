@@ -6,6 +6,7 @@ class Facet_Searchword implements Facet
 	var $exclude_from_widget = TRUE;
 
 	private $cache_group = 'scriblio-searchword-to-taxonomy';
+	private $cache_ttl = 604807; // ~7 days
 
 	function __construct( $name , $args , $facets_object )
 	{
@@ -118,14 +119,14 @@ class Facet_Searchword implements Facet
 			// get all terms with slug $search_slug
 			$terms = $this->get_taxonomy_terms( $search_slug );
 
-			// sort the terms by count since we passed them through the
-			// 'scriblio_facet_taxonomy_terms' filter
+			// sort the terms by count since the counts may have changed
+			// after they were loaded from the DB
 			usort( $terms, array( $this, 'compare_count_desc' ) );
 
 			if ( empty( $terms ) )
 			{
 				// cache negative results too
-				wp_cache_set( $search_slug, array(), $this->cache_group, scriblio()->options[ 'searchword_to_taxonomy_cache_ttl' ] );
+				wp_cache_set( $search_slug, array(), $this->cache_group, $this->cache_ttl );
 				return FALSE;
 			}
 
@@ -142,7 +143,7 @@ class Facet_Searchword implements Facet
 
 			// cache the results. $facets should contain just one term,
 			// or it could be empty
-			wp_cache_set( $search_slug, $facets, $this->cache_group, scriblio()->options[ 'searchword_to_taxonomy_cache_ttl' ] );
+			wp_cache_set( $search_slug, $facets, $this->cache_group, $this->cache_ttl );
 		}//END if
 
 		if ( empty( $facets ) )

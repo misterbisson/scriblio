@@ -5,7 +5,6 @@ class Facet_Searchword implements Facet
 	var $query_var = 's';
 	var $exclude_from_widget = TRUE;
 
-	private $cache_ttl_config_key = 'searchword_to_taxonomy_cache_ttl';
 	private $cache_group = 'scriblio-searchword-to-taxonomy';
 
 	function __construct( $name , $args , $facets_object )
@@ -126,7 +125,7 @@ class Facet_Searchword implements Facet
 			if ( empty( $terms ) )
 			{
 				// cache negative results too
-				wp_cache_set( $search_slug, array(), $this->cache_group, scriblio()->options[ $this->cache_ttl_config_key ] );
+				wp_cache_set( $search_slug, array(), $this->cache_group, scriblio()->options[ 'searchword_to_taxonomy_cache_ttl' ] );
 				return FALSE;
 			}
 
@@ -143,7 +142,7 @@ class Facet_Searchword implements Facet
 
 			// cache the results. $facets should contain just one term,
 			// or it could be empty
-			wp_cache_set( $search_slug, $facets, $this->cache_group, scriblio()->options[ $this->cache_ttl_config_key ] );
+			wp_cache_set( $search_slug, $facets, $this->cache_group, scriblio()->options[ 'searchword_to_taxonomy_cache_ttl' ] );
 		}//END if
 
 		if ( empty( $facets ) )

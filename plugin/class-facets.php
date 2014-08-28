@@ -21,7 +21,6 @@ class Facets
 		$this->facets = new stdClass;
 	}
 
-
 	public function is_browse()
 	{
 		return is_archive() || is_tax() || is_tag() || is_category();
@@ -67,7 +66,6 @@ class Facets
 		if( ( 9 > $args['priority'] ) && ( ! $args['has_rewrite'] ) )
 			$args['priority'] = 9;
 		$this->priority[ $facet_name ] = (int) $args['priority'];
-
 	}
 
 	public function parse_query( $query )
@@ -119,8 +117,25 @@ class Facets
 //print_r( $this->selected_facets );
 //echo "</pre>";
 
+		// detect if a keyword search could be converted to a facet search
+		if (
+			isset( scriblio()->options['redirect_searchword_to_taxonomy'] ) &&
+			scriblio()->options['redirect_searchword_to_taxonomy'] &&
+			isset( $this->facets->searchword ) &&
+			isset( $this->selected_facets->searchword )
+		)
+		{
+			if ( $this->facets->searchword->to_taxonomy() )
+			{
+				// we were able to convert a keyword search to a facet/taxonomy
+				// search. redirect accordingly.
+				wp_redirect( $this->permalink(), 301 );
+				die;
+			}//END if
+		}//END if
+
 		return $query;
-	}
+	}//END parse_query
 
 	/**
 	 * reset filters and actions used by scriblio. this allows the user to
@@ -582,4 +597,4 @@ interface Facet
 	function queryterm_remove( $term , $current );
 
 	function permalink( $terms );
-}
+}//END interface

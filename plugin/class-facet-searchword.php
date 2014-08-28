@@ -153,25 +153,23 @@ class Facet_Searchword implements Facet
 
 		$new_facet_name = array_keys( (array) $facets )[0];
 
-		// merge $new_facet with the existing, selected facets
-		if ( isset( $this->facets->selected_facets->$new_facet_name ) )
+		// make sure the converted facet/taxonomy is selected for the search
+		if ( ! isset( $this->facets->selected_facets->$new_facet_name ) )
 		{
-			// we need to cast the facet to an object so we can reference
-			// its keys by a variable
-			$new_facet = (object) $this->facets->selected_facets->$new_facet_name;
-		}
-		else
-		{
-			$new_facet = new stdClass;
+			$this->facets->selected_facets->$new_facet_name = $facets->$new_facet_name;
 		}
 
-		// copy over the query terms to the new facet
-		foreach ( $facets->$new_facet_name as $key => $val )
-		{
-			$new_facet->$key = $val;
-		}//END foreach
+		// merge new terms in $facets with any existing search term in the
+		// converted facet/taxonomy
+		$this->facets->selected_facets->$new_facet_name = array_merge(
+			$this->facets->selected_facets->$new_facet_name,
+			$facets->$new_facet_name
+		);
 
-		return array( $new_facet_name, (array) $new_facet );
+		// not a keyword search any more
+		unset( $this->facets->selected_facets->searchword );
+
+		return TRUE;
 	}//END to_taxonomy
 
 	/**

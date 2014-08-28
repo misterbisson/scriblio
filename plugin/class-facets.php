@@ -125,14 +125,10 @@ class Facets
 			isset( $this->selected_facets->searchword )
 		)
 		{
-			if ( list( $new_facet, $new_facet_obj ) = $this->facets->searchword->to_taxonomy() )
+			if ( $this->facets->searchword->to_taxonomy() )
 			{
-				// set up our selected facets to convert a keyword query
-				// (searchword facet) to a faceted term query for permalink()
-				unset( $this->selected_facets->searchword );
-
-				$this->selected_facets->$new_facet = $new_facet_obj;
-
+				// we were able to convert a keyword search to a facet/taxonomy
+				// search. redirect accordingly.
 				wp_redirect( $this->permalink(), 301 );
 				die;
 			}//END if

@@ -119,6 +119,7 @@ class Facets
 
 		// detect if a keyword search could be converted to a facet search
 		if (
+			! is_admin() &&
 			isset( scriblio()->options['redirect_searchword_to_taxonomy'] ) &&
 			scriblio()->options['redirect_searchword_to_taxonomy'] &&
 			isset( $this->facets->searchword ) &&

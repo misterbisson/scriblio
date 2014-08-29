@@ -134,7 +134,8 @@ class Facet_Searchword implements Facet
 			// until we get a facet.
 			foreach ( $terms as $term )
 			{
-				$facets = scriblio()->get_terms_as_facets( array( $term ) );
+				// cast the result to an array so we can check if it's empty
+				$facets = (array) scriblio()->get_terms_as_facets( array( $term ) );
 				if ( ! empty( $facets ) )
 				{
 					break;
@@ -151,7 +152,10 @@ class Facet_Searchword implements Facet
 			return FALSE; // still got nothing
 		}
 
-		$new_facet_name = array_keys( (array) $facets )[0];
+		$new_facet_name = array_keys( $facets )[0];
+
+		// cast back to an object so we can dereference $facets->$new_facet_name
+		$facets = (object) $facets;
 
 		// make sure the converted facet/taxonomy is selected for the search
 		if ( ! isset( $this->facets->selected_facets->$new_facet_name ) )

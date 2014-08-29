@@ -207,7 +207,7 @@ class Facet_Searchword implements Facet
 		}
 
 		// scriblio-authority is hooked to this filter
-		return apply_filters( 'scriblio_facet_taxonomy_terms', $terms, '', FALSE );
+		return apply_filters( 'scriblio_searchword_to_taxonomy_terms', $terms );
 	}//END get_taxonomy_terms
 
 	/**

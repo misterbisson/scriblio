@@ -119,13 +119,28 @@ class Facets
 
 		// detect if a keyword search could be converted to a facet search
 		if (
+			! is_admin() &&
 			isset( scriblio()->options['redirect_searchword_to_taxonomy'] ) &&
 			scriblio()->options['redirect_searchword_to_taxonomy'] &&
 			isset( $this->facets->searchword ) &&
 			isset( $this->selected_facets->searchword )
 		)
 		{
-			if ( $this->facets->searchword->to_taxonomy() )
+			// make sure this is not a wp endpoint request
+			global $wp_rewrite;
+
+			$endpoints = wp_list_pluck( $wp_rewrite->endpoints, 2 );
+
+			// account for "feed" which isn't in $wp_rewrite->endpoints but
+			// is still an endpoint we might see
+			$endpoints[] = 'feed';
+
+			$requested_endpoints = array_intersect( array_keys( $query->query ), $endpoints );
+
+			if (
+				empty( $requested_endpoints ) &&
+				$this->facets->searchword->to_taxonomy()
+			)
 			{
 				// we were able to convert a keyword search to a facet/taxonomy
 				// search. redirect accordingly.

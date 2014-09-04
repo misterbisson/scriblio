@@ -82,9 +82,9 @@ class Facet_Publish_Date implements Facet
 	/**
 	 * Facet::parse_query interface implementation.
 	 *
-	 * Enforce our rule that we only accept one date range specification,
-	 * which may be one of the keys from $this->slugs_to_names or a custom
-	 * range with two datetimes separated by a colon.
+	 * Parse the query terms to construct the selected date range term,
+	 * and then update $wp_query with a date range query that corresponds
+	 * to our query terms.
 	 *
 	 * @param string $query_terms the value of our query var
 	 * @param WP_Query the query object

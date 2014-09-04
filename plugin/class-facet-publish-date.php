@@ -1,11 +1,13 @@
 <?php
 /**
- * the (post) publish date class
+ * the (post) publish date facet class
  */
 class Facet_Publish_Date implements Facet
 {
-    public $label = 'Date';
+    public $label = 'Date'; // used by container class Facets
+
 	public $query_var = 'date-range';
+
 	public $version = '1.0';
 
 	// query term value slugs to start time strings (parseable by strtotime())
@@ -117,7 +119,7 @@ class Facet_Publish_Date implements Facet
 			'range' => $selected_range,
 		);
 
-		// override some vars in $date_term if this is not a custom range
+		// override some vars in $date_term if this is not a custom range term
 		if ( 1 == count( $selected_range ) )
 		{
 			$date_term['slug'] = $selected_range[0];
@@ -153,10 +155,25 @@ class Facet_Publish_Date implements Facet
 			);
 		}//END switch
 
+		// note: this wipes out any existing date query
 		$wp_query->query_vars['date_query'] = array( $date_query );
 
 		return $this->selected_range;
 	}//END parse_query
+
+	/**
+	 * generate a cache key based on $base, taking into account our version
+	 * number and whether scriblio()->cachebuster is set or not.
+	 *
+	 * @param string $base the base of our cache key
+	 * @param bool $hash hash the resulting key if TRUE
+	 * @return string a unique cache key based on $base and our plugin version
+	 */
+	public function get_cache_key( $base, $hash = TRUE )
+	{
+		$key = ( $hash ? md5( $base ) : $base ) . '|' . $this->version;
+		return $key . ( scriblio()->cachebuster ? 'CACHEBUSTER' : '' );
+	}//END get_cache_key
 
 	/**
 	 * Facet::get_terms_in_corpus interface implementation
@@ -168,7 +185,7 @@ class Facet_Publish_Date implements Facet
 			return $this->terms_in_corpus;
 		}
 
-		$cache_key = 'terms-in-corpus|' . $this->version;
+		$cache_key = $this->get_cache_key( 'terms-in-corpus', FALSE );
 
 		if ( ! $this->terms_in_corpus = wp_cache_get( $cache_key, $this->cache_group ) )
 		{
@@ -207,7 +224,7 @@ class Facet_Publish_Date implements Facet
 			return array();
 		}
 
-		$cache_key = md5( serialize( $matching_post_ids ) ) . '|' . $this->version;
+		$cache_key = $this->get_cache_key( serialize( $matching_post_ids ) );
 
 		if ( ! $this->terms_in_found_set = wp_cache_get( $cache_key, $this->cache_group ) )
 		{
@@ -326,9 +343,9 @@ class Facet_Publish_Date implements Facet
 	public function get_post_count_by_date( $post )
 	{
 		// check cache first
-		$cache_key = $post->ID . ':' . $this->version;
+		$cache_key = $this->get_cache_key( $post->ID );
 
-		if ( $count = wp_cache_get( $cache_key . ( scriblio()->cachebuster ? 'CACHEBUSTER' : '' ), $this->cache_group ) )
+		if ( $count = wp_cache_get( $cache_key, $this->cache_group ) )
 		{
 			return $count;
 		}
@@ -338,7 +355,7 @@ class Facet_Publish_Date implements Facet
 		$count = $wpdb->get_results( 'SELECT COUNT( * ) AS count FROM '. $wpdb->posts .' WHERE DATE( post_date_gmt ) = "' . gmdate( 'Y-m-d', $post->post_date_gmt ) . '" /* generated in Facet_Publish_Date::get_post_count_by_date() */' );
 
 		// set cache
-		wp_cache_set( $cache_key . ( scriblio()->cachebuster ? 'CACHEBUSTER' : '' ), $count, $this->cache_group, $this->ttl );
+		wp_cache_set( $cache_key, $count, $this->cache_group, $this->ttl );
 
 		return $count;
 	}//END get_post_count_by_date

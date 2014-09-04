@@ -217,7 +217,7 @@ class Facet_Publish_Date implements Facet
 
 			$this->terms_in_found_set = $this->sort_date_terms_to_range_terms( $terms );
 
-//			wp_cache_set( $cache_key, $this->terms_in_found_set, $this->cache_group, $this->ttl );
+			wp_cache_set( $cache_key, $this->terms_in_found_set, $this->cache_group, $this->ttl );
 		}//END if
 
 		return $this->terms_in_found_set;

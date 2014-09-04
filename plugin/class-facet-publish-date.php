@@ -5,7 +5,7 @@
 class Facet_Publish_Date implements Facet
 {
     public $label = 'Date';
-	public $query_var = 'date_range';
+	public $query_var = 'date-range';
 	public $version = '1.0';
 
 	// query term value slugs to start time strings (parseable by strtotime())
@@ -128,9 +128,9 @@ class Facet_Publish_Date implements Facet
 		$this->selected_range = array( $date_term['slug'] => (object) $date_term );
 
 		// update wp_query
-		$wp_query->query['date_range'] = $date_term['slug'];
+		$wp_query->query[ $this->query_var ] = $date_term['slug'];
 
-		if ( 'yesterday' == $wp_query->query['date_range'] )
+		if ( 'yesterday' == $wp_query->query[ $this->query_var ] )
 		{
 			$yesterday = getdate( strtotime( 'yesterday' ) );
 			$date_query = array(
@@ -139,7 +139,7 @@ class Facet_Publish_Date implements Facet
 				'day'   => $yesterday['mday'],
 			);
 		}
-		elseif ( 'earlier' == $wp_query->query['date_range'] )
+		elseif ( 'earlier' == $wp_query->query[ $this->query_var ] )
 		{
 			$date_query = array(
 				'after'  => $this->query_slugs_to_times['earlier'],
@@ -149,11 +149,13 @@ class Facet_Publish_Date implements Facet
 		else
 		{
 			$date_query = array(
-				'after'  => $this->query_slugs_to_times[ $wp_query->query['date_range'] ],
+				'after'  => $this->query_slugs_to_times[ $wp_query->query[ $this->query_var ] ],
 			);
 		}//END switch
 
 		$wp_query->query_vars['date_query'] = array( $date_query );
+
+		return $this->selected_range;
 	}//END parse_query
 
 	/**

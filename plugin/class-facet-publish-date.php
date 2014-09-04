@@ -191,7 +191,15 @@ class Facet_Publish_Date implements Facet
 		{
 			global $wpdb;
 
-			$terms = $wpdb->get_results( 'SELECT DATE( post_date_gmt) AS date, COUNT(*) AS hits FROM ' . $wpdb->posts . ' WHERE post_status = "publish" GROUP BY date ORDER BY date DESC LIMIT 1000 /* generated in Facet_Publish_Date::get_terms_in_corpus() */' );
+			$terms = $wpdb->get_results(
+				'SELECT DATE( post_date_gmt) AS date, COUNT(*) AS hits
+				FROM ' . $wpdb->posts . '
+				WHERE post_status = "publish"
+					GROUP BY date
+					ORDER BY date DESC
+					LIMIT 1000
+				/* generated in Facet_Publish_Date::get_terms_in_corpus() */'
+			);
 
 			$this->terms_in_corpus = $this->sort_date_terms_to_range_terms( $terms );
 
@@ -230,11 +238,19 @@ class Facet_Publish_Date implements Facet
 		{
 			global $wpdb;
 
-			$terms = $wpdb->get_results( 'SELECT DATE( post_date_gmt) AS date, COUNT(*) AS hits FROM '. $wpdb->posts .' WHERE ID IN ('. implode( ',', $matching_post_ids ) .') GROUP BY date ORDER BY date DESC LIMIT 1000 /* generated in Facet_Publish_Date::get_terms_in_found_set() */' );
+			$terms = $wpdb->get_results(
+				'SELECT DATE( post_date_gmt) AS date, COUNT(*) AS hits
+				FROM '. $wpdb->posts .'
+				WHERE ID IN ('. implode( ',', $matching_post_ids ) .')
+					GROUP BY date
+					ORDER BY date DESC
+					LIMIT 1000
+				/* generated in Facet_Publish_Date::get_terms_in_found_set() */'
+			);
 
 			$this->terms_in_found_set = $this->sort_date_terms_to_range_terms( $terms );
 
-			wp_cache_set( $cache_key, $this->terms_in_found_set, $this->cache_group, $this->ttl );
+//			wp_cache_set( $cache_key, $this->terms_in_found_set, $this->cache_group, $this->ttl );
 		}//END if
 
 		return $this->terms_in_found_set;
@@ -352,7 +368,12 @@ class Facet_Publish_Date implements Facet
 
 		global $wpdb;
 
-		$count = $wpdb->get_results( 'SELECT COUNT( * ) AS count FROM '. $wpdb->posts .' WHERE DATE( post_date_gmt ) = "' . gmdate( 'Y-m-d', $post->post_date_gmt ) . '" /* generated in Facet_Publish_Date::get_post_count_by_date() */' );
+		$count = $wpdb->get_results(
+			'SELECT COUNT( * ) AS count
+			FROM '. $wpdb->posts .'
+			WHERE DATE( post_date_gmt ) = "' . gmdate( 'Y-m-d', $post->post_date_gmt ) . '"
+			/* generated in Facet_Publish_Date::get_post_count_by_date() */'
+		);
 
 		// set cache
 		wp_cache_set( $cache_key, $count, $this->cache_group, $this->ttl );
@@ -393,6 +414,40 @@ class Facet_Publish_Date implements Facet
 	}//END get_query_val_dates
 
 	/**
+	 * build a range term object from a slug
+	 *
+	 * @param string $range_slug this should be a key in $this->query_slugs_to_times
+	 * @param string $min_date if not NULL, then only return a range term if
+	 *  its start_time is before or equal to this date.
+	 * @return mixed a range term array, or FALSE if $range_slug is not valid
+	 *  or if its start date is after $min_date
+	 */
+	public function get_range_term( $range_slug, $min_date = NULL )
+	{
+		if ( ! isset( $this->query_slugs_to_times[ $range_slug ] ) )
+		{
+			return FALSE;
+		}
+
+		// timestamp at the start of the range
+		$start_time = strtotime( $this->get_query_val_dates( $range_slug ) );
+
+		if ( ! empty( $min_date ) && $start_time > strtotime( $min_date ) )
+		{
+			return FALSE;
+		}
+
+		return array(
+			'facet'       => $this->name,
+			'slug'        => $range_slug,
+			'name'        => $this->slugs_to_names[ $range_slug ],
+			'description' => $this->slugs_to_descriptions[ $range_slug ],
+			'count'       => 0,
+			'start_time'  => $start_time,
+		);
+	}//END get_range_term
+
+	/**
 	 * Sort $terms into a list of "range terms". Each term in $terms has a
 	 * date string and hits count and the list is sorted in descending date
 	 * order. We iterate over $terms and sum the hits in all terms that
@@ -404,27 +459,18 @@ class Facet_Publish_Date implements Facet
 	 */
 	public function sort_date_terms_to_range_terms( $terms )
 	{
-		// get the ranges to work on
-		$range_slugs = array_keys( $this->query_slugs_to_times );
-
+		$total = 0; // total post count
 		$results = array();
 
-		// start with the first slug
+		// get the date ranges to sort into
+		$range_slugs = array_keys( $this->query_slugs_to_times );
+		if ( empty( $range_slugs ) )
+		{
+			return $results;
+		}
+
 		$range_slug = array_shift( $range_slugs );
-
-		// this is the time at the very beginning of the date range
-		$range_time = strtotime( $this->get_query_val_dates( $range_slug ) );
-
-		$total = 0; // number of posts so far
-
-		// starting with this term
-		$current_term = array(
-			'facet' => $this->name,
-			'slug' => $range_slug,
-			'name' => $this->slugs_to_names[ $range_slug ],
-			'description' => $this->slugs_to_descriptions[ $range_slug ],
-			'count' => 0,
-		);
+		$range_term = $this->get_range_term( $range_slug );
 
 		foreach ( $terms as $term )
 		{
@@ -432,50 +478,44 @@ class Facet_Publish_Date implements Facet
 
 			$term_datetime = strtotime( $term->date );
 
-			if ( $range_time <= $term_datetime )
+			if ( $range_term['start_time'] <= $term_datetime )
 			{
-				// "term" is still within the date range. increment its count
-				$current_term['count'] += $term->hits;
+				// term is still within the current range. increment its count
+				$range_term['count'] += $term->hits;
 				continue;
 			}
 
 			// since terms are sorted in descending date order, once
-			// we find a term whose date is beyond $range_time, it's
-			// time to advance to the next date range
-
+			// we find a term whose date is beyond $range_term['start_time'],
+			// it's time to advance to the next date range
+			//
 			// but first save the date range we just built
-			if ( 0 < $current_term['count'] )
+			if ( 0 < $range_term['count'] )
 			{
-				$results[] = (object) $current_term;
+				$results[] = (object) $range_term;
 			}
 
-			$current_term = NULL;
+			$range_term = NULL;
 			$range_time = 0;
 
-			// get the next date range that includes the current date term
-			while ( ! empty( $range_slugs ) )
+			// get the next range term we can use
+			do
 			{
 				$range_slug = array_shift( $range_slugs );
+			}
+			while ( ! empty( $range_slug ) && ! $range_term = $this->get_range_term( $range_slug, $term->date ) );
 
-				if ( $term_datetime < strtotime( $this->get_query_val_dates( $range_slug ) ) )
-				{
-					continue; // advanced to the next date range
-				}
-
-				$range_time = strtotime( $this->get_query_val_dates( $range_slug ) );
-				break;
-			}//END while
-
-			if ( 0 === $range_time )
+			if ( empty( $range_slug ) )
 			{
 				break; // did not find any other term in our date ranges
 			}
 
-			// restart the total for earlier, since it excludes posts
-			// in other date ranges
+			// restart the total for the 'earlier' range, since it excludes
+			// posts in other date ranges. remember to include the hits count
+			// for the current $term.
 			if ( 'earlier' == $range_slug )
 			{
-				$total = 0;
+				$total = $term->hits;
 			}
 
 			// set up for the next date range term. if we're working with
@@ -486,18 +526,12 @@ class Facet_Publish_Date implements Facet
 			// the beginning of the range. e.g. past-week includes posts
 			// published between now and a week before today, so it includes
 			// posts published today and yesterday as well.
-			$current_term = array(
-				'facet' => $this->name,
-				'slug' => $range_slug,
-				'name' => $this->slugs_to_names[ $range_slug ],
-				'description' => $this->slugs_to_descriptions[ $range_slug ],
-				'count' => ( 'today' == $range_slug || 'yesterday' == $range_slug ) ? $term->hits : $total,
-			);
+			$range_term['count'] = ( 'today' == $range_slug || 'yesterday' == $range_slug ) ? $term->hits : $total;
 		}//END foreach
 
-		if ( ! empty( $current_term ) )
+		if ( ! empty( $range_term ) )
 		{
-			$results[] = (object) $current_term;
+			$results[] = (object) $range_term;
 		}
 
 		return $results;

@@ -29,7 +29,7 @@ class Scrib_Facets_Widget extends WP_Widget
 	public function widget( $args, $instance )
 	{
 		$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
-		$orderby = ( in_array( $instance['orderby'], array( 'count', 'name', 'custom' ) ) ? $instance['orderby'] : 'name' );
+		$orderby = ( in_array( $instance['orderby'], array( 'count', 'name', 'custom', 'none' ) ) ? $instance['orderby'] : 'name' );
 		$order = ( in_array( $instance['order'], array( 'ASC', 'DESC' ) ) ? $instance['order'] : 'ASC' );
 
 		// wijax requests get the whole thing
@@ -142,7 +142,7 @@ class Scrib_Facets_Widget extends WP_Widget
 		$instance['format_font_small'] = floatval( '1' );
 		$instance['format_font_large'] = floatval( '2.25' );
 		$instance['number'] = absint( $new_instance['number'] );
-		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name', 'custom' ) ) ? $new_instance['orderby']: '';
+		$instance['orderby'] = in_array( $new_instance['orderby'], array( 'count', 'name', 'custom', 'none' ) ) ? $new_instance['orderby']: '';
 		$instance['order'] = ( 'count' == $instance['orderby'] ? 'DESC' : 'ASC' );
 
 		return $instance;
@@ -190,6 +190,7 @@ class Scrib_Facets_Widget extends WP_Widget
 			<select name="<?php echo $this->get_field_name( 'orderby' ); ?>" id="<?php echo $this->get_field_id( 'orderby' ); ?>" class="widefat">
 				<option value="count" <?php selected( $instance['orderby'], 'count' ); ?>><?php _e( 'Count' ); ?></option>
 				<option value="name" <?php selected( $instance['orderby'], 'name' ); ?>><?php _e( 'Name' ); ?></option>
+				<option value="none" <?php selected( $instance['orderby'], 'none' ); ?>><?php _e( 'None' ); ?></option>
 				<!-- <option value="custom" <?php selected( $instance['orderby'], 'custom' ); ?>><?php _e( 'Custom (see below)' ); ?></option> -->
 			</select>
 		</p>

@@ -123,7 +123,16 @@ class Scrib_Facets_Widget extends WP_Widget
 			';
 		}// end else
 
-		echo $args['before_widget'];
+		$widget_classes = array(
+			'facet-' . $instance['facet'],
+		);
+
+		if ( ! empty( scriblio()->options['facet-groups'] ) && ! empty( scriblio()->options['facet-groups'][ $instance['facet'] ] ) )
+		{
+			$widget_classes[] = 'facet-group-' . scriblio()->options['facet-groups'][ $instance['facet'] ];
+		}//end if
+
+		echo preg_replace( '/class="/', 'class="' . esc_attr( implode( ' ', $widget_classes ) ) . ' ', $args['before_widget'] );
 
 		if ( ! empty( $title ) )
 		{

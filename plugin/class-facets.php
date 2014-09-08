@@ -404,13 +404,14 @@ class Facets
 			return;
 
 		$counts = array();
-		foreach ( (array) $tags as $idx => $tag )
+		foreach ( (array) $tags as $tag_key => $tag_val )
 		{
-			$counts[ $tag->slug . ':' . $tag->facet ] = $tag->count;
-			$tag_info[ $tag->slug . ':' . $tag->facet ] = $tag;
+			$counts[ $tag_val->slug . ':' . $tag_val->facet ] = $tag_val->count;
+			$tag_info[ $tag_val->slug . ':' . $tag_val->facet ] = $tag_val;
 			// preserve the original ordering in case orderby is 'none'
-			$orig_order[ $tag->slug . ':' . $tag->facet ] = $idx;
-		}
+			// $tag_key is just the numeric array index of $tag_val
+			$orig_order[ $tag_val->slug . ':' . $tag_val->facet ] = $tag_key;
+		}//END foreach
 
 		if ( ! $counts )
 			return;

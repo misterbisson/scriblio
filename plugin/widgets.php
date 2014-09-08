@@ -29,7 +29,6 @@ class Scrib_Facets_Widget extends WP_Widget
 	public function widget( $args, $instance )
 	{
 		$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
-		$title_class = sanitize_title_with_dashes( $title );
 		$orderby = ( in_array( $instance['orderby'], array( 'count', 'name', 'custom' ) ) ? $instance['orderby'] : 'name' );
 		$order = ( in_array( $instance['order'], array( 'ASC', 'DESC' ) ) ? $instance['order'] : 'ASC' );
 
@@ -127,11 +126,6 @@ class Scrib_Facets_Widget extends WP_Widget
 		$widget_classes = array(
 			'facet-' . $instance['facet'],
 		);
-
-		if ( $title_class )
-		{
-			$widget_classes[] = 'widget-title-' . $title_class;
-		}//end if
 
 		if ( ! empty( scriblio()->options['facet-groups'] ) && ! empty( scriblio()->options['facet-groups'][ $instance['facet'] ] ) )
 		{

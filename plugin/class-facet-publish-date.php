@@ -4,7 +4,7 @@
  */
 class Facet_Publish_Date implements Facet
 {
-    public $label = 'Date'; // used by container class Facets
+	public $label = 'Date'; // used by container class Facets
 
 	public $query_var = 'date-range';
 
@@ -66,7 +66,7 @@ class Facet_Publish_Date implements Facet
 		// and rule here. add_rewrite_tag also adds our query var to
 		// WP_Query's list of public query vars.
 		add_rewrite_tag( '%'. $this->query_var .'%', '[^/]+' );
-		add_rewrite_rule( $this->query_var .'/([^/]+)' , 'index.php?'. $this->query_var .'=$matches[1]', 'top' );
+		add_rewrite_rule( $this->query_var .'/([^/]+)', 'index.php?'. $this->query_var .'=$matches[1]', 'top' );
 	}//END __construct
 
 	/**
@@ -126,7 +126,7 @@ class Facet_Publish_Date implements Facet
 			$date_term['name'] = $this->slugs_to_names[ $date_term['slug'] ];
 			$date_term['description'] = $this->slugs_to_descriptions[ $date_term['slug'] ];
 		}//END if
-		
+
 		$this->selected_range = array( $date_term['slug'] => (object) $date_term );
 
 		// update wp_query
@@ -153,7 +153,7 @@ class Facet_Publish_Date implements Facet
 			$date_query = array(
 				'after'  => $this->query_slugs_to_times[ $wp_query->query[ $this->query_var ] ],
 			);
-		}//END switch
+		}
 
 		// note: this wipes out any existing date query
 		$wp_query->query_vars['date_query'] = array( $date_query );

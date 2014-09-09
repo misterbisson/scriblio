@@ -43,6 +43,13 @@ class Scriblio
 				'priority' => 3,
 			),
 		),
+		'date_range' => array(
+			'class' => 'Facet_Publish_Date',
+			'args' => array(
+				'has_rewrite' => TRUE,
+				'priority' => 9,
+			),
+		),
 	);
 
 	public $facets = FALSE;

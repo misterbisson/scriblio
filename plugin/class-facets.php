@@ -404,16 +404,20 @@ class Facets
 			return;
 
 		$counts = array();
-		foreach ( (array) $tags as $tag )
+		foreach ( (array) $tags as $tag_key => $tag_val )
 		{
-			$counts[ $tag->slug . ':' . $tag->facet ] = $tag->count;
-			$tag_info[ $tag->slug . ':' . $tag->facet ] = $tag;
-		}
+			$counts[ $tag_val->slug . ':' . $tag_val->facet ] = $tag_val->count;
+			$tag_info[ $tag_val->slug . ':' . $tag_val->facet ] = $tag_val;
+			// preserve the original ordering in case orderby is 'none'
+			// $tag_key is just the numeric array index of $tag_val
+			$orig_order[ $tag_val->slug . ':' . $tag_val->facet ] = $tag_key;
+		}//END foreach
 
 		if ( ! $counts )
 			return;
 
 		asort( $counts );
+
 		if ( $args['number'] > 0 )
 		{
 			$counts = array_slice( $counts, -$args['number'], $args['number'], TRUE );
@@ -432,6 +436,13 @@ class Facets
 		if ( 'name' == $args['orderby'] ) // name sort
 		{
 			uksort( $counts, 'strnatcasecmp' );
+		}
+		elseif ( 'none' == $args['orderby'] ) // restore back to the same order as $tags
+		{
+			// copy values of $counts to $orig_order
+			$orig_order = array_replace( $orig_order, $counts );
+			// and then filter out any key not in $counts
+			$counts = array_intersect_key( $orig_order, $counts );
 		}
 		else // sort by term count
 		{

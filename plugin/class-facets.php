@@ -12,7 +12,7 @@ class Facets
 	{
 		// initialize scriblio facets once things have settled (init is too soon for some plugins)
 		add_action( 'parse_query' , array( $this , 'parse_query' ), 1 );
-		add_action( 'template_redirect' , array( $this, '_count_found_posts' ), 0 );
+		add_action( 'template_redirect' , array( $this, 'template_redirect' ), 0 );
 
 		add_shortcode( 'scrib_hit_count', array( $this, 'shortcode_hit_count' ) );
 		add_shortcode( 'facets' , array( $this, 'shortcode_facets' ) );
@@ -204,7 +204,9 @@ class Facets
 	 */
 	public function wp_head_noindex()
 	{
-		echo '<meta name="robots" content="noindex, follow">';
+		?>
+		<meta name="robots" content="noindex, follow" />
+		<?php
 	} // end wp_head_noindex
 
 	public function get_matching_post_ids()
@@ -252,10 +254,15 @@ class Facets
 		return $this->matching_post_ids;
 	}
 
-	public function _count_found_posts()
+	public function template_redirect()
 	{
 		global $wp_query;
 		$this->count_found_posts = absint( $wp_query->found_posts );
+
+		if ( $this->count_found_posts < scriblio()->options['noindex_pages_with_fewer_than_n_results'] )
+		{
+			add_action( 'wp_head', array( $this, 'wp_head_noindex' ) );
+		} // END if
 	}
 
 	public function shortcode_hit_count( $arg )

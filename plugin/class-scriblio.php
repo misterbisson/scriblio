@@ -16,6 +16,7 @@ class Scriblio
 			'widgets' => TRUE,
 		),
 		'register_default_facets' => TRUE,
+		'noindex_pages_with_fewer_than_n_results' => 0,
 		'searchword_to_taxonomy_cache_ttl' => 604807, // ~7 days
 	);
 

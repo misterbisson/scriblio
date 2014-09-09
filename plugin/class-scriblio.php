@@ -16,6 +16,7 @@ class Scriblio
 			'widgets' => TRUE,
 		),
 		'register_default_facets' => TRUE,
+		'noindex_pages_with_fewer_than_n_results' => 5,
 		'searchword_to_taxonomy_cache_ttl' => 604807, // ~7 days
 	);
 
@@ -51,6 +52,7 @@ class Scriblio
 	{
 		add_action( 'wp_loaded', array( $this, 'wp_loaded' ), 1 );
 		add_action( 'parse_query', array( $this, 'parse_query' ), 25 );
+		add_action( 'wp_head', array( $this, 'wp_head' ) );
 		add_action( 'wp_footer', array( $this, 'wp_footer' ), 1 );
 
 		// get options with defaults to figure out what components to activate
@@ -203,6 +205,17 @@ class Scriblio
 			}//end if
 		}//end if
 	}// end parse_query
+
+	public function wp_head()
+	{
+		if ( $this->facets()->count_found_posts >= $this->options['noindex_pages_with_fewer_than_n_results'] )
+		{
+			return;
+		} // END if
+		?>
+		<meta name="robots" content="noindex, follow" />
+		<?php
+	} // END wp_head
 
 	public function wp_footer()
 	{

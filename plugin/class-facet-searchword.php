@@ -103,7 +103,8 @@ class Facet_Searchword implements Facet
 	{
 		// there should only be one term since we don't break up the search
 		// string from the search textbox
-		$search_slug = sanitize_title_with_dashes( array_keys( $this->facets->selected_facets->searchword )[0] );
+		$search_slug = array_keys( $this->facets->selected_facets->searchword );
+		$search_slug = sanitize_title_with_dashes( $search_slug[0] );
 
 		// check if we have cached facets for $search_slug
 		$facets = wp_cache_get( $search_slug, $this->cache_group );
@@ -152,7 +153,8 @@ class Facet_Searchword implements Facet
 			return FALSE; // still got nothing
 		}
 
-		$new_facet_name = array_keys( $facets )[0];
+		$new_facet_name = array_keys( $facets );
+		$new_facet_name = $new_facet_name[0];
 
 		// cast back to an object so we can dereference $facets->$new_facet_name
 		$facets = (object) $facets;

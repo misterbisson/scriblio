@@ -570,7 +570,7 @@ class Facets
 
 					$facet_classes[] = 'facet-' . $facet;
 					// put it all together
-					$return_string .= '<li class="facet-container ' . implode( ' ', $facet_classes ) . '"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . $exclude_link .'</span></li>';
+					$return_string .= '<li class="facet-container ' . esc_attr( implode( ' ', $facet_classes ) ) . '"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . $exclude_link .'</span></li>';
 				}
 			}
 

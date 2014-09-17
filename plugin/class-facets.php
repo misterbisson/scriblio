@@ -568,8 +568,9 @@ class Facets
 					$solo_url = $this->permalink( $facet , $term );
 					$solo_link = '<a href="'. $solo_url .'" class="term" title="Search only this term">'. esc_html( convert_chars( wptexturize( apply_filters( 'scriblio_facets_facet_description', $term->name, $facet ) ) ) ) .'</a>';
 
+					$facet_classes[] = 'facet-' . $facet;
 					// put it all together
-					$return_string .= '<li class="facet-container ' . implode( ' ', $facet_classes ) . '"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . $exclude_link .'</span></li>';
+					$return_string .= '<li class="facet-container ' . esc_attr( implode( ' ', $facet_classes ) ) . '"><label>'. $this->facets->$facet->labels->singular_name .'</label><span class="separator">:</span><span class="facet">'. $solo_link . $exclude_link .'</span></li>';
 				}
 			}
 

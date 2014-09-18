@@ -515,6 +515,16 @@ class Facets
 		return $return;
 	}//end generate_tag_cloud
 
+	public function facet_term_count()
+	{
+		if ( empty( $this->selected_facets ) )
+		{
+			return FALSE;
+		}//end if
+
+		return array_sum( (array) $this->selected_facets_counts ) > count( $this->selected_facets->searchword );
+	}
+
 	public function editsearch()
 	{
 		global $wpdb, $wp_query, $bsuite;
@@ -522,7 +532,6 @@ class Facets
 		$return_string = '';
 		if( ! empty( $this->selected_facets ) )
 		{
-
 			// how many facets are currently selected?
 			$count_of_facets = array_sum( (array) $this->selected_facets_counts );
 

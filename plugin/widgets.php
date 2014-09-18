@@ -254,7 +254,9 @@ class Scrib_Searcheditor_Widget extends WP_Widget
 			echo '<div class="textwidget scrib_search_edit context-top">' . $context_top . '</div>';
 		}// end if
 
-		echo '<div class="selected-facets"><ul class="facets">'. scriblio()->facets()->editsearch() .'</ul></div>';
+		$show_class = scriblio()->facets()->facet_term_count() ? '' : ' no-terms';
+
+		echo '<div class="selected-facets' . $show_class . '"><ul class="facets">'. scriblio()->facets()->editsearch() .'</ul></div>';
 
 		if ( ! empty( $context_bottom ) )
 		{

@@ -125,7 +125,7 @@ class Facet_Searchword implements Facet
 				// cache negative results too
 				wp_cache_set( $search_slug, array(), $this->cache_group, $this->cache_ttl );
 				return FALSE;
-			}//end else
+			}//end if
 			else
 			{
 				// sort the terms by count since the counts may have changed

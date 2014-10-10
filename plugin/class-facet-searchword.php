@@ -120,16 +120,18 @@ class Facet_Searchword implements Facet
 			// get all terms with slug $search_slug
 			$terms = $this->get_taxonomy_terms( $search_slug );
 
-			// sort the terms by count since the counts may have changed
-			// after they were loaded from the DB
-			usort( $terms, array( $this, 'compare_count_desc' ) );
-
 			if ( empty( $terms ) )
 			{
 				// cache negative results too
 				wp_cache_set( $search_slug, array(), $this->cache_group, $this->cache_ttl );
 				return FALSE;
-			}
+			}//end if
+			else
+			{
+				// sort the terms by count since the counts may have changed
+				// after they were loaded from the DB
+				usort( $terms, array( $this, 'compare_count_desc' ) );
+			}//end else
 
 			// iterate over $terms, which are now in descending count order,
 			// until we get a facet.

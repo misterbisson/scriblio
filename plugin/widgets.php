@@ -34,7 +34,7 @@ class Scrib_Facets_Widget extends WP_Widget
 
 		// wijax requests get the whole thing
 		// @TODO: determine if the wijax functionality needs to remain
-		if ( TRUE || ! function_exists( 'is_wijax' ) || is_wijax() )
+		if ( TRUE || ! function_exists( 'bcms_wijax' ) || ! function_exists( 'is_wijax' ) || is_wijax() )
 		{
 			// configure how it's displayed
 			$display_options = array(

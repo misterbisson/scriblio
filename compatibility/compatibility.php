@@ -182,11 +182,11 @@ class Scrib
 		wp_register_style( 'scrib-editor', $this->path_web .'/css/editor.css' );
 		wp_enqueue_style( 'scrib-editor' );
 
-		wp_register_script( 'scrib-editor', $this->path_web . '/js/editor.js', array('jquery-ui-sortable'), '1' );
-		wp_enqueue_script( 'scrib-editor' );
+//		wp_register_script( 'scrib-editor', $this->path_web . '/js/editor.js', array('jquery-ui-sortable'), '1' );
+//		wp_enqueue_script( 'scrib-editor' );
 
-		wp_register_script( 'jquery-tabindex', $this->path_web . '/js/jquery.keyboard-a11y.js', array('jquery'), '1' );
-		wp_enqueue_script( 'jquery-tabindex' );
+//		wp_register_script( 'jquery-tabindex', $this->path_web . '/js/jquery.keyboard-a11y.js', array('jquery'), '1' );
+//		wp_enqueue_script( 'jquery-tabindex' );
 	}
 
 

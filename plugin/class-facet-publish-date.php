@@ -107,7 +107,8 @@ class Facet_Publish_Date implements Facet
 		if ( 1 == count( $selected_range ) && ! isset( $this->query_slugs_to_times[ $selected_range[0] ] ) )
 		{
 			// default to 1st key of $this->query_slugs_to_times ('today')
-			$selected_range[0] = array_keys( $this->query_slugs_to_times )[0];
+			$array_keys = array_keys( $this->query_slugs_to_times );
+			$selected_range[0] = $array_keys[0];
 		}
 
 		// construct a date range term
@@ -347,7 +348,8 @@ class Facet_Publish_Date implements Facet
 			return;
 		}
 
-		return home_url( '/' . $this->query_var . '/' . array_keys( $terms )[0] . '/' );
+		$array_keys = array_keys( $terms );
+		return home_url( '/' . $this->query_var . '/' . $array_keys[0] . '/' );
 	}//END permalink
 
 	/**

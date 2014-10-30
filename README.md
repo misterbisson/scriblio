@@ -1,8 +1,13 @@
 # === Scriblio ===
+
 Contributors: misterbisson, borkweb, methnen
+
 Tags: scriblio, library, libraries, catalog, facets, faceting, search, searching, browse, browsing, metadata, taxonomy, taxonomies, custom taxonomies, custom post types
+
 Requires at least: 3.3
+
 Tested up to: 4.0
+
 Stable tag: trunk
 
 Scriblio enables faceted searching and browsing of WordPress posts, pages, and custom post types. 
@@ -18,6 +23,10 @@ The search editor widget shows all the selected search terms (including keyword 
 Scriblio includes live search suggestions that recommend search terms based on the tags (and all public taxonomies) and post titles.
 
 Scriblio was originally built for libraries and once known as <a href="http://maisonbisson.com/blog/post/11133/">WPopac</a>. Early support was given by <a href="http://www.plymouth.edu/">Plymouth State University</a> and the <a href="http://www.mellon.org/">Andrew W. Mellon Foundation</a>.
+
+### = In the WordPress.org plugin repo =
+
+Here: https://wordpress.org/plugins/scriblio/
 
 ### = Fork me! =
 

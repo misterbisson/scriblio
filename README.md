@@ -25,7 +25,7 @@ This plugin is on Github: https://github.com/misterbisson/scriblio
 
 ### = Build status =
 
-- Master: <a href="https://travis-ci.org/misterbisson/scriblio"><img src="https://travis-ci.org/misterbisson/scriblio.svg?branch=master" alt="build status"" /></a>
+- Master: <a href="https://travis-ci.org/misterbisson/scriblio"><img src="https://travis-ci.org/misterbisson/scriblio.svg?branch=master" alt="build status" /></a>
 
 ## == Installation ==
 
